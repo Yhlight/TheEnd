@@ -12,6 +12,7 @@
     <SettingsMenu
       v-if="showSettings"
       v-model:volume="volume"
+      v-model:noteSpeed="noteSpeed"
       @close="showSettings = false"
     />
     <div v-if="!isPlaying" class="start-button" @click="startGame">Play</div>
@@ -21,10 +22,10 @@
       :note-data="note"
       :is-holding="activeHoldNote && activeHoldNote.id === note.id"
       :song-time="songTime"
-      :lookahead-time="LOOKAHEAD_TIME"
++      :lookahead-time="lookaheadTime"
       :judgment-line-y-percent="judgmentLineY"
     />
-    <HitEffect v-for="effect in hitEffects" :key="effect.id" :x="effect.x" :y="effect.y" />
+    <HitEffect v-for="effect in hitEffects" :key="effect.id" :x="effect.x" :y="effect.y" :accuracy="effect.accuracy" />
     <div class="judgment-line" ref="judgmentLine" :class="judgmentLineClass" :style="judgmentLineStyle"></div>
     <audio ref="audioPlayer" :src="audioUrl" @ended="endGame"></audio>
     <audio ref="hitSound" src="/audio/hit.mp3"></audio>
@@ -38,7 +39,6 @@ import DynamicBackground from './DynamicBackground.vue';
 import SettingsMenu from './SettingsMenu.vue';
 import { easingFunctions } from '../utils.js';
 
-const LOOKAHEAD_TIME = 2000;
 const PERFECT_WINDOW = 50;
 const GOOD_WINDOW = 100;
 const SWIPE_THRESHOLD = 50;
@@ -76,7 +76,7 @@ export default {
       nextHitEffectId: 0,
       showSettings: false,
       volume: 1.0,
-      LOOKAHEAD_TIME // Expose to template
+      noteSpeed: 2000
     };
   },
   watch: {
@@ -91,6 +91,10 @@ export default {
     }
   },
   computed: {
+    lookaheadTime() {
+      // Note speed is inverted: higher value means slower notes (more lookahead)
+      return this.noteSpeed;
+    },
     judgmentLineStyle() {
       return {
         top: `${this.judgmentLineY}%`,
@@ -131,23 +135,28 @@ export default {
       this.isPlaying = false;
       this.$emit('game-ended', { score: this.score, combo: this.maxCombo });
     },
-    triggerHitEffect(x, y) {
-      this.hitEffects.push({ id: this.nextHitEffectId++, x, y });
+    triggerHitEffect(x, y, accuracy = 'good') {
+      this.hitEffects.push({ id: this.nextHitEffectId++, x, y, accuracy });
       this.$refs.hitSound.currentTime = 0;
+      this.flashJudgmentLine(accuracy);
       this.$refs.hitSound.play();
       setTimeout(() => {
         this.hitEffects.shift();
       }, 1000);
     },
+    flashJudgmentLine(accuracy) {
+      this.judgmentLineClass = `flash-${accuracy}`;
+      setTimeout(() => {
+        this.judgmentLineClass = '';
+      }, 150);
+    },
     handleInteraction(event) {
       if (!this.isPlaying || this.showSettings) return;
 
-      // Acknowledging limitation: this only judges the chronologically closest note.
-      // A future improvement would be to consider positional data as well.
       let closestNote = null;
       let minTimeDiff = Infinity;
 
-      this.activeNotes.forEach(note => {
+      this.activeNotes.filter(n => n.type !== 'catch').forEach(note => {
         const timeDiff = Math.abs(this.songTime - note.time);
         if (timeDiff < minTimeDiff) {
           minTimeDiff = timeDiff;
@@ -156,15 +165,19 @@ export default {
       });
 
       if (closestNote && minTimeDiff <= GOOD_WINDOW) {
+        let accuracy = 'good';
+        if (minTimeDiff <= PERFECT_WINDOW) {
+          accuracy = 'perfect';
+        }
+
         if (closestNote.type === 'tap') {
-          if (minTimeDiff <= PERFECT_WINDOW) this.score += 100;
-          else this.score += 50;
+          this.score += (accuracy === 'perfect' ? 100 : 50);
           this.combo++;
           this.activeNotes = this.activeNotes.filter(n => n.id !== closestNote.id);
-          this.triggerHitEffect(event.clientX, event.clientY);
+          this.triggerHitEffect(event.clientX, event.clientY, accuracy);
         } else if (closestNote.type === 'hold') {
           this.activeHoldNote = closestNote;
-          this.triggerHitEffect(event.clientX, event.clientY);
+          this.triggerHitEffect(event.clientX, event.clientY, accuracy);
         } else if (closestNote.type === 'swipe') {
           this.activeSwipeNote = closestNote;
           this.swipeStartX = event.clientX;
@@ -177,11 +190,11 @@ export default {
       if (this.activeHoldNote) {
         const timeDiff = Math.abs(this.songTime - (this.activeHoldNote.time + this.activeHoldNote.duration));
         if (timeDiff <= GOOD_WINDOW) {
-          if (timeDiff <= PERFECT_WINDOW) this.score += 200;
-          else this.score += 100;
+          const accuracy = (timeDiff <= PERFECT_WINDOW) ? 'perfect' : 'good';
+          this.score += (accuracy === 'perfect' ? 200 : 100);
           this.combo++;
           this.activeNotes = this.activeNotes.filter(n => n.id !== this.activeHoldNote.id);
-          this.triggerHitEffect(event.clientX, event.clientY);
+          this.triggerHitEffect(event.clientX, event.clientY, accuracy);
         } else {
           this.combo = 0;
         }
@@ -195,10 +208,11 @@ export default {
         if (Math.abs(distance) >= SWIPE_THRESHOLD) {
           const direction = distance > 0 ? 'right' : 'left';
           if (direction === this.activeSwipeNote.direction) {
+            // Swipe accuracy is not time-based in this implementation
             this.score += 150;
             this.combo++;
             this.activeNotes = this.activeNotes.filter(n => n.id !== this.activeSwipeNote.id);
-            this.triggerHitEffect(event.clientX, event.clientY);
+            this.triggerHitEffect(event.clientX, event.clientY, 'perfect');
           } else {
             this.combo = 0;
           }
@@ -245,7 +259,7 @@ export default {
         if (progress >= 1) this.activeEvent = null;
       }
 
-      while (this.chart && this.noteSpawnIndex < this.chart.notes.length && this.chart.notes[this.noteSpawnIndex].time < this.songTime + LOOKAHEAD_TIME) {
+      while (this.chart && this.noteSpawnIndex < this.chart.notes.length && this.chart.notes[this.noteSpawnIndex].time < this.songTime + this.lookaheadTime) {
         this.activeNotes.push({ ...this.chart.notes[this.noteSpawnIndex] });
         this.noteSpawnIndex++;
       }
@@ -254,9 +268,35 @@ export default {
       const judgmentLineYPx = judgmentLineRect.top + judgmentLineRect.height / 2;
       this.activeNotes.forEach(note => {
         const timeToHit = note.time - this.songTime;
-        const progress = 1 - (timeToHit / LOOKAHEAD_TIME);
+        const progress = 1 - (timeToHit / this.lookaheadTime);
         note.y = progress * judgmentLineYPx;
       });
+
+      // Handle catch notes
+      const judgedCatchNotes = [];
+      this.activeNotes.forEach(note => {
+        if (note.type === 'catch') {
+          const timeDiff = Math.abs(this.songTime - note.time);
+          if (timeDiff <= GOOD_WINDOW) { // Using GOOD_WINDOW for catch notes
+            const noteWidth = 10; // From FallingNote.vue style
+            const noteStartX = note.x - (noteWidth / 2);
+            const noteEndX = note.x + (noteWidth / 2);
+
+            if (this.judgmentLineX >= noteStartX && this.judgmentLineX <= noteEndX) {
+              const accuracy = (timeDiff <= PERFECT_WINDOW) ? 'perfect' : 'good';
+              this.score += 75; // Score for catching
+              this.combo++;
+              const effectX = (window.innerWidth * note.x) / 100;
+              const effectY = judgmentLineRect.top;
+              this.triggerHitEffect(effectX, effectY, accuracy);
+              judgedCatchNotes.push(note.id);
+            }
+          }
+        }
+      });
+      if (judgedCatchNotes.length > 0) {
+        this.activeNotes = this.activeNotes.filter(n => !judgedCatchNotes.includes(n.id));
+      }
 
       const missedNotes = this.activeNotes.filter(note => note.time < this.songTime - GOOD_WINDOW && note.type !== 'hold');
       if (missedNotes.length > 0) {
@@ -280,48 +320,67 @@ export default {
   position: relative;
   width: 100vw;
   height: 100vh;
-  background-color: #000;
+  background-color: #1A1A2E; /* Deep Blue/Purple */
   overflow: hidden;
   color: white;
   font-family: 'Arial', sans-serif;
 }
 .ui-container {
   position: absolute;
-  top: 10px;
-  left: 10px;
-  right: 10px;
+  top: 20px;
+  left: 20px;
+  right: 20px;
   display: flex;
   justify-content: space-between;
   z-index: 10;
+  text-transform: uppercase;
 }
 .score, .combo {
-  font-size: 24px;
-  text-shadow: 0 0 5px #0ff;
+  font-size: 28px;
+  font-weight: bold;
+  text-shadow: 0 0 8px #00BFFF;
 }
 .settings-button {
-  font-size: 24px;
+  font-size: 28px;
   cursor: pointer;
+  text-shadow: 0 0 8px #00BFFF;
 }
 .start-button {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  padding: 20px 40px;
-  font-size: 36px;
-  background-color: rgba(0, 255, 255, 0.5);
-  border: 2px solid #0ff;
-  border-radius: 10px;
+  padding: 15px 30px;
+  font-size: 32px;
+  background-color: transparent;
+  border: 3px solid #00BFFF;
+  color: #00BFFF;
+  text-transform: uppercase;
   cursor: pointer;
   z-index: 10;
+  transition: all 0.2s ease;
+}
+.start-button:hover {
+  background-color: #00BFFF;
+  color: #1A1A2E;
+  box-shadow: 0 0 20px #00BFFF;
 }
 .judgment-line {
   position: absolute;
   width: 100%;
   height: 4px;
-  background-color: #0ff;
-  box-shadow: 0 0 10px #0ff;
-  transition: all 0.1s linear;
+  background-color: #00BFFF;
+  box-shadow: 0 0 12px #00BFFF;
+  transition: all 0.1s ease-out;
+}
+.judgment-line.flash-perfect {
+  background-color: #FFFFFF;
+  box-shadow: 0 0 25px #FFFFFF;
+  transform: translateX(-50%) translateY(-50%) rotate(var(--rotation)) scale(1.05);
+}
+.judgment-line.flash-good {
+  background-color: #00BFFF;
+  box-shadow: 0 0 18px #00BFFF;
 }
 .progress-bar-container {
   position: absolute;
@@ -329,10 +388,11 @@ export default {
   left: 0;
   width: 100%;
   height: 5px;
-  background-color: #333;
+  background-color: rgba(0, 0, 0, 0.3);
 }
 .progress-bar {
   height: 100%;
-  background-color: #0ff;
+  background-color: #00BFFF;
+  box-shadow: 0 0 8px #00BFFF;
 }
 </style>

@@ -14,6 +14,18 @@
           @input="$emit('update:volume', parseFloat($event.target.value))"
         />
       </div>
+      <div class="setting">
+        <label for="note-speed">Note Speed</label>
+        <input
+          type="range"
+          id="note-speed"
+          min="1000"
+          max="3000"
+          step="100"
+          :value="noteSpeed"
+          @input="$emit('update:noteSpeed', parseInt($event.target.value, 10))"
+        />
+      </div>
       <div class="close-button" @click="$emit('close')">Close</div>
     </div>
   </div>
@@ -22,8 +34,8 @@
 <script>
 export default {
   name: 'SettingsMenu',
-  props: ['volume'],
-  emits: ['update:volume', 'close']
+  props: ['volume', 'noteSpeed'],
+  emits: ['update:volume', 'update:noteSpeed', 'close']
 };
 </script>
 

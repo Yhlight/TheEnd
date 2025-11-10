@@ -10,6 +10,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 http_server.log*
+server.log*
 
 # Local env files
 .env.local

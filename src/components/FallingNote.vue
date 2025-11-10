@@ -1,9 +1,9 @@
 <template>
-  <div class="falling-note" :style="noteStyle">
+  <div class="falling-note" :style="noteStyle" :class="noteTypeClass">
     <div v-if="noteData.type === 'hold'" class="hold-tail" :style="holdTailStyle">
       <div class="hold-fill" :style="holdFillStyle"></div>
     </div>
-    <div v-if="noteData.type === 'swipe'" class="swipe-arrow" :class="swipeDirection"></div>
+    <div v-if="noteData.type === 'swipe'" class="rhombus"></div>
   </div>
 </template>
 
@@ -18,6 +18,9 @@ export default {
     judgmentLineYPercent: { type: Number, required: true }
   },
   computed: {
+    noteTypeClass() {
+      return `note-${this.noteData.type}`;
+    },
     noteStyle() {
       return {
         left: `${this.noteData.x}%`,
@@ -39,10 +42,6 @@ export default {
       return {
         height: `${Math.min(100, holdProgress * 100)}%`
       };
-    },
-    swipeDirection() {
-      if (this.noteData.type !== 'swipe') return '';
-      return `swipe-${this.noteData.direction}`;
     }
   }
 }
@@ -52,38 +51,52 @@ export default {
 .falling-note {
   position: absolute;
   width: 10%;
-  height: 20px;
-  background-color: #fff;
-  border: 2px solid #0ff;
-  box-shadow: 0 0 10px #0ff;
+  height: 25px;
+  background-color: #00BFFF;
+  border: 2px solid #00BFFF;
+  box-shadow: 0 0 12px #00BFFF;
   transform-origin: center center;
+}
+.note-tap {
+  border-radius: 4px;
+}
+.note-hold {
+  border-radius: 8px;
 }
 .hold-tail {
   position: absolute;
-  bottom: 10px;
+  bottom: 12px;
   left: 50%;
   transform: translateX(-50%);
   width: 80%;
-  background: linear-gradient(rgba(0, 255, 255, 0.5), #0ff);
+  background: linear-gradient(rgba(0, 191, 255, 0.1), #00BFFF);
+  border-radius: 0 0 6px 6px;
 }
 .hold-fill {
   width: 100%;
-  background-color: #0ff;
+  background-color: #00BFFF;
+  border-radius: 0 0 6px 6px;
 }
-.swipe-arrow {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 0;
-  height: 0;
-  border-top: 10px solid transparent;
-  border-bottom: 10px solid transparent;
+.note-swipe {
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
-.swipe-left {
-  border-right: 15px solid #ff00ff;
+.rhombus {
+  width: 25px;
+  height: 25px;
+  background-color: #FF00FF;
+  border: 2px solid #FF00FF;
+  box-shadow: 0 0 12px #FF00FF;
+  transform: rotate(45deg);
 }
-.swipe-right {
-  border-left: 15px solid #ff00ff;
+.note-catch {
+  background-color: #FFD700;
+  border-color: #FFD700;
+  box-shadow: 0 0 15px #FFD700;
+  border-radius: 4px;
 }
 </style>
