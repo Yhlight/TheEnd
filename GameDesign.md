@@ -1,54 +1,70 @@
-# TheEnd Game Design Document
+# GameDesign.md
 
-This document outlines the comprehensive design of TheEnd, a web-based, falling-note rhythm game. It covers the core design philosophy, visual aesthetics, gameplay mechanics, and technical specifications.
+## 1. Core Philosophy: Geometric Abstraction & Atmospheric Immersion
 
-## 1. Core Philosophy
+TheEnd is a rhythm game centered on the concept of "geometric beauty." It seeks to create a unique, hard-to-describe feeling by merging abstract geometric visuals with an extreme color palette and atmospheric glow effects. The experience is designed to be immersive and captivating, with a high skill ceiling that rewards precision and deep engagement with the music and visuals.
 
-TheEnd aims to deliver a deeply immersive and aesthetically unique rhythm game experience. The core philosophy is centered around "geometric beauty," where gameplay and visuals merge into a cohesive, artistic expression. The game will be challenging yet fair, with a high skill ceiling that rewards precision and mastery.
+## 2. Visual Aesthetics: An Extreme & Deliberate Style
 
-## 2. Visual Aesthetics
+The visual identity of TheEnd is its most defining feature. It is minimalist yet powerful, abstract yet deliberate, and built upon a strict set of rules to ensure a cohesive and impactful aesthetic.
 
-The visual identity of TheEnd is minimalist, high-contrast, and abstract, built on a foundation of geometric primitives and dynamic light/glow effects.
+### 2.1. The Color Palette: A Study in Extremes
 
-*   **Color Palette:** The palette will be strictly limited and used to create a powerful, atmospheric mood. Two primary themes will be explored:
-    *   **Pale Theme:** A light gray or off-white background (e.g., `#EAEAEA`) with darker, contrasting geometric shapes in shades of gray and black. Glow effects will be a soft, ethereal white or a single, pale accent color.
-    *   **Dark Theme:** A deep, dark background, potentially deep red or near-black (e.g., `#1A0000` or `#050505`). Geometric elements will be rendered in stark, bright, glowing colors like electric blue, magenta, or a fiery orange.
+The game will avoid mid-tones entirely, opting for one of two distinct, high-contrast themes. This extreme choice is crucial for establishing the game's unique mood and ensuring that the geometric elements and glow effects have maximum visual impact.
 
-*   **Geometric Primitives:** All visual elements will be constructed from basic shapes.
-    *   **Notes:** Tap (Square), Hold (Rectangle), Swipe (Rhombus), Catch (Line Segment).
-    *   **UI:** Buttons, sliders, and menus will be constructed from simple lines and rectangles, adopting a wireframe-like appearance.
-    *   **Effects:** Hit animations will be a "shatter" effect, breaking the note's shape into smaller fragments. Glow effects will be used extensively on notes, the judgment line, and hit effects to provide strong visual feedback.
+*   **Pale Theme (The Void):**
+    *   **Background:** Pale, near-white, or light gray tones (e.g., `#EAEAEA`, `#DCDCDC`). This creates a sense of vast, sterile, and serene space.
+    *   **Elements:** Geometric shapes will be rendered in dark grays, deep reds, or black (e.g., `#1A1A1A`, `#4B0000`).
+    *   **Glow:** The glow will be a soft, ethereal white or a very light, desaturated color, providing a subtle, haunting bloom around the stark geometric forms.
 
-*   **Typography:** A clean, modern, sans-serif typeface will be used for all text to complement the minimalist aesthetic.
+*   **Dark Theme (The Deep):**
+    *   **Background:** Deep, dark, and desaturated colors, such as deep red or near-black (e.g., `#1A0000`, `#050505`). This theme evokes a sense of mystery, intensity, and focus.
+    *   **Elements:** Geometric shapes will be rendered in bright, stark, glowing colors like electric blue, magenta, or a fiery orange (`#00FFFF`, `#FF00FF`, `#FF4500`).
+    *   **Glow:** The glow is a core component here, creating a vibrant, energetic, and almost pulsating aura around the notes and UI elements.
+
+### 2.2. Geometric Primitives: The Building Blocks of the World
+
+All visual elements in TheEnd will be constructed from a limited set of geometric primitives. The game will **strictly avoid** the use of external image assets or complex sprites. The beauty emerges from the composition, animation, and interaction of these simple forms.
+
+*   **Notes:**
+    *   **Tap:** A simple square.
+    *   **Hold:** A rectangle with a filled, glowing track.
+    *   **Swipe:** A rhombus, with its orientation indicating the swipe direction.
+    *   **Catch:** A simple, glowing line segment that the judgment line must pass through.
+*   **UI Elements:** Buttons, menus, and progress bars will be constructed from lines and rectangles, adopting a clean, wireframe-like aesthetic that complements the gameplay visuals.
+*   **Effects & Feedback:**
+    *   **Hit Animation:** On a successful hit, the note's geometric shape will shatter into smaller, glowing fragments or lines that animate outwards. The intensity and color of the shatter effect will correspond to the judgment accuracy (e.g., a brighter, more explosive effect for "Perfect").
+    *   **Judgment Line:** The judgment line itself is a key visual element. It will pulse with light on successful hits and can change its color and intensity as part of the chart's choreography.
+
+### 2.3. The Role of Glow & Light
+
+Glow is not merely a decorative effect; it is a fundamental part of the game's visual language. It provides feedback, creates atmosphere, and highlights the stark beauty of the geometric shapes.
+
+*   **Atmosphere:** Subtle, persistent glows on background elements and the judgment line create a sense of depth and energy.
+*   -**Feedback:** Hit effects, note appearances, and combo milestones will all be accompanied by distinct glow animations.
+*   **Emphasis:** Glow will draw the player's eye to important elements, guiding them through the gameplay experience.
 
 ## 3. Gameplay Mechanics
 
-The gameplay is designed to be intuitive for rhythm game veterans while offering unique challenges through its dynamic judgment line.
+The gameplay mechanics are designed to be intuitive for rhythm game veterans but will be enhanced by the dynamic and expressive nature of the visuals.
 
-*   **Judgment Line:** The judgment line is a central actor in the gameplay. Its movement, rotation, and color can change dynamically based on commands in the chart file.
+*   **Dynamic Judgment Line:** The judgment line is not static. Its movement, rotation, and visual properties (color, glow intensity) are part of the chart itself, creating a dynamic and engaging playfield.
+*   **Note Types & Judgment:** The four core note types (Tap, Hold, Swipe, Catch) will be judged based on timing and, for swipes, directional input. The judgment system will be clear and responsive, with visual feedback (shatter effects) and audio cues reinforcing player performance.
+*   **Scoring System:** The scoring will be based on accuracy ("Perfect," "Good," "Miss") and combo. A final letter grade will be awarded based on overall performance.
 
-*   **Note Types:**
-    *   **Tap:** A single square. Requires a precise tap.
-    *   **Hold:** A rectangle with a defined start and end. Requires the player to press, hold, and release.
-    *   **Swipe:** A rhombus. Requires a directional flick.
-    *   **Catch:** A line segment. Requires no input but awards points if the judgment line is positioned to intercept it.
+## 4. Audio Design
 
-*   **Scoring System:**
-    *   **Judgment:** "Perfect," "Good," and "Miss" windows, based on timing accuracy.
-    *   **Score:** A point-based system with bonuses for high combos.
-    *   **Grading:** A final letter grade (e.g., S, A, B, C, F) based on overall performance.
+The audio will be tightly integrated with the visuals.
 
-## 4. Audio and Music
+*   **Music:** The soundtrack will focus on electronic genres that align with the game's futuristic and abstract aesthetic.
+*   **Sound Effects:** Hit sounds will be crisp, clear, and satisfying, designed to complement the geometric shatter effects. UI sounds will be minimalist and clean.
 
-The game will feature a diverse soundtrack, with a focus on electronic music genres that complement the futuristic, geometric aesthetic. Hit sounds will be sharp, clear, and satisfying.
+## 5. Chart Editor & Community
 
-## 5. Chart Editor
+A powerful, desktop-based chart editor is a core part of the long-term vision. It will empower the community to create and share their own charts, leveraging all the dynamic visual and mechanical features of the game engine.
 
-A key feature of TheEnd will be a powerful, user-friendly chart editor for desktop platforms. This will allow the community to create and share their own charts, fostering a vibrant ecosystem of user-generated content.
+## 6. Technical Direction
 
-## 6. Technical Implementation
-
-*   **Frontend:** Vue.js
-*   **Rendering:** HTML/CSS, with potential for Canvas or WebGL for more complex background effects.
-*   **Performance:** C++ and WebAssembly may be used for performance-critical components.
-*   **Platform:** The primary target for the game is Android (packaged with Capacitor), while the chart editor will be designed for desktop.
+*   **Framework:** Vue.js
+*   **Rendering:** HTML/CSS will be the primary rendering technology. The focus will be on leveraging CSS animations and properties (like `box-shadow` and `filter: blur()`) to achieve the desired geometric and glow effects efficiently. Canvas or WebGL may be considered for complex background visuals if needed.
+*   **Platform:** The game is primarily targeted for Android (packaged with Capacitor), with the chart editor designed for desktop use.
