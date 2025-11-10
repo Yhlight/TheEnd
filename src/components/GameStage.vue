@@ -22,6 +22,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { JudgementLine } from '../core/JudgementLine.js';
+import { JudgementLineManager } from '../core/JudgementLineManager.js';
 import { NoteManager } from '../core/NoteManager.js';
 import { testChart } from '../core/Chart.js';
 import { EffectManager } from '../core/EffectManager.js';
@@ -35,6 +36,7 @@ const audioElement = ref(null);
 const gameState = ref('startScreen'); // 'startScreen', 'playing', 'results'
 let ctx = null;
 let judgementLine = null;
+let judgementLineManager = null;
 let noteManager = null;
 let effectManager = null;
 let scoreManager = null;
@@ -43,6 +45,7 @@ let dynamicBackground = null;
 
 const resetGameModules = () => {
   judgementLine = new JudgementLine(gameCanvas.value);
+  judgementLineManager = new JudgementLineManager(judgementLine, testChart.judgementLineEvents, gameCanvas.value);
   scoreManager = new ScoreManager();
   noteManager = new NoteManager(gameCanvas.value, testChart, scoreManager, judgementLine);
   effectManager = new EffectManager();
@@ -125,6 +128,7 @@ const update = () => {
   const gameTime = audioElement.value.currentTime * 1000;
 
   judgementLine.update();
+  if (judgementLineManager) judgementLineManager.update(gameTime);
   noteManager.update(gameTime);
   effectManager.update();
   dynamicBackground.update();

@@ -2,7 +2,8 @@ export class JudgementLine {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
-    this.y = 0;
+    this.y = canvas.height * 0.8; // Default Y position
+    this.rotation = 0; // in degrees
 
     // Breathing effect properties
     this.breatheAngle = 0;
@@ -16,7 +17,7 @@ export class JudgementLine {
   }
 
   update() {
-    this.y = this.canvas.height * 0.8;
+    // Y position is now controlled externally by JudgementLineManager
     this.breatheAngle += this.breatheSpeed;
     if (this.flashTimer > 0) {
       this.flashTimer--;
@@ -39,10 +40,17 @@ export class JudgementLine {
     const baseLineWidth = 2;
     const baseShadowBlur = 5;
 
+    this.ctx.save();
+
+    // Move to the line's position and rotate the canvas
+    this.ctx.translate(this.canvas.width / 2, this.y);
+    this.ctx.rotate(this.rotation * Math.PI / 180);
+
     // --- Draw main line ---
+    // Now we draw relative to the new (0,0) center
     this.ctx.beginPath();
-    this.ctx.moveTo(0, this.y);
-    this.ctx.lineTo(this.canvas.width, this.y);
+    this.ctx.moveTo(-this.canvas.width / 2, 0);
+    this.ctx.lineTo(this.canvas.width / 2, 0);
 
     // Base style with subtle glow
     this.ctx.strokeStyle = '#FFFFFF';
@@ -71,13 +79,17 @@ export class JudgementLine {
       this.ctx.shadowBlur = 10;
       this.ctx.lineWidth = 2;
 
-      this.ctx.moveTo(0, this.y - shockwaveDistance);
-      this.ctx.lineTo(this.canvas.width, this.y - shockwaveDistance);
-      this.ctx.moveTo(0, this.y + shockwaveDistance);
-      this.ctx.lineTo(this.canvas.width, this.y + shockwaveDistance);
+      // Draw shockwave lines relative to the new center
+      this.ctx.moveTo(-this.canvas.width / 2, -shockwaveDistance);
+      this.ctx.lineTo(this.canvas.width / 2, -shockwaveDistance);
+      this.ctx.moveTo(-this.canvas.width / 2, shockwaveDistance);
+      this.ctx.lineTo(this.canvas.width / 2, shockwaveDistance);
 
       this.ctx.stroke();
     }
+
+    // Restore the canvas to its original state
+    this.ctx.restore();
 
     // Reset shadow for other elements
     this.ctx.shadowBlur = 0;

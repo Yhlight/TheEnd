@@ -21,5 +21,15 @@ export const testChart = {
 
     { time: 5250, x: 0.75, type: 'tap' },
     { time: 5500, x: 0.25, type: 'tap' },
+  ],
+  judgementLineEvents: [
+    // Move the line from center to bottom at the beginning
+    { time: 0,    duration: 1000, startY: 0.5, endY: 0.8, startRotation: 0, endRotation: 0 },
+    // Rotate the line slightly at 2.5 seconds
+    { time: 2500, duration: 500,  startY: 0.8, endY: 0.8, startRotation: 0, endRotation: 10 },
+    // Rotate it back
+    { time: 3500, duration: 500,  startY: 0.8, endY: 0.8, startRotation: 10, endRotation: 0 },
+    // Move it up a bit
+    { time: 5000, duration: 500,  startY: 0.8, endY: 0.6, startRotation: 0, endRotation: 0 },
   ]
 };
