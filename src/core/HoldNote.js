@@ -32,7 +32,8 @@ export class HoldNote extends BaseNote {
 
     this.ctx.save();
 
-    const startX = this.x - this.width / 2;
+    const renderX = this.x - this.canvas.width / 2;
+    const startX = renderX - this.width / 2;
     const startY = this.y - this.height / 2;
 
     // Draw the main body of the hold note

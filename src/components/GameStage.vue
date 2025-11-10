@@ -156,9 +156,21 @@ const draw = () => {
     ctx.fillRect(0, 0, progressBarWidth, 5);
   }
 
+  // --- Dynamic Coordinate System Transformation ---
+  ctx.save();
+  // Move origin to the center of the judgement line
+  ctx.translate(gameCanvas.value.width / 2, judgementLine.y);
+  ctx.rotate(judgementLine.rotation * Math.PI / 180);
+
+  // Draw all game elements relative to the transformed line
   judgementLine.draw();
   noteManager.draw();
-  effectManager.draw(ctx);
+  // Effect manager might need to be drawn outside if effects are global
+
+  ctx.restore();
+  // ------------------------------------------------
+
+  effectManager.draw(ctx); // Draw effects in global coordinate space
 
   if (scoreManager) {
     ctx.fillStyle = 'white';

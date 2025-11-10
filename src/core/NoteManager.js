@@ -35,13 +35,13 @@ export class NoteManager {
     }
 
     // Update all active notes and mark missed ones
-    const missThreshold = 100;
+    const missThreshold = 100; // Miss if it goes 100px past the line
     for (const note of this.notes) {
-      if (!note.isMissed && note.y > judgementLineY + missThreshold) {
+      if (!note.isMissed && note.y > missThreshold) {
         this.scoreManager.onMiss();
         note.markAsMissed();
       }
-      note.update(judgementLineY); // Pass judgement line's Y position
+      note.update();
     }
 
     // --- Hold Note Logic ---
@@ -91,7 +91,6 @@ export class NoteManager {
   // Checks for tap note hits
   checkTapHit() {
     const hitWindow = 75;
-    const judgementLineY = this.judgementLine.y;
     let hitNote = null;
 
     // Find the closest, hittable tap note
@@ -100,7 +99,7 @@ export class NoteManager {
 
     for (const note of this.notes) {
       if (note.isMissed || note.type !== 'tap') continue;
-      const dist = Math.abs(note.y - judgementLineY);
+      const dist = Math.abs(note.y); // Simplified distance check
       if (dist < minDistance) {
         minDistance = dist;
         closestTapNote = note;
@@ -118,7 +117,6 @@ export class NoteManager {
   // Checks for the start of a hold note
   checkHoldStart() {
     const hitWindow = 75;
-    const judgementLineY = this.judgementLine.y;
     let holdNoteStarted = null;
 
     // Find the closest, hittable hold note
@@ -127,7 +125,7 @@ export class NoteManager {
 
     for (const note of this.notes) {
       if (note.isMissed || note.type !== 'hold') continue;
-      const dist = Math.abs(note.y - judgementLineY);
+      const dist = Math.abs(note.y); // Simplified distance check
       if (dist < minDistance) {
         minDistance = dist;
         closestHoldNote = note;
