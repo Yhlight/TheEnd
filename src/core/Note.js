@@ -18,6 +18,10 @@ export class Note {
     this.isMissed = false;
     this.fadeDuration = 20; // Fade out over 20 frames
     this.fadeTimer = 0;
+
+    // Approach animation properties
+    this.approachAnimationProgress = 0;
+    this.approachThreshold = 200; // Start animation when 200px away
   }
 
   markAsMissed() {
@@ -27,13 +31,21 @@ export class Note {
     }
   }
 
-  update() {
+  update(judgementLineY) {
     if (this.isMissed) {
       if (this.fadeTimer > 0) {
         this.fadeTimer--;
       }
     } else {
       this.y += this.speed;
+
+      // Update approach animation
+      const distance = judgementLineY - this.y;
+      if (distance > 0 && distance < this.approachThreshold) {
+        this.approachAnimationProgress = 1 - (distance / this.approachThreshold);
+      } else if (distance <= 0) {
+        this.approachAnimationProgress = 1; // Animation complete
+      }
     }
   }
 
@@ -50,11 +62,25 @@ export class Note {
       this.ctx.globalAlpha = fadeProgress; // Fade out
     }
 
+    // Draw base note
     this.ctx.fillStyle = this.color;
     this.ctx.shadowBlur = 5;
     this.ctx.shadowColor = this.color;
-
     this.ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
+
+    // Draw approach animation overlay
+    if (!this.isMissed && this.approachAnimationProgress > 0) {
+      const innerWidth = this.width * (1 - this.approachAnimationProgress);
+      const innerHeight = this.height * (1 - this.approachAnimationProgress);
+
+      this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      this.ctx.fillRect(
+        this.x - innerWidth / 2,
+        this.y - innerHeight / 2,
+        innerWidth,
+        innerHeight
+      );
+    }
 
     this.ctx.shadowBlur = 0;
     this.ctx.restore();

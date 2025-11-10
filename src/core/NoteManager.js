@@ -32,7 +32,7 @@ export class NoteManager {
         this.scoreManager.onMiss();
         note.markAsMissed();
       }
-      note.update();
+      note.update(judgementLineY); // Pass judgement line's Y position
     }
 
     // Remove notes whose animations have finished
