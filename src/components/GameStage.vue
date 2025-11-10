@@ -1,9 +1,20 @@
 <template>
   <div class="game-container">
     <canvas ref="gameCanvas" class="game-canvas"></canvas>
-    <div v-if="!isPlaying" class="start-overlay" @click="startGame">
+
+    <div v-if="gameState === 'startScreen'" class="start-overlay" @click="startGame">
       <h1>Click to Start</h1>
     </div>
+
+    <div v-if="gameState === 'results'" class="results-overlay">
+      <div class="results-box">
+        <h1>Results</h1>
+        <h2>Score: {{ scoreManager?.getScore() }}</h2>
+        <h3>Max Combo: {{ scoreManager?.maxCombo }}</h3>
+        <button @click="restartGame" class="restart-button">Restart</button>
+      </div>
+    </div>
+
     <audio ref="audioElement" src="/song.mp3" style="display: none;"></audio>
   </div>
 </template>
@@ -18,12 +29,10 @@ import { ScoreManager } from '../core/ScoreManager.js';
 import { AudioManager } from '../core/AudioManager.js';
 import { DynamicBackground } from '../core/DynamicBackground.js';
 
-// Refs for DOM elements
 const gameCanvas = ref(null);
 const audioElement = ref(null);
 
-// Game state
-const isPlaying = ref(false);
+const gameState = ref('startScreen'); // 'startScreen', 'playing', 'results'
 let ctx = null;
 let judgementLine = null;
 let noteManager = null;
@@ -31,6 +40,15 @@ let effectManager = null;
 let scoreManager = null;
 let audioManager = null;
 let dynamicBackground = null;
+
+const resetGameModules = () => {
+  judgementLine = new JudgementLine(gameCanvas.value);
+  scoreManager = new ScoreManager();
+  noteManager = new NoteManager(gameCanvas.value, testChart, scoreManager, judgementLine);
+  effectManager = new EffectManager();
+  audioManager = new AudioManager();
+  dynamicBackground = new DynamicBackground(gameCanvas.value);
+};
 
 const initializeGame = () => {
   if (!gameCanvas.value) return;
@@ -44,17 +62,10 @@ const initializeGame = () => {
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
 
-  judgementLine = new JudgementLine(gameCanvas.value);
-  scoreManager = new ScoreManager();
-  // Pass the judgementLine object directly to the NoteManager
-  noteManager = new NoteManager(gameCanvas.value, testChart, scoreManager, judgementLine);
-  effectManager = new EffectManager();
-  audioManager = new AudioManager();
-  dynamicBackground = new DynamicBackground(gameCanvas.value);
+  resetGameModules();
 
   gameCanvas.value.addEventListener('mousedown', handleInputStart);
   gameCanvas.value.addEventListener('touchstart', handleInputStart);
-
   gameCanvas.value.addEventListener('mouseup', handleInputEnd);
   gameCanvas.value.addEventListener('touchend', handleInputEnd);
 
@@ -64,7 +75,7 @@ const initializeGame = () => {
 const startGame = () => {
   if (audioElement.value) {
     audioElement.value.play().then(() => {
-      isPlaying.value = true;
+      gameState.value = 'playing';
       gameLoop();
     }).catch(error => {
       console.error("Audio playback failed:", error);
@@ -76,66 +87,74 @@ onMounted(initializeGame);
 
 const handleInputStart = (event) => {
   event.preventDefault();
-  if (!isPlaying.value) return;
+  if (gameState.value !== 'playing') return;
 
-  // Prioritize checking for tap hits first
   const tapNote = noteManager.checkTapHit();
   if (tapNote) {
     scoreManager.onHit();
     effectManager.createExplosion(tapNote.x, tapNote.y, '#FF0000');
     audioManager.playHitSound();
     judgementLine.flash();
-    return; // Early exit if a tap note was hit
+    return;
   }
 
-  // If no tap note was hit, check for a hold start
   const holdNote = noteManager.checkHoldStart();
   if (holdNote) {
-    // Scoring is now handled inside NoteManager
     audioManager.playHitSound();
     judgementLine.flash();
   } else {
-    // Only register a miss if neither a tap nor a hold was started
     scoreManager.onMiss();
   }
 };
 
 const handleInputEnd = (event) => {
   event.preventDefault();
-  if (!isPlaying.value) return;
-
-  // Check if an active hold note was released
+  if (gameState.value !== 'playing') return;
   noteManager.checkHoldEnd();
 };
 
+const restartGame = () => {
+  audioElement.value.pause();
+  audioElement.value.currentTime = 0;
+  resetGameModules();
+  gameState.value = 'startScreen';
+};
+
 const update = () => {
-  if (!isPlaying.value || !audioElement.value) return;
+  if (gameState.value !== 'playing' || !audioElement.value) return;
   const gameTime = audioElement.value.currentTime * 1000;
 
-  if (judgementLine) judgementLine.update();
-  if (noteManager) noteManager.update(gameTime); // No longer needs judgementLineY
-  if (effectManager) effectManager.update();
-  if (dynamicBackground) dynamicBackground.update();
+  judgementLine.update();
+  noteManager.update(gameTime);
+  effectManager.update();
+  dynamicBackground.update();
+
+  // New, more robust song end condition
+  const audio = audioElement.value;
+  if (audio && audio.duration > 0 && (audio.duration - audio.currentTime) < 0.1) {
+    if (noteManager.notes.length === 0 && noteManager.activeHolds.size === 0) {
+      console.log("--- SONG ENDED, SWITCHING TO RESULTS ---");
+      gameState.value = 'results';
+    }
+  }
 };
 
 const draw = () => {
   if (!ctx || !gameCanvas.value) return;
   ctx.clearRect(0, 0, gameCanvas.value.width, gameCanvas.value.height);
 
-  // Draw background first, so it's behind everything else
-  if (dynamicBackground) dynamicBackground.draw(ctx);
+  dynamicBackground.draw(ctx);
 
-  // Draw progress bar
   if (audioElement.value && audioElement.value.duration) {
     const progress = audioElement.value.currentTime / audioElement.value.duration;
     const progressBarWidth = progress * gameCanvas.value.width;
-    ctx.fillStyle = 'rgba(0, 255, 255, 0.5)'; // Semi-transparent cyan
-    ctx.fillRect(0, 0, progressBarWidth, 5); // 5px height at the top
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.fillRect(0, 0, progressBarWidth, 5);
   }
 
-  if (judgementLine) judgementLine.draw();
-  if (noteManager) noteManager.draw();
-  if (effectManager) effectManager.draw(ctx);
+  judgementLine.draw();
+  noteManager.draw();
+  effectManager.draw(ctx);
 
   if (scoreManager) {
     ctx.fillStyle = 'white';
@@ -152,7 +171,7 @@ const draw = () => {
 };
 
 const gameLoop = () => {
-  if (!isPlaying.value) return;
+  if (gameState.value !== 'playing') return;
   update();
   draw();
   requestAnimationFrame(gameLoop);
@@ -160,8 +179,53 @@ const gameLoop = () => {
 </script>
 
 <style scoped>
-/* Styles remain the same */
-.game-container { position: relative; width: 100vw; height: 100vh; }
-.game-canvas { display: block; background-color: #1a1a1a; }
-.start-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); color: white; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 2em; }
+.game-container { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+.game-canvas { display: block; background-color: #121212; }
+
+.start-overlay, .results-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  font-family: 'Arial', sans-serif;
+}
+.start-overlay {
+  cursor: pointer;
+  font-size: 2em;
+}
+
+.results-box {
+  border: 2px solid white;
+  padding: 2em 4em;
+  background-color: rgba(20, 20, 20, 0.5);
+}
+.results-box h1 {
+  margin-bottom: 1em;
+  font-size: 3em;
+}
+.results-box h2, .results-box h3 {
+  margin: 0.5em 0;
+}
+
+.restart-button {
+  margin-top: 2em;
+  padding: 0.8em 2em;
+  background-color: transparent;
+  border: 2px solid white;
+  color: white;
+  font-size: 1em;
+  cursor: pointer;
+  transition: background-color 0.3s, color 0.3s;
+}
+.restart-button:hover {
+  background-color: white;
+  color: black;
+}
 </style>
