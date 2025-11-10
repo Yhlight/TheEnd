@@ -44,6 +44,40 @@ export class NoteManager {
       note.update(judgementLineY); // Pass judgement line's Y position
     }
 
+    // --- Hold Note Logic ---
+    const holdReleaseWindow = 100; // Can release 100ms early/late
+
+    for (const note of this.notes) {
+      if (note.type !== 'hold' || note.isMissed) continue;
+
+      const noteEndTime = note.time + note.duration;
+
+      // Case 1: Player is still holding the note
+      if (note.isBeingHeld && this.activeHolds.has(note)) {
+        if (gameTime > noteEndTime + holdReleaseWindow) {
+          // Player held on for too long, treat as a successful release at the end time
+          this.scoreManager.onHit(); // << Score for successful hold completion
+          this.activeHolds.delete(note);
+          note.isBeingHeld = false; // Mark as complete
+          this.notes = this.notes.filter(n => n !== note); // Remove from game
+        }
+      }
+      // Case 2: Player released the note
+      else if (note.isBeingHeld && !this.activeHolds.has(note)) {
+        const releaseTime = gameTime; // Approximately
+        if (Math.abs(releaseTime - noteEndTime) <= holdReleaseWindow) {
+          // Successful release
+          this.scoreManager.onHit(); // << Score for successful hold completion
+          note.isBeingHeld = false;
+          this.notes = this.notes.filter(n => n !== note);
+        } else {
+          // Premature or late release
+          this.scoreManager.onMiss();
+          note.markAsMissed();
+        }
+      }
+    }
+
     // Remove notes whose animations have finished
     this.notes = this.notes.filter(note => note.isAlive());
   }
@@ -102,7 +136,9 @@ export class NoteManager {
 
     if (closestHoldNote && minDistance < hitWindow) {
       holdNoteStarted = closestHoldNote;
+      holdNoteStarted.isBeingHeld = true; // Set the state on the note itself
       this.activeHolds.add(holdNoteStarted);
+      this.scoreManager.increaseCombo(); // Increase combo for the start of the hold
     }
 
     return holdNoteStarted;
@@ -110,15 +146,10 @@ export class NoteManager {
 
   // Called when a touch/click is released
   checkHoldEnd() {
-    // For now, assume any release hits the oldest active hold
-    // A more robust solution would check coordinates
+    // Simply remove the oldest active hold. The update loop will handle scoring/missing.
     if (this.activeHolds.size > 0) {
       const holdNoteToEnd = this.activeHolds.values().next().value;
       this.activeHolds.delete(holdNoteToEnd);
-      this.notes = this.notes.filter(note => note !== holdNoteToEnd);
-      // Here you would check if the hold was released at the right time
-      // For simplicity, we'll just score it as a success for now.
-      this.scoreManager.onHit();
     }
   }
 }

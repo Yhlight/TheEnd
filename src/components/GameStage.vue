@@ -91,8 +91,7 @@ const handleInputStart = (event) => {
   // If no tap note was hit, check for a hold start
   const holdNote = noteManager.checkHoldStart();
   if (holdNote) {
-    scoreManager.onHit(); // Score the beginning of the hold
-    // We can create a different effect for hold starts later
+    // Scoring is now handled inside NoteManager
     audioManager.playHitSound();
     judgementLine.flash();
   } else {

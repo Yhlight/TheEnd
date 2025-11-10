@@ -11,12 +11,18 @@ export class HoldNote extends BaseNote {
     const timeToFall = scrollTime / 1000; // in seconds
     const pixelsPerSecond = (judgementLineY) / timeToFall;
     this.noteLength = (this.duration / 1000) * pixelsPerSecond;
+
+    // Animation properties for the energy flow effect
+    this.flowAnimationTimer = Math.random() * Math.PI * 2;
+    this.flowSpeed = 0.1;
+
+    // State properties
+    this.isBeingHeld = false;
   }
 
   update(judgementLineY) {
-    // A hold note's logic is more complex and will be handled
-    // largely by the NoteManager. For now, basic movement is enough.
     super.update();
+    this.flowAnimationTimer += this.flowSpeed;
   }
 
   draw() {
@@ -33,6 +39,16 @@ export class HoldNote extends BaseNote {
     const bodyHeight = this.noteLength;
     this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'; // Semi-transparent body
     this.ctx.fillRect(startX, startY - bodyHeight, this.width, bodyHeight);
+
+    // Draw the energy flow pulse
+    const flowProgress = (Math.sin(this.flowAnimationTimer) + 1) / 2; // Normalize to 0-1 range
+    const flowY = startY - (bodyHeight * flowProgress);
+
+    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    this.ctx.shadowColor = '#FFFFFF';
+    this.ctx.shadowBlur = 15;
+    this.ctx.fillRect(startX, flowY - 5, this.width, 10); // A 10px tall pulse
+    this.ctx.shadowBlur = 0; // Reset for the end lines
 
     // Draw the start and end lines with subtle glow
     this.ctx.fillStyle = this.color;
