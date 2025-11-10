@@ -6,7 +6,7 @@ export class NoteManager {
     this.canvas = canvas;
     this.chart = chart;
     this.scoreManager = scoreManager;
-    this.judgementLine = judgementLine; // Store the entire object
+    this.judgementLine = judgementLine;
     this.scrollTime = scrollTime;
     this.notes = [];
     this.nextNoteIndex = 0;
@@ -25,22 +25,18 @@ export class NoteManager {
       this.nextNoteIndex++;
     }
 
-    // Update all active notes
+    // Update all active notes and mark missed ones
+    const missThreshold = 100;
     for (const note of this.notes) {
+      if (!note.isMissed && note.y > judgementLineY + missThreshold) {
+        this.scoreManager.onMiss();
+        note.markAsMissed();
+      }
       note.update();
     }
 
-    // Filter out missed notes
-    const missThreshold = 100;
-    const remainingNotes = [];
-    for (const note of this.notes) {
-      if (note.y > judgementLineY + missThreshold) {
-        this.scoreManager.onMiss();
-      } else {
-        remainingNotes.push(note);
-      }
-    }
-    this.notes = remainingNotes;
+    // Remove notes whose animations have finished
+    this.notes = this.notes.filter(note => note.isAlive());
   }
 
   draw() {
@@ -57,18 +53,22 @@ export class NoteManager {
       return null;
     }
 
-    let closestNote = this.notes[0];
-    let minDistance = Math.abs(closestNote.y - judgementLineY);
+    // Find the closest non-missed note to the judgement line
+    let closestNote = null;
+    let minDistance = Infinity;
 
-    for (let i = 1; i < this.notes.length; i++) {
-      const dist = Math.abs(this.notes[i].y - judgementLineY);
+    for (const note of this.notes) {
+      if (note.isMissed) continue; // Ignore already missed notes
+
+      const dist = Math.abs(note.y - judgementLineY);
       if (dist < minDistance) {
         minDistance = dist;
-        closestNote = this.notes[i];
+        closestNote = note;
       }
     }
 
-    if (minDistance < hitWindow) {
+    if (closestNote && minDistance < hitWindow) {
+      // Remove the hit note by filtering
       this.notes = this.notes.filter(note => note !== closestNote);
       return closestNote;
     }

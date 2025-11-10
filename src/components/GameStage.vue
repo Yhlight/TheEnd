@@ -16,6 +16,7 @@ import { testChart } from '../core/Chart.js';
 import { EffectManager } from '../core/EffectManager.js';
 import { ScoreManager } from '../core/ScoreManager.js';
 import { AudioManager } from '../core/AudioManager.js';
+import { DynamicBackground } from '../core/DynamicBackground.js';
 
 // Refs for DOM elements
 const gameCanvas = ref(null);
@@ -29,6 +30,7 @@ let noteManager = null;
 let effectManager = null;
 let scoreManager = null;
 let audioManager = null;
+let dynamicBackground = null;
 
 const initializeGame = () => {
   if (!gameCanvas.value) return;
@@ -48,6 +50,7 @@ const initializeGame = () => {
   noteManager = new NoteManager(gameCanvas.value, testChart, scoreManager, judgementLine);
   effectManager = new EffectManager();
   audioManager = new AudioManager();
+  dynamicBackground = new DynamicBackground(gameCanvas.value);
 
   gameCanvas.value.addEventListener('mousedown', handleInput);
   gameCanvas.value.addEventListener('touchstart', handleInput);
@@ -78,6 +81,7 @@ const handleInput = (event) => {
       scoreManager.onHit();
       effectManager.createExplosion(hitNote.x, hitNote.y, hitNote.color);
       audioManager.playHitSound();
+      judgementLine.flash(); // Trigger the flash effect
     } else {
       scoreManager.onMiss();
     }
@@ -91,11 +95,23 @@ const update = () => {
   if (judgementLine) judgementLine.update();
   if (noteManager) noteManager.update(gameTime); // No longer needs judgementLineY
   if (effectManager) effectManager.update();
+  if (dynamicBackground) dynamicBackground.update();
 };
 
 const draw = () => {
   if (!ctx || !gameCanvas.value) return;
   ctx.clearRect(0, 0, gameCanvas.value.width, gameCanvas.value.height);
+
+  // Draw background first, so it's behind everything else
+  if (dynamicBackground) dynamicBackground.draw(ctx);
+
+  // Draw progress bar
+  if (audioElement.value && audioElement.value.duration) {
+    const progress = audioElement.value.currentTime / audioElement.value.duration;
+    const progressBarWidth = progress * gameCanvas.value.width;
+    ctx.fillStyle = 'rgba(0, 255, 255, 0.5)'; // Semi-transparent cyan
+    ctx.fillRect(0, 0, progressBarWidth, 5); // 5px height at the top
+  }
 
   if (judgementLine) judgementLine.draw();
   if (noteManager) noteManager.draw();
