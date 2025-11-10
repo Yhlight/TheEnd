@@ -15,19 +15,27 @@ export class BaseNote {
     this.height = 30;
     this.color = '#FFFFFF';
 
-    // Movement properties
-    // y is now the distance to the judgement line.
-    // It starts at a negative value and moves towards 0.
-    const timeToFall = scrollTime / 1000; // in seconds
-    const pixelsPerSecond = (judgementLineY) / timeToFall; // Use judgementLineY as a reference for distance
+    // Movement properties are now calculated in a separate method
+    // to allow for dynamic speed changes.
+    this.recalculateSpeed(scrollTime, judgementLineY);
 
-    this.y = -pixelsPerSecond * timeToFall;
-    this.speed = pixelsPerSecond / 60; // speed per frame, assuming 60fps
+    // y starts at the spawn position and moves towards the judgement line (y=0)
+    // We calculate the initial y based on the speed and time it needs to travel.
+    const timeToFall = scrollTime / 1000;
+    this.y = -(this.speed * 60 * timeToFall);
+
 
     // State properties
     this.isMissed = false;
     this.fadeDuration = 20;
     this.fadeTimer = 0;
+  }
+
+  recalculateSpeed(scrollTime, judgementLineY) {
+    const timeToFall = scrollTime / 1000; // in seconds
+    // Use the initial judgement line position as a stable reference for distance
+    const pixelsPerSecond = judgementLineY / timeToFall;
+    this.speed = pixelsPerSecond / 60; // speed per frame, assuming 60fps
   }
 
   markAsMissed() {
