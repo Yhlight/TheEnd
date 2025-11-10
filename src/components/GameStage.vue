@@ -79,7 +79,8 @@ const handleInput = (event) => {
     const hitNote = noteManager.checkHit(); // No longer needs judgementLineY
     if (hitNote) {
       scoreManager.onHit();
-      effectManager.createExplosion(hitNote.x, hitNote.y, hitNote.color);
+      // Use emphasis color for hit particles
+      effectManager.createExplosion(hitNote.x, hitNote.y, '#FF0000');
       audioManager.playHitSound();
       judgementLine.flash(); // Trigger the flash effect
     } else {

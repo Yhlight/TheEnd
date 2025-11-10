@@ -34,42 +34,49 @@ export class JudgementLine {
     const isFlashing = this.flashTimer > 0;
     const flashProgress = this.flashTimer / this.flashDuration;
 
-    // Breathing effect calculation
-    const breatheEffect = Math.sin(this.breatheAngle) * 5; // Glow fluctuates by 5
+    // Breathing effect: affects both line width and glow
+    const breatheEffect = Math.sin(this.breatheAngle);
+    const baseLineWidth = 2;
+    const baseShadowBlur = 5;
 
-    // Draw main line
+    // --- Draw main line ---
     this.ctx.beginPath();
     this.ctx.moveTo(0, this.y);
     this.ctx.lineTo(this.canvas.width, this.y);
 
-    // Base style
+    // Base style with subtle glow
     this.ctx.strokeStyle = '#FFFFFF';
-    this.ctx.lineWidth = 3;
-    this.ctx.shadowBlur = 10 + breatheEffect;
-    this.ctx.shadowColor = '#00FFFF';
+    this.ctx.shadowColor = '#FFFFFF';
+    this.ctx.lineWidth = baseLineWidth + breatheEffect * 0.5;
+    this.ctx.shadowBlur = baseShadowBlur + breatheEffect * 2;
 
-    // Enhance style when flashing
+    // Flash effect: burst of color, width, and glow
     if (isFlashing) {
-      this.ctx.lineWidth = 3 + 4 * flashProgress; // Line gets thicker and then shrinks
-      this.ctx.shadowBlur = 15 + 15 * flashProgress; // Brighter glow when flashing
+      this.ctx.strokeStyle = '#FF0000';
+      this.ctx.shadowColor = '#FF0000';
+      this.ctx.lineWidth = 4 + 3 * flashProgress;
+      this.ctx.shadowBlur = 10 + 10 * flashProgress;
     }
 
     this.ctx.stroke();
 
-    // Draw shockwave effect when flashing
+    // --- Draw shockwave effect when flashing ---
     if (isFlashing) {
-      const shockwaveRadius = 50 * (1 - flashProgress);
+      const shockwaveDistance = 40 * (1 - flashProgress);
       const shockwaveOpacity = flashProgress;
 
       this.ctx.beginPath();
-      this.ctx.strokeStyle = `rgba(0, 255, 255, ${shockwaveOpacity})`;
-      this.ctx.lineWidth = 3;
-      this.ctx.strokeRect(
-        0,
-        this.y - shockwaveRadius / 2,
-        this.canvas.width,
-        shockwaveRadius
-      );
+      this.ctx.strokeStyle = `rgba(255, 0, 0, ${shockwaveOpacity})`;
+      this.ctx.shadowColor = `rgba(255, 0, 0, ${shockwaveOpacity})`;
+      this.ctx.shadowBlur = 10;
+      this.ctx.lineWidth = 2;
+
+      this.ctx.moveTo(0, this.y - shockwaveDistance);
+      this.ctx.lineTo(this.canvas.width, this.y - shockwaveDistance);
+      this.ctx.moveTo(0, this.y + shockwaveDistance);
+      this.ctx.lineTo(this.canvas.width, this.y + shockwaveDistance);
+
+      this.ctx.stroke();
     }
 
     // Reset shadow for other elements

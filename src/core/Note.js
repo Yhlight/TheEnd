@@ -7,7 +7,7 @@ export class Note {
     this.y = 0;
     this.width = 100;
     this.height = 30;
-    this.color = '#FF00FF';
+    this.color = '#FFFFFF'; // Changed to white
 
     const distance = judgementLineY;
     const timeInSeconds = scrollTime / 1000;
@@ -62,19 +62,21 @@ export class Note {
       this.ctx.globalAlpha = fadeProgress; // Fade out
     }
 
-    // Draw base note
+    // Draw base note with a very subtle glow
     this.ctx.fillStyle = this.color;
-    this.ctx.shadowBlur = 5;
     this.ctx.shadowColor = this.color;
+    this.ctx.shadowBlur = 3; // Subtle glow
     this.ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
+    this.ctx.shadowBlur = 0; // Reset shadow
 
-    // Draw approach animation overlay
+    // Draw approach animation overlay (as a wireframe)
     if (!this.isMissed && this.approachAnimationProgress > 0) {
       const innerWidth = this.width * (1 - this.approachAnimationProgress);
       const innerHeight = this.height * (1 - this.approachAnimationProgress);
 
-      this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-      this.ctx.fillRect(
+      this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)'; // Dark inner lines for contrast
+      this.ctx.lineWidth = 2;
+      this.ctx.strokeRect(
         this.x - innerWidth / 2,
         this.y - innerHeight / 2,
         innerWidth,
@@ -82,7 +84,6 @@ export class Note {
       );
     }
 
-    this.ctx.shadowBlur = 0;
     this.ctx.restore();
   }
 }

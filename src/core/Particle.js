@@ -13,19 +13,35 @@ export class Particle {
 
     // Lifespan
     this.life = 100; // Particle lives for 100 frames
+
+    // Rotation properties for line segment effect
+    this.angle = Math.random() * Math.PI * 2;
+    this.rotationSpeed = (Math.random() - 0.5) * 0.2;
   }
 
   update() {
     this.x += this.vx;
     this.y += this.vy;
-    this.life -= 1; // Decrease life
+    this.life -= 1.5; // Decrease life faster
+    this.angle += this.rotationSpeed;
   }
 
   draw(ctx) {
     ctx.save();
-    ctx.globalAlpha = this.life / 100; // Fade out as it dies
-    ctx.fillStyle = this.color;
-    ctx.fillRect(this.x, this.y, this.size, this.size);
+    ctx.globalAlpha = this.life / 100;
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.angle);
+
+    // Draw as a glowing line segment
+    ctx.strokeStyle = this.color;
+    ctx.shadowColor = this.color;
+    ctx.shadowBlur = 10;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-this.size, 0);
+    ctx.lineTo(this.size, 0);
+    ctx.stroke();
+
     ctx.restore();
   }
 
