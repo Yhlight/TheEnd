@@ -1,45 +1,21 @@
-export class Note {
-  constructor(canvas, x, judgementLineY, scrollTime) {
-    this.canvas = canvas;
-    this.ctx = canvas.getContext('2d');
+// src/core/TapNote.js
+import { BaseNote } from './BaseNote.js';
 
-    this.x = x;
-    this.y = 0;
-    this.width = 100;
-    this.height = 30;
-    this.color = '#FFFFFF'; // Changed to white
+export class TapNote extends BaseNote {
+  constructor(canvas, x, judgementLineY, scrollTime, noteData) {
+    super(canvas, x, judgementLineY, scrollTime, noteData);
 
-    const distance = judgementLineY;
-    const timeInSeconds = scrollTime / 1000;
-    const frames = timeInSeconds * 60;
-    this.speed = distance / frames;
-
-    // Miss animation properties
-    this.isMissed = false;
-    this.fadeDuration = 20; // Fade out over 20 frames
-    this.fadeTimer = 0;
-
-    // Approach animation properties
+    // TapNote specific properties
     this.approachAnimationProgress = 0;
     this.approachThreshold = 200; // Start animation when 200px away
   }
 
-  markAsMissed() {
-    if (!this.isMissed) {
-      this.isMissed = true;
-      this.fadeTimer = this.fadeDuration;
-    }
-  }
-
   update(judgementLineY) {
-    if (this.isMissed) {
-      if (this.fadeTimer > 0) {
-        this.fadeTimer--;
-      }
-    } else {
-      this.y += this.speed;
+    // Call parent update for basic movement and miss logic
+    super.update();
 
-      // Update approach animation
+    // Update approach animation
+    if (!this.isMissed) {
       const distance = judgementLineY - this.y;
       if (distance > 0 && distance < this.approachThreshold) {
         this.approachAnimationProgress = 1 - (distance / this.approachThreshold);
@@ -49,18 +25,12 @@ export class Note {
     }
   }
 
-  isAlive() {
-    // A note is considered "alive" if it's not missed, or if its miss animation is still playing.
-    return !this.isMissed || this.fadeTimer > 0;
-  }
-
   draw() {
-    const fadeProgress = this.fadeTimer / this.fadeDuration;
+    if (this.fadeTimer > 0 && this.isMissed) {
+      this.ctx.globalAlpha = this.fadeTimer / this.fadeDuration;
+    }
 
     this.ctx.save();
-    if (this.isMissed) {
-      this.ctx.globalAlpha = fadeProgress; // Fade out
-    }
 
     // Draw base note with a very subtle glow
     this.ctx.fillStyle = this.color;
@@ -85,5 +55,8 @@ export class Note {
     }
 
     this.ctx.restore();
+
+    // Reset global alpha
+    this.ctx.globalAlpha = 1.0;
   }
 }

@@ -52,8 +52,11 @@ const initializeGame = () => {
   audioManager = new AudioManager();
   dynamicBackground = new DynamicBackground(gameCanvas.value);
 
-  gameCanvas.value.addEventListener('mousedown', handleInput);
-  gameCanvas.value.addEventListener('touchstart', handleInput);
+  gameCanvas.value.addEventListener('mousedown', handleInputStart);
+  gameCanvas.value.addEventListener('touchstart', handleInputStart);
+
+  gameCanvas.value.addEventListener('mouseup', handleInputEnd);
+  gameCanvas.value.addEventListener('touchend', handleInputEnd);
 
   console.log('Game initialized.');
 };
@@ -71,22 +74,39 @@ const startGame = () => {
 
 onMounted(initializeGame);
 
-const handleInput = (event) => {
+const handleInputStart = (event) => {
   event.preventDefault();
   if (!isPlaying.value) return;
 
-  if (noteManager && effectManager && scoreManager && audioManager) {
-    const hitNote = noteManager.checkHit(); // No longer needs judgementLineY
-    if (hitNote) {
-      scoreManager.onHit();
-      // Use emphasis color for hit particles
-      effectManager.createExplosion(hitNote.x, hitNote.y, '#FF0000');
-      audioManager.playHitSound();
-      judgementLine.flash(); // Trigger the flash effect
-    } else {
-      scoreManager.onMiss();
-    }
+  // Prioritize checking for tap hits first
+  const tapNote = noteManager.checkTapHit();
+  if (tapNote) {
+    scoreManager.onHit();
+    effectManager.createExplosion(tapNote.x, tapNote.y, '#FF0000');
+    audioManager.playHitSound();
+    judgementLine.flash();
+    return; // Early exit if a tap note was hit
   }
+
+  // If no tap note was hit, check for a hold start
+  const holdNote = noteManager.checkHoldStart();
+  if (holdNote) {
+    scoreManager.onHit(); // Score the beginning of the hold
+    // We can create a different effect for hold starts later
+    audioManager.playHitSound();
+    judgementLine.flash();
+  } else {
+    // Only register a miss if neither a tap nor a hold was started
+    scoreManager.onMiss();
+  }
+};
+
+const handleInputEnd = (event) => {
+  event.preventDefault();
+  if (!isPlaying.value) return;
+
+  // Check if an active hold note was released
+  noteManager.checkHoldEnd();
 };
 
 const update = () => {
