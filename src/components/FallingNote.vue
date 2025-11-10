@@ -1,6 +1,8 @@
 <template>
   <div class="falling-note" :style="noteStyle">
-    <div v-if="noteData.type === 'hold'" class="hold-tail" :style="holdTailStyle"></div>
+    <div v-if="noteData.type === 'hold'" class="hold-tail" :style="holdTailStyle">
+      <div class="hold-fill" :style="holdFillStyle"></div>
+    </div>
     <div v-if="noteData.type === 'swipe'" class="swipe-arrow" :class="swipeDirection"></div>
   </div>
 </template>
@@ -14,6 +16,14 @@ export default {
     noteData: {
       type: Object,
       required: true
+    },
+    isHolding: {
+      type: Boolean,
+      default: false
+    },
+    songTime: {
+      type: Number,
+      required: true
     }
   },
   computed: {
@@ -25,12 +35,17 @@ export default {
     },
     holdTailStyle() {
       if (this.noteData.type !== 'hold') return {};
-      // This calculation is an approximation and might need refinement.
-      // It assumes a constant fall speed derived from LOOKAHEAD_TIME.
       const fallSpeed = (window.innerHeight * 0.85) / LOOKAHEAD_TIME;
       const height = (this.noteData.duration / 1000) * fallSpeed * 100;
       return {
         height: `${height}px`
+      };
+    },
+    holdFillStyle() {
+      if (!this.isHolding || this.noteData.type !== 'hold') return { height: '0%' };
+      const holdProgress = (this.songTime - this.noteData.time) / this.noteData.duration;
+      return {
+        height: `${Math.min(100, holdProgress * 100)}%`
       };
     },
     swipeDirection() {
@@ -59,9 +74,17 @@ export default {
   left: 50%;
   transform: translateX(-50%);
   width: 70px;
-  background-color: #FF00FF;
-  box-shadow: 0 0 10px #FF00FF;
+  background-color: rgba(255, 0, 255, 0.5);
   border-radius: 5px;
+  overflow: hidden;
+}
+
+.hold-fill {
+  width: 100%;
+  background-color: #FFFFFF;
+  box-shadow: 0 0 10px #FFFFFF;
+  position: absolute;
+  bottom: 0;
 }
 
 .swipe-arrow {
