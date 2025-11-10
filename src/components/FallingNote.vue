@@ -15,7 +15,7 @@ export default {
     noteStyle() {
       return {
         left: `${this.noteData.x}%`,
-        animationDuration: `${this.noteData.duration}s`
+        transform: `translateY(${this.noteData.y}px)`
       };
     }
   }
@@ -30,15 +30,5 @@ export default {
   height: 30px;
   background-color: #FF00FF;
   box-shadow: 0 0 10px #FF00FF;
-  animation: fall linear forwards;
-}
-
-@keyframes fall {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(100vh);
-  }
 }
 </style>
