@@ -4,18 +4,20 @@
       <div class="score">Score: {{ score }}</div>
       <div class="combo">Combo: {{ combo }}</div>
     </div>
+    <div v-if="!isPlaying" class="start-button" @click="startGame">Play</div>
     <FallingNote v-for="note in activeNotes" :key="note.id" :note-data="note" />
     <div class="judgment-line" ref="judgmentLine" :class="judgmentLineClass" :style="judgmentLineStyle"></div>
+    <audio ref="audioPlayer" :src="audioUrl"></audio>
   </div>
 </template>
 
 <script>
 import FallingNote from './FallingNote.vue';
-import { easingFunctions, distanceToLineSegment } from '../utils.js';
+import { easingFunctions } from '../utils.js';
 
-const NOTE_SPEED = 200; // Pixels per second
-const PERFECT_WINDOW = 25; // Distance in pixels
-const GOOD_WINDOW = 50;  // Distance in pixels
+const LOOKAHEAD_TIME = 2000; // ms
+const PERFECT_WINDOW = 50; // ms
+const GOOD_WINDOW = 100;  // ms
 
 export default {
   name: 'GameScreen',
@@ -26,7 +28,6 @@ export default {
     return {
       activeNotes: [],
       gameLoopId: null,
-      lastFrameTime: null,
       judgmentLineClass: '',
       score: 0,
       combo: 0,
@@ -38,7 +39,8 @@ export default {
       judgmentLineY: 85,
       judgmentLineRotation: 0,
       activeEvent: null,
-      initialLineState: {}
+      initialLineState: {},
+      isPlaying: false
     };
   },
   computed: {
@@ -48,11 +50,13 @@ export default {
         left: `${this.judgmentLineX}%`,
         transform: `translateX(-50%) translateY(-50%) rotate(${this.judgmentLineRotation}deg)`
       };
+    },
+    audioUrl() {
+      return this.chart ? this.chart.metadata.audioUrl : '';
     }
   },
   async mounted() {
     await this.loadChart('sample-chart.json');
-    this.startGameLoop();
   },
   beforeUnmount() {
     this.stopGameLoop();
@@ -66,33 +70,27 @@ export default {
         console.error('Error loading chart:', error);
       }
     },
+    startGame() {
+      this.$refs.audioPlayer.play();
+      this.isPlaying = true;
+      this.startGameLoop();
+    },
     handleInteraction() {
-      const lineRect = this.$refs.judgmentLine.getBoundingClientRect();
-      const angle = this.judgmentLineRotation * (Math.PI / 180);
-      const halfWidth = lineRect.width / 2;
-      const lineStart = {
-        x: lineRect.left + halfWidth - halfWidth * Math.cos(angle),
-        y: lineRect.top + lineRect.height / 2 - halfWidth * Math.sin(angle)
-      };
-      const lineEnd = {
-        x: lineRect.left + halfWidth + halfWidth * Math.cos(angle),
-        y: lineRect.top + lineRect.height / 2 + halfWidth * Math.sin(angle)
-      };
+      if (!this.isPlaying) return;
 
       let closestNote = null;
-      let minDistance = Infinity;
+      let minTimeDiff = Infinity;
 
       this.activeNotes.forEach(note => {
-        const noteCenter = { x: note.x / 100 * window.innerWidth, y: note.y };
-        const distance = distanceToLineSegment(noteCenter, lineStart, lineEnd);
-        if (distance < minDistance) {
-          minDistance = distance;
+        const timeDiff = Math.abs(this.songTime - note.time);
+        if (timeDiff < minTimeDiff) {
+          minTimeDiff = timeDiff;
           closestNote = note;
         }
       });
 
-      if (closestNote && minDistance <= GOOD_WINDOW) {
-        if (minDistance <= PERFECT_WINDOW) {
+      if (closestNote && minTimeDiff <= GOOD_WINDOW) {
+        if (minTimeDiff <= PERFECT_WINDOW) {
           this.score += 100;
         } else {
           this.score += 50;
@@ -104,16 +102,15 @@ export default {
       }
     },
     startGameLoop() {
-      this.lastFrameTime = performance.now();
       this.gameLoopId = requestAnimationFrame(this.gameLoop);
     },
     stopGameLoop() {
       cancelAnimationFrame(this.gameLoopId);
     },
-    gameLoop(currentTime) {
-      const deltaTime = (currentTime - this.lastFrameTime);
-      this.songTime += deltaTime;
-      this.lastFrameTime = currentTime;
+    gameLoop() {
+      if (!this.isPlaying) return;
+
+      this.songTime = this.$refs.audioPlayer.currentTime * 1000;
 
       // Event Processing
       if (this.chart && this.eventIndex < this.chart.events.length) {
@@ -150,22 +147,28 @@ export default {
       }
 
       // Note Spawning
-      if (this.chart && this.noteSpawnIndex < this.chart.notes.length) {
-        const nextNote = this.chart.notes[this.noteSpawnIndex];
-        const timeToJudgment = (this.judgmentLineY / 100 * window.innerHeight) / NOTE_SPEED * 1000;
-        if (this.songTime >= nextNote.time - timeToJudgment) {
-          this.activeNotes.push({ ...nextNote, y: 0 });
-          this.noteSpawnIndex++;
-        }
+      while (
+        this.chart &&
+        this.noteSpawnIndex < this.chart.notes.length &&
+        this.chart.notes[this.noteSpawnIndex].time < this.songTime + LOOKAHEAD_TIME
+      ) {
+        const noteToSpawn = this.chart.notes[this.noteSpawnIndex];
+        this.activeNotes.push({ ...noteToSpawn });
+        this.noteSpawnIndex++;
       }
 
       // Note Position Update
+      const judgmentLineRect = this.$refs.judgmentLine.getBoundingClientRect();
+      const judgmentLineY = judgmentLineRect.top + judgmentLineRect.height / 2;
+
       this.activeNotes.forEach(note => {
-        note.y += NOTE_SPEED * (deltaTime / 1000);
+        const timeToHit = note.time - this.songTime;
+        const progress = 1 - (timeToHit / LOOKAHEAD_TIME);
+        note.y = progress * judgmentLineY;
       });
 
       // Missed Note Handling
-      const missedNotes = this.activeNotes.filter(note => note.y > window.innerHeight);
+      const missedNotes = this.activeNotes.filter(note => note.time < this.songTime - GOOD_WINDOW);
       if (missedNotes.length > 0) {
         this.combo = 0;
         this.activeNotes = this.activeNotes.filter(note => !missedNotes.includes(note));
@@ -207,5 +210,18 @@ export default {
   height: 3px;
   background-color: #00FFFF;
   box-shadow: 0 0 10px #00FFFF, 0 0 20px #00FFFF;
+}
+.start-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 20px 40px;
+  background-color: #00FFFF;
+  color: #1A1A2E;
+  font-size: 30px;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 10px;
 }
 </style>

@@ -2,7 +2,8 @@
   "metadata": {
     "songTitle": "A New Beginning",
     "artist": "Jules",
-    "bpm": 150
+    "bpm": 150,
+    "audioUrl": "/audio/ANewBeginning.mp3"
   },
   "notes": [
     { "id": 1, "time": 1000, "type": "tap", "x": 20 },
