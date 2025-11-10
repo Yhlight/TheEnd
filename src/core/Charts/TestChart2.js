@@ -12,6 +12,17 @@ export const testChart2 = {
     { time: 3000, x: 0.3,  type: 'tap' },
     { time: 3250, x: 0.7,  type: 'tap' },
     { time: 4000, x: 0.5,  type: 'hold', duration: 1200 },
+
+    // A drag note that starts at 5.5s, lasts for 2 seconds
+    {
+      time: 5500,
+      type: 'drag',
+      path: [
+        [0, 0.2],    // Starts at x=0.2 at 5500ms
+        [1000, 0.8], // Moves to x=0.8 at 6500ms
+        [2000, 0.5]  // Ends at x=0.5 at 7500ms
+      ]
+    },
   ],
   lineEvents: [
     { time: 0,    duration: 1500, value: { y: 0.7, rotation: 15 }, easing: 'easeInOutQuad' },
