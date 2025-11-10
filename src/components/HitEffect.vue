@@ -32,12 +32,6 @@ export default {
         'animation-duration': `${Math.random() * 0.5 + 0.3}s`
       });
     }
-  },
-  mounted() {
-    // Self-destruct after animation
-    setTimeout(() => {
-      this.$el.parentNode.removeChild(this.$el);
-    }, 800);
   }
 };
 </script>

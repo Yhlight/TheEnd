@@ -1,12 +1,19 @@
 <template>
   <div class="game-screen" @mousedown="handleInteraction" @mouseup="handleInteractionEnd" @mousemove="handleSwipe">
+    <DynamicBackground />
     <div class="progress-bar-container">
       <div class="progress-bar" :style="{ width: songProgress + '%' }"></div>
     </div>
     <div class="ui-container">
       <div class="score">Score: {{ score }}</div>
       <div class="combo">Combo: {{ combo }}</div>
+      <div class="settings-button" @click="showSettings = true">⚙️</div>
     </div>
+    <SettingsMenu
+      v-if="showSettings"
+      v-model:volume="volume"
+      @close="showSettings = false"
+    />
     <div v-if="!isPlaying" class="start-button" @click="startGame">Play</div>
     <FallingNote
       v-for="note in activeNotes"
@@ -14,6 +21,8 @@
       :note-data="note"
       :is-holding="activeHoldNote && activeHoldNote.id === note.id"
       :song-time="songTime"
+      :lookahead-time="LOOKAHEAD_TIME"
+      :judgment-line-y-percent="judgmentLineY"
     />
     <HitEffect v-for="effect in hitEffects" :key="effect.id" :x="effect.x" :y="effect.y" />
     <div class="judgment-line" ref="judgmentLine" :class="judgmentLineClass" :style="judgmentLineStyle"></div>
@@ -25,6 +34,8 @@
 <script>
 import FallingNote from './FallingNote.vue';
 import HitEffect from './HitEffect.vue';
+import DynamicBackground from './DynamicBackground.vue';
+import SettingsMenu from './SettingsMenu.vue';
 import { easingFunctions } from '../utils.js';
 
 const LOOKAHEAD_TIME = 2000;
@@ -36,7 +47,9 @@ export default {
   name: 'GameScreen',
   components: {
     FallingNote,
-    HitEffect
+    HitEffect,
+    DynamicBackground,
+    SettingsMenu
   },
   data() {
     return {
@@ -60,7 +73,10 @@ export default {
       activeSwipeNote: null,
       swipeStartX: 0,
       hitEffects: [],
-      nextHitEffectId: 0
+      nextHitEffectId: 0,
+      showSettings: false,
+      volume: 1.0,
+      LOOKAHEAD_TIME // Expose to template
     };
   },
   watch: {
@@ -68,6 +84,10 @@ export default {
       if (newCombo > this.maxCombo) {
         this.maxCombo = newCombo;
       }
+    },
+    volume(newVolume) {
+      this.$refs.audioPlayer.volume = newVolume;
+      this.$refs.hitSound.volume = newVolume;
     }
   },
   computed: {
@@ -120,8 +140,10 @@ export default {
       }, 1000);
     },
     handleInteraction(event) {
-      if (!this.isPlaying) return;
+      if (!this.isPlaying || this.showSettings) return;
 
+      // Acknowledging limitation: this only judges the chronologically closest note.
+      // A future improvement would be to consider positional data as well.
       let closestNote = null;
       let minTimeDiff = Infinity;
 
@@ -192,6 +214,17 @@ export default {
     },
     gameLoop() {
       if (!this.isPlaying) return;
+
+      if (this.showSettings) {
+        this.$refs.audioPlayer.pause();
+        this.gameLoopId = requestAnimationFrame(this.gameLoop);
+        return;
+      } else {
+        if (this.$refs.audioPlayer.paused) {
+          this.$refs.audioPlayer.play();
+        }
+      }
+
       this.songTime = this.$refs.audioPlayer.currentTime * 1000;
 
       if (this.chart && this.eventIndex < this.chart.events.length) {
@@ -218,11 +251,11 @@ export default {
       }
 
       const judgmentLineRect = this.$refs.judgmentLine.getBoundingClientRect();
-      const judgmentLineY = judgmentLineRect.top + judgmentLineRect.height / 2;
+      const judgmentLineYPx = judgmentLineRect.top + judgmentLineRect.height / 2;
       this.activeNotes.forEach(note => {
         const timeToHit = note.time - this.songTime;
         const progress = 1 - (timeToHit / LOOKAHEAD_TIME);
-        note.y = progress * judgmentLineY;
+        note.y = progress * judgmentLineYPx;
       });
 
       const missedNotes = this.activeNotes.filter(note => note.time < this.songTime - GOOD_WINDOW && note.type !== 'hold');
@@ -243,5 +276,63 @@ export default {
 </script>
 
 <style scoped>
-/* ... styles ... */
+.game-screen {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background-color: #000;
+  overflow: hidden;
+  color: white;
+  font-family: 'Arial', sans-serif;
+}
+.ui-container {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  justify-content: space-between;
+  z-index: 10;
+}
+.score, .combo {
+  font-size: 24px;
+  text-shadow: 0 0 5px #0ff;
+}
+.settings-button {
+  font-size: 24px;
+  cursor: pointer;
+}
+.start-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 20px 40px;
+  font-size: 36px;
+  background-color: rgba(0, 255, 255, 0.5);
+  border: 2px solid #0ff;
+  border-radius: 10px;
+  cursor: pointer;
+  z-index: 10;
+}
+.judgment-line {
+  position: absolute;
+  width: 100%;
+  height: 4px;
+  background-color: #0ff;
+  box-shadow: 0 0 10px #0ff;
+  transition: all 0.1s linear;
+}
+.progress-bar-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 5px;
+  background-color: #333;
+}
+.progress-bar {
+  height: 100%;
+  background-color: #0ff;
+}
 </style>

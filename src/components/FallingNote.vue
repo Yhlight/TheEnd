@@ -8,23 +8,14 @@
 </template>
 
 <script>
-const LOOKAHEAD_TIME = 2000; // ms
-
 export default {
   name: 'FallingNote',
   props: {
-    noteData: {
-      type: Object,
-      required: true
-    },
-    isHolding: {
-      type: Boolean,
-      default: false
-    },
-    songTime: {
-      type: Number,
-      required: true
-    }
+    noteData: { type: Object, required: true },
+    isHolding: { type: Boolean, default: false },
+    songTime: { type: Number, required: true },
+    lookaheadTime: { type: Number, required: true },
+    judgmentLineYPercent: { type: Number, required: true }
   },
   computed: {
     noteStyle() {
@@ -35,8 +26,9 @@ export default {
     },
     holdTailStyle() {
       if (this.noteData.type !== 'hold') return {};
-      const fallSpeed = (window.innerHeight * 0.85) / LOOKAHEAD_TIME;
-      const height = (this.noteData.duration / 1000) * fallSpeed * 100;
+      const judgmentLineYPx = window.innerHeight * (this.judgmentLineYPercent / 100);
+      const fallSpeed = judgmentLineYPx / this.lookaheadTime;
+      const height = this.noteData.duration * fallSpeed;
       return {
         height: `${height}px`
       };
@@ -59,50 +51,39 @@ export default {
 <style scoped>
 .falling-note {
   position: absolute;
-  top: 0;
-  width: 80px;
-  height: 30px;
-  background-color: #FF00FF;
-  box-shadow: 0 0 10px #FF00FF;
-  border-radius: 5px;
-  transform-origin: center;
+  width: 10%;
+  height: 20px;
+  background-color: #fff;
+  border: 2px solid #0ff;
+  box-shadow: 0 0 10px #0ff;
+  transform-origin: center center;
 }
-
 .hold-tail {
   position: absolute;
-  bottom: 15px;
+  bottom: 10px;
   left: 50%;
   transform: translateX(-50%);
-  width: 70px;
-  background-color: rgba(255, 0, 255, 0.5);
-  border-radius: 5px;
-  overflow: hidden;
+  width: 80%;
+  background: linear-gradient(rgba(0, 255, 255, 0.5), #0ff);
 }
-
 .hold-fill {
   width: 100%;
-  background-color: #FFFFFF;
-  box-shadow: 0 0 10px #FFFFFF;
-  position: absolute;
-  bottom: 0;
+  background-color: #0ff;
 }
-
 .swipe-arrow {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%) rotate(45deg);
-  width: 20px;
-  height: 20px;
-  border-top: 5px solid white;
-  border-right: 5px solid white;
+  transform: translate(-50%, -50%);
+  width: 0;
+  height: 0;
+  border-top: 10px solid transparent;
+  border-bottom: 10px solid transparent;
 }
-
 .swipe-left {
-  transform: translate(-50%, -50%) rotate(-135deg);
+  border-right: 15px solid #ff00ff;
 }
-
 .swipe-right {
-  transform: translate(-50%, -50%) rotate(45deg);
+  border-left: 15px solid #ff00ff;
 }
 </style>
