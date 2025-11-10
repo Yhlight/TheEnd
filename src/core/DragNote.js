@@ -12,8 +12,6 @@ export class DragNote extends BaseNote {
     this.duration = this.path[this.path.length - 1][0];
     this.color = '#00FFFF'; // Cyan
     this.isBeingHeld = false;
-
-    // The initial Y position when the note is spawned
     this.spawnY = this.y;
   }
 
@@ -49,8 +47,6 @@ export class DragNote extends BaseNote {
     ctx.save();
     const renderX = this.x - judgementLineX;
 
-    // --- Draw the path trail ---
-    // The trail shows where the note will go. Its Y position is based on the note's fall progress.
     const fallProgress = this.y / this.spawnY;
 
     ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
@@ -58,25 +54,22 @@ export class DragNote extends BaseNote {
     ctx.beginPath();
     ctx.moveTo(renderX, this.y);
 
-    // Iterate through future path segments to draw the trail
     for (const point of this.path) {
         const pointX = (point[1] * this.canvas.width) - judgementLineX;
-        // Calculate the Y for this path point based on fall progress
         const pointY = this.y + (point[0] / this.duration) * (0 - this.y) * fallProgress;
         ctx.lineTo(pointX, pointY);
     }
     ctx.stroke();
 
-    // --- Draw the note head as a diamond ---
     ctx.fillStyle = this.color;
     ctx.shadowColor = this.color;
     ctx.shadowBlur = 15;
 
     ctx.beginPath();
-    ctx.moveTo(renderX, this.y - this.height / 2 - 5); // Top point
-    ctx.lineTo(renderX + this.width / 2, this.y);   // Right point
-    ctx.lineTo(renderX, this.y + this.height / 2 + 5); // Bottom point
-    ctx.lineTo(renderX - this.width / 2, this.y);   // Left point
+    ctx.moveTo(renderX, this.y - this.height / 2 - 5);
+    ctx.lineTo(renderX + this.width / 2, this.y);
+    ctx.lineTo(renderX, this.y + this.height / 2 + 5);
+    ctx.lineTo(renderX - this.width / 2, this.y);
     ctx.closePath();
     ctx.fill();
 

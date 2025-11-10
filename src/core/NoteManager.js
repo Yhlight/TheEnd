@@ -22,7 +22,6 @@ export class NoteManager {
   }
 
   update(gameTime) {
-    // Spawn Notes
     const judgementLineY = this.judgementLine.y;
     while (
       this.nextNoteIndex < this.chart.notes.length &&
@@ -40,7 +39,6 @@ export class NoteManager {
       this.nextNoteIndex++;
     }
 
-    // Update Notes & Handle Misses
     for (const note of this.notes) {
       note.update(gameTime);
       const missThreshold = note.y > 100;
@@ -121,7 +119,6 @@ export class NoteManager {
     let dragNoteStarted = null;
     for (const note of this.notes) {
       if (note.isMissed || note.type !== 'drag') continue;
-      // Corrected distance calculation: note.y is already relative to the line.
       const distY = Math.abs(note.y);
       if (distY < hitWindow) {
         dragNoteStarted = note;
