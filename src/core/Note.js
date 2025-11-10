@@ -8,6 +8,7 @@ export class Note {
     this.y = 0; // Start from the top
     this.width = 100;
     this.height = 30;
+    this.color = '#FF00FF'; // A bright magenta for visibility
 
     // Movement
     this.speed = 5; // Pixels per frame
@@ -18,9 +19,9 @@ export class Note {
   }
 
   draw() {
-    this.ctx.fillStyle = '#FF00FF'; // A bright magenta for visibility
+    this.ctx.fillStyle = this.color;
     this.ctx.shadowBlur = 5;
-    this.ctx.shadowColor = '#FF00FF';
+    this.ctx.shadowColor = this.color;
 
     this.ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
 

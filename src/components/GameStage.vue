@@ -7,6 +7,8 @@ import { ref, onMounted } from 'vue';
 import { JudgementLine } from '../core/JudgementLine.js';
 import { NoteManager } from '../core/NoteManager.js';
 import { testChart } from '../core/Chart.js';
+import { EffectManager } from '../core/EffectManager.js';
+import { ScoreManager } from '../core/ScoreManager.js';
 
 // A ref to hold the canvas DOM element
 const gameCanvas = ref(null);
@@ -14,6 +16,8 @@ const gameCanvas = ref(null);
 let ctx = null;
 let judgementLine = null;
 let noteManager = null;
+let effectManager = null;
+let scoreManager = null;
 
 // Game state
 let startTime = 0;
@@ -39,6 +43,8 @@ onMounted(() => {
       // Initialize game objects
       judgementLine = new JudgementLine(gameCanvas.value);
       noteManager = new NoteManager(gameCanvas.value, testChart);
+      effectManager = new EffectManager();
+      scoreManager = new ScoreManager();
 
       // Record the start time
       startTime = performance.now();
@@ -64,12 +70,13 @@ onMounted(() => {
 const handleInput = (event) => {
   event.preventDefault();
 
-  if (noteManager && judgementLine) {
+  if (noteManager && judgementLine && effectManager && scoreManager) {
     const hitNote = noteManager.checkHit(judgementLine.y);
     if (hitNote) {
-      console.log('Hit!');
+      scoreManager.onHit();
+      effectManager.createExplosion(hitNote.x, hitNote.y, hitNote.color);
     } else {
-      console.log('Miss!');
+      scoreManager.onMiss();
     }
   }
 };
@@ -83,6 +90,9 @@ const update = () => {
   if (noteManager) {
     noteManager.update(gameTime);
   }
+  if (effectManager) {
+    effectManager.update();
+  }
 };
 
 const draw = () => {
@@ -94,6 +104,23 @@ const draw = () => {
   }
   if (noteManager) {
     noteManager.draw();
+  }
+  if (effectManager) {
+    effectManager.draw(ctx);
+  }
+
+  // Draw HUD (Score and Combo)
+  if (scoreManager) {
+    ctx.fillStyle = 'white';
+    ctx.font = '24px Arial';
+    ctx.textAlign = 'right';
+    ctx.fillText(`Score: ${scoreManager.getScore()}`, gameCanvas.value.width - 20, 40);
+
+    if (scoreManager.getCombo() > 1) {
+      ctx.font = '32px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${scoreManager.getCombo()}`, gameCanvas.value.width / 2, gameCanvas.value.height / 2);
+    }
   }
 };
 
