@@ -5,7 +5,10 @@
  * Each note has a 'time' (in milliseconds from the start) when it should be spawned,
  * and a normalized 'x' position (0 to 1) on the screen.
  */
-export const testChart = {
+export const testChart1 = {
+  id: 'test1',
+  title: 'Test Song 1',
+  artist: 'Jules',
   notes: [
     { time: 1000, x: 0.25, type: 'tap' },
     { time: 1500, x: 0.75, type: 'tap' },
@@ -22,14 +25,16 @@ export const testChart = {
     { time: 5250, x: 0.75, type: 'tap' },
     { time: 5500, x: 0.25, type: 'tap' },
   ],
-  judgementLineEvents: [
-    // Move the line from center to bottom at the beginning
-    { time: 0,    duration: 1000, startY: 0.5, endY: 0.8, startRotation: 0, endRotation: 0 },
+  lineEvents: [
+    // Fade in
+    { time: 0,    duration: 500,  value: { alpha: 1 }, easing: 'easeOutCubic' },
     // Rotate the line slightly at 2.5 seconds
-    { time: 2500, duration: 500,  startY: 0.8, endY: 0.8, startRotation: 0, endRotation: 10 },
+    { time: 2500, duration: 500,  value: { rotation: 10 }, easing: 'easeInOutQuad' },
     // Rotate it back
-    { time: 3500, duration: 500,  startY: 0.8, endY: 0.8, startRotation: 10, endRotation: 0 },
+    { time: 3500, duration: 500,  value: { rotation: 0 }, easing: 'easeInOutQuad' },
     // Move it up a bit
-    { time: 5000, duration: 500,  startY: 0.8, endY: 0.6, startRotation: 0, endRotation: 0 },
+    { time: 5000, duration: 1000, value: { y: 0.6 }, easing: 'easeOutCubic' },
+     // Move it down a bit
+    { time: 6000, duration: 1000, value: { y: 0.8 }, easing: 'easeOutCubic' },
   ]
 };

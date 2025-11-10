@@ -20,52 +20,54 @@ export class HoldNote extends BaseNote {
     this.isBeingHeld = false;
   }
 
-  update(judgementLineY) {
+  update() {
     super.update();
     this.flowAnimationTimer += this.flowSpeed;
   }
 
-  draw() {
+  draw(ctx, judgementLineX) {
     if (this.fadeTimer > 0 && this.isMissed) {
-      this.ctx.globalAlpha = this.fadeTimer / this.fadeDuration;
+      ctx.globalAlpha = this.fadeTimer / this.fadeDuration;
     }
 
-    this.ctx.save();
+    ctx.save();
 
-    const renderX = this.x - this.canvas.width / 2;
+    // The canvas is translated to the judgement line's position.
+    // We need to render the note relative to that origin.
+    const renderX = this.x - judgementLineX;
     const startX = renderX - this.width / 2;
     const startY = this.y - this.height / 2;
 
     // Draw the main body of the hold note
     const bodyHeight = this.noteLength;
-    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'; // Semi-transparent body
-    this.ctx.fillRect(startX, startY - bodyHeight, this.width, bodyHeight);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'; // Semi-transparent body
+    ctx.fillRect(startX, startY - bodyHeight, this.width, bodyHeight);
 
     // Draw the energy flow pulse
     const flowProgress = (Math.sin(this.flowAnimationTimer) + 1) / 2; // Normalize to 0-1 range
     const flowY = startY - (bodyHeight * flowProgress);
 
-    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-    this.ctx.shadowColor = '#FFFFFF';
-    this.ctx.shadowBlur = 15;
-    this.ctx.fillRect(startX, flowY - 5, this.width, 10); // A 10px tall pulse
-    this.ctx.shadowBlur = 0; // Reset for the end lines
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.shadowColor = '#FFFFFF';
+    ctx.shadowBlur = 15;
+    ctx.fillRect(startX, flowY - 5, this.width, 10); // A 10px tall pulse
+    ctx.shadowBlur = 0; // Reset for the end lines
 
     // Draw the start and end lines with subtle glow
-    this.ctx.fillStyle = this.color;
-    this.ctx.shadowColor = this.color;
-    this.ctx.shadowBlur = 5;
+    ctx.fillStyle = this.color;
+    ctx.shadowColor = this.color;
+    ctx.shadowBlur = 5;
 
     // Start line (this is the part that gets judged)
-    this.ctx.fillRect(startX, startY, this.width, this.height);
+    ctx.fillRect(startX, startY, this.width, this.height);
 
     // End line
-    this.ctx.fillRect(startX, startY - bodyHeight, this.width, this.height);
+    ctx.fillRect(startX, startY - bodyHeight, this.width, this.height);
 
-    this.ctx.shadowBlur = 0; // Reset shadow
-    this.ctx.restore();
+    ctx.shadowBlur = 0; // Reset shadow
+    ctx.restore();
 
     // Reset global alpha
-    this.ctx.globalAlpha = 1.0;
+    ctx.globalAlpha = 1.0;
   }
 }

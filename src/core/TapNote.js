@@ -23,30 +23,32 @@ export class TapNote extends BaseNote {
     }
   }
 
-  draw() {
+  draw(ctx, judgementLineX) {
     if (this.fadeTimer > 0 && this.isMissed) {
-      this.ctx.globalAlpha = this.fadeTimer / this.fadeDuration;
+      ctx.globalAlpha = this.fadeTimer / this.fadeDuration;
     }
 
-    this.ctx.save();
+    ctx.save();
 
-    const renderX = this.x - this.canvas.width / 2;
+    // The canvas is translated to the judgement line's position.
+    // We need to render the note relative to that origin.
+    const renderX = this.x - judgementLineX;
 
     // Draw base note with a very subtle glow
-    this.ctx.fillStyle = this.color;
-    this.ctx.shadowColor = this.color;
-    this.ctx.shadowBlur = 3;
-    this.ctx.fillRect(renderX - this.width / 2, this.y - this.height / 2, this.width, this.height);
-    this.ctx.shadowBlur = 0;
+    ctx.fillStyle = this.color;
+    ctx.shadowColor = this.color;
+    ctx.shadowBlur = 3;
+    ctx.fillRect(renderX - this.width / 2, this.y - this.height / 2, this.width, this.height);
+    ctx.shadowBlur = 0;
 
     // Draw approach animation overlay (as a wireframe)
     if (!this.isMissed && this.approachAnimationProgress > 0) {
       const innerWidth = this.width * (1 - this.approachAnimationProgress);
       const innerHeight = this.height * (1 - this.approachAnimationProgress);
 
-      this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
-      this.ctx.lineWidth = 2;
-      this.ctx.strokeRect(
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(
         renderX - innerWidth / 2,
         this.y - innerHeight / 2,
         innerWidth,
@@ -54,9 +56,9 @@ export class TapNote extends BaseNote {
       );
     }
 
-    this.ctx.restore();
+    ctx.restore();
 
     // Reset global alpha
-    this.ctx.globalAlpha = 1.0;
+    ctx.globalAlpha = 1.0;
   }
 }

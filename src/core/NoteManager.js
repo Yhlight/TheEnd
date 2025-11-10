@@ -82,9 +82,10 @@ export class NoteManager {
     this.notes = this.notes.filter(note => note.isAlive());
   }
 
-  draw() {
+  draw(ctx) {
+    const judgementLineX = this.judgementLine.x;
     for (const note of this.notes) {
-      note.draw();
+      note.draw(ctx, judgementLineX);
     }
   }
 
