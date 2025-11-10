@@ -2,21 +2,25 @@
 import { Note } from './Note.js';
 
 export class NoteManager {
-  constructor(canvas, chart) {
+  constructor(canvas, chart, scoreManager, judgementLine, scrollTime = 1500) {
     this.canvas = canvas;
     this.chart = chart;
-    this.notes = []; // Array to hold active notes
+    this.scoreManager = scoreManager;
+    this.judgementLine = judgementLine; // Store the entire object
+    this.scrollTime = scrollTime;
+    this.notes = [];
     this.nextNoteIndex = 0;
   }
 
   update(gameTime) {
-    // Spawn new notes
+    const judgementLineY = this.judgementLine.y;
+    // Spawn new notes ahead of time
     while (
       this.nextNoteIndex < this.chart.notes.length &&
-      gameTime >= this.chart.notes[this.nextNoteIndex].time
+      gameTime >= (this.chart.notes[this.nextNoteIndex].time - this.scrollTime)
     ) {
       const noteData = this.chart.notes[this.nextNoteIndex];
-      const newNote = new Note(this.canvas, noteData.x * this.canvas.width);
+      const newNote = new Note(this.canvas, noteData.x * this.canvas.width, judgementLineY, this.scrollTime);
       this.notes.push(newNote);
       this.nextNoteIndex++;
     }
@@ -26,8 +30,17 @@ export class NoteManager {
       note.update();
     }
 
-    // Remove off-screen notes
-    this.notes = this.notes.filter(note => note.y < this.canvas.height + 50);
+    // Filter out missed notes
+    const missThreshold = 100;
+    const remainingNotes = [];
+    for (const note of this.notes) {
+      if (note.y > judgementLineY + missThreshold) {
+        this.scoreManager.onMiss();
+      } else {
+        remainingNotes.push(note);
+      }
+    }
+    this.notes = remainingNotes;
   }
 
   draw() {
@@ -36,14 +49,14 @@ export class NoteManager {
     }
   }
 
-  checkHit(judgementLineY) {
+  checkHit() {
     const hitWindow = 75;
+    const judgementLineY = this.judgementLine.y;
 
     if (this.notes.length === 0) {
       return null;
     }
 
-    // Find the note closest to the judgement line
     let closestNote = this.notes[0];
     let minDistance = Math.abs(closestNote.y - judgementLineY);
 

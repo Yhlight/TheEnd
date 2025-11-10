@@ -1,5 +1,11 @@
 <template>
-  <canvas ref="gameCanvas" class="game-canvas"></canvas>
+  <div class="game-container">
+    <canvas ref="gameCanvas" class="game-canvas"></canvas>
+    <div v-if="!isPlaying" class="start-overlay" @click="startGame">
+      <h1>Click to Start</h1>
+    </div>
+    <audio ref="audioElement" src="/song.mp3" style="display: none;"></audio>
+  </div>
 </template>
 
 <script setup>
@@ -9,72 +15,69 @@ import { NoteManager } from '../core/NoteManager.js';
 import { testChart } from '../core/Chart.js';
 import { EffectManager } from '../core/EffectManager.js';
 import { ScoreManager } from '../core/ScoreManager.js';
+import { AudioManager } from '../core/AudioManager.js';
 
-// A ref to hold the canvas DOM element
+// Refs for DOM elements
 const gameCanvas = ref(null);
-// To hold the 2D rendering context, which will be used by other parts of the game logic
+const audioElement = ref(null);
+
+// Game state
+const isPlaying = ref(false);
 let ctx = null;
 let judgementLine = null;
 let noteManager = null;
 let effectManager = null;
 let scoreManager = null;
+let audioManager = null;
 
-// Game state
-let startTime = 0;
-let gameTime = 0;
+const initializeGame = () => {
+  if (!gameCanvas.value) return;
+  ctx = gameCanvas.value.getContext('2d');
 
-onMounted(() => {
-  if (gameCanvas.value) {
-    // Get the rendering context
-    ctx = gameCanvas.value.getContext('2d');
+  const resizeCanvas = () => {
+    gameCanvas.value.width = window.innerWidth;
+    gameCanvas.value.height = window.innerHeight;
+  };
 
-    // Function to handle resizing
-    const resizeCanvas = () => {
-      gameCanvas.value.width = window.innerWidth;
-      gameCanvas.value.height = window.innerHeight;
-    };
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
 
-    // Set initial size
-    resizeCanvas();
+  judgementLine = new JudgementLine(gameCanvas.value);
+  scoreManager = new ScoreManager();
+  // Pass the judgementLine object directly to the NoteManager
+  noteManager = new NoteManager(gameCanvas.value, testChart, scoreManager, judgementLine);
+  effectManager = new EffectManager();
+  audioManager = new AudioManager();
 
-    // A simple test to confirm the canvas is working
-    if (ctx) {
-      console.log('Canvas initialized.');
-      // Initialize game objects
-      judgementLine = new JudgementLine(gameCanvas.value);
-      noteManager = new NoteManager(gameCanvas.value, testChart);
-      effectManager = new EffectManager();
-      scoreManager = new ScoreManager();
+  gameCanvas.value.addEventListener('mousedown', handleInput);
+  gameCanvas.value.addEventListener('touchstart', handleInput);
 
-      // Record the start time
-      startTime = performance.now();
+  console.log('Game initialized.');
+};
 
-      // Start the game loop
+const startGame = () => {
+  if (audioElement.value) {
+    audioElement.value.play().then(() => {
+      isPlaying.value = true;
       gameLoop();
-    } else {
-      console.error('Failed to get 2D context');
-    }
-
-    // Add event listener for window resizing
-    window.addEventListener('resize', resizeCanvas);
-
-    // Add input listeners
-    gameCanvas.value.addEventListener('mousedown', handleInput);
-    gameCanvas.value.addEventListener('touchstart', handleInput);
-
-  } else {
-    console.error('Canvas element not found');
+    }).catch(error => {
+      console.error("Audio playback failed:", error);
+    });
   }
-});
+};
+
+onMounted(initializeGame);
 
 const handleInput = (event) => {
   event.preventDefault();
+  if (!isPlaying.value) return;
 
-  if (noteManager && judgementLine && effectManager && scoreManager) {
-    const hitNote = noteManager.checkHit(judgementLine.y);
+  if (noteManager && effectManager && scoreManager && audioManager) {
+    const hitNote = noteManager.checkHit(); // No longer needs judgementLineY
     if (hitNote) {
       scoreManager.onHit();
       effectManager.createExplosion(hitNote.x, hitNote.y, hitNote.color);
+      audioManager.playHitSound();
     } else {
       scoreManager.onMiss();
     }
@@ -82,34 +85,22 @@ const handleInput = (event) => {
 };
 
 const update = () => {
-  gameTime = performance.now() - startTime;
+  if (!isPlaying.value || !audioElement.value) return;
+  const gameTime = audioElement.value.currentTime * 1000;
 
-  if (judgementLine) {
-    judgementLine.update();
-  }
-  if (noteManager) {
-    noteManager.update(gameTime);
-  }
-  if (effectManager) {
-    effectManager.update();
-  }
+  if (judgementLine) judgementLine.update();
+  if (noteManager) noteManager.update(gameTime); // No longer needs judgementLineY
+  if (effectManager) effectManager.update();
 };
 
 const draw = () => {
   if (!ctx || !gameCanvas.value) return;
   ctx.clearRect(0, 0, gameCanvas.value.width, gameCanvas.value.height);
 
-  if (judgementLine) {
-    judgementLine.draw();
-  }
-  if (noteManager) {
-    noteManager.draw();
-  }
-  if (effectManager) {
-    effectManager.draw(ctx);
-  }
+  if (judgementLine) judgementLine.draw();
+  if (noteManager) noteManager.draw();
+  if (effectManager) effectManager.draw(ctx);
 
-  // Draw HUD (Score and Combo)
   if (scoreManager) {
     ctx.fillStyle = 'white';
     ctx.font = '24px Arial';
@@ -125,16 +116,16 @@ const draw = () => {
 };
 
 const gameLoop = () => {
+  if (!isPlaying.value) return;
   update();
   draw();
   requestAnimationFrame(gameLoop);
 };
-
 </script>
 
 <style scoped>
-.game-canvas {
-  display: block;
-  background-color: #1a1a1a;
-}
+/* Styles remain the same */
+.game-container { position: relative; width: 100vw; height: 100vh; }
+.game-canvas { display: block; background-color: #1a1a1a; }
+.start-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); color: white; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 2em; }
 </style>
