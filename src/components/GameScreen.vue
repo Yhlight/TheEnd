@@ -320,9 +320,9 @@ export default {
   position: relative;
   width: 100vw;
   height: 100vh;
-  background-color: #1A1A2E; /* Deep Blue/Purple */
+  background-color: #050505; /* Near Black */
   overflow: hidden;
-  color: white;
+  color: #EAEAEA; /* Pale White */
   font-family: 'Arial', sans-serif;
 }
 .ui-container {
@@ -334,16 +334,16 @@ export default {
   justify-content: space-between;
   z-index: 10;
   text-transform: uppercase;
+  font-weight: bold;
 }
 .score, .combo {
   font-size: 28px;
-  font-weight: bold;
-  text-shadow: 0 0 8px #00BFFF;
+  text-shadow: 0 0 10px #FF4500; /* Fiery Orange Glow */
 }
 .settings-button {
   font-size: 28px;
   cursor: pointer;
-  text-shadow: 0 0 8px #00BFFF;
+  text-shadow: 0 0 10px #FF4500;
 }
 .start-button {
   position: absolute;
@@ -353,34 +353,35 @@ export default {
   padding: 15px 30px;
   font-size: 32px;
   background-color: transparent;
-  border: 3px solid #00BFFF;
-  color: #00BFFF;
+  border: 3px solid #FF4500;
+  color: #FF4500;
   text-transform: uppercase;
   cursor: pointer;
   z-index: 10;
   transition: all 0.2s ease;
+  box-shadow: 0 0 15px #FF4500;
 }
 .start-button:hover {
-  background-color: #00BFFF;
-  color: #1A1A2E;
-  box-shadow: 0 0 20px #00BFFF;
+  background-color: #FF4500;
+  color: #050505;
+  box-shadow: 0 0 30px #FF4500;
 }
 .judgment-line {
   position: absolute;
   width: 100%;
   height: 4px;
-  background-color: #00BFFF;
-  box-shadow: 0 0 12px #00BFFF;
+  background-color: #FF4500;
+  box-shadow: 0 0 20px #FF4500;
   transition: all 0.1s ease-out;
 }
 .judgment-line.flash-perfect {
   background-color: #FFFFFF;
-  box-shadow: 0 0 25px #FFFFFF;
+  box-shadow: 0 0 30px #FFFFFF;
   transform: translateX(-50%) translateY(-50%) rotate(var(--rotation)) scale(1.05);
 }
 .judgment-line.flash-good {
-  background-color: #00BFFF;
-  box-shadow: 0 0 18px #00BFFF;
+  background-color: #FF4500;
+  box-shadow: 0 0 25px #FF4500;
 }
 .progress-bar-container {
   position: absolute;
@@ -388,11 +389,11 @@ export default {
   left: 0;
   width: 100%;
   height: 5px;
-  background-color: rgba(0, 0, 0, 0.3);
+  background-color: rgba(255, 69, 0, 0.2);
 }
 .progress-bar {
   height: 100%;
-  background-color: #00BFFF;
-  box-shadow: 0 0 8px #00BFFF;
+  background-color: #FF4500;
+  box-shadow: 0 0 10px #FF4500;
 }
 </style>

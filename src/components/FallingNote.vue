@@ -52,9 +52,9 @@ export default {
   position: absolute;
   width: 10%;
   height: 25px;
-  background-color: #00BFFF;
-  border: 2px solid #00BFFF;
-  box-shadow: 0 0 12px #00BFFF;
+  background-color: #FF4500;
+  border: 2px solid #FF4500;
+  box-shadow: 0 0 15px #FF4500;
   transform-origin: center center;
 }
 .note-tap {
@@ -69,12 +69,12 @@ export default {
   left: 50%;
   transform: translateX(-50%);
   width: 80%;
-  background: linear-gradient(rgba(0, 191, 255, 0.1), #00BFFF);
+  background: linear-gradient(rgba(255, 69, 0, 0.1), #FF4500);
   border-radius: 0 0 6px 6px;
 }
 .hold-fill {
   width: 100%;
-  background-color: #00BFFF;
+  background-color: #FF4500;
   border-radius: 0 0 6px 6px;
 }
 .note-swipe {
@@ -90,13 +90,23 @@ export default {
   height: 25px;
   background-color: #FF00FF;
   border: 2px solid #FF00FF;
-  box-shadow: 0 0 12px #FF00FF;
+  box-shadow: 0 0 15px #FF00FF;
   transform: rotate(45deg);
 }
 .note-catch {
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+}
+.note-catch::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 4px;
   background-color: #FFD700;
-  border-color: #FFD700;
   box-shadow: 0 0 15px #FFD700;
-  border-radius: 4px;
+  transform: translateY(-50%);
 }
 </style>
