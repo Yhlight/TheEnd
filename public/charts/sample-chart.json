@@ -1,0 +1,49 @@
+{
+  "metadata": {
+    "songTitle": "A New Beginning",
+    "artist": "Jules",
+    "bpm": 150
+  },
+  "notes": [
+    { "id": 1, "time": 1000, "type": "tap", "x": 20 },
+    { "id": 2, "time": 1500, "type": "tap", "x": 40 },
+    { "id": 3, "time": 2000, "type": "tap", "x": 60 },
+    { "id": 4, "time": 2500, "type": "tap", "x": 80 },
+    { "id": 5, "time": 3000, "type": "tap", "x": 50 },
+    { "id": 6, "time": 3500, "type": "tap", "x": 30 },
+    { "id": 7, "time": 4000, "type": "tap", "x": 70 },
+    { "id": 8, "time": 4500, "type": "tap", "x": 10 }
+  ],
+  "events": [
+    {
+      "time": 0,
+      "type": "move",
+      "duration": 2000,
+      "targetX": 50,
+      "targetY": 50,
+      "easing": "linear"
+    },
+    {
+      "time": 2000,
+      "type": "rotate",
+      "duration": 1000,
+      "targetRotation": 45,
+      "easing": "linear"
+    },
+    {
+      "time": 3000,
+      "type": "move",
+      "duration": 1500,
+      "targetX": 20,
+      "targetY": 85,
+      "easing": "ease-in-out"
+    },
+    {
+      "time": 4500,
+      "type": "rotate",
+      "duration": 500,
+      "targetRotation": 0,
+      "easing": "linear"
+    }
+  ]
+}

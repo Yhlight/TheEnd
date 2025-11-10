@@ -4,17 +4,18 @@
       <div class="score">Score: {{ score }}</div>
       <div class="combo">Combo: {{ combo }}</div>
     </div>
-    <FallingNote v-for="note in notes" :key="note.id" :note-data="note" />
-    <div class="judgment-line" ref="judgmentLine" :class="judgmentLineClass"></div>
+    <FallingNote v-for="note in activeNotes" :key="note.id" :note-data="note" />
+    <div class="judgment-line" ref="judgmentLine" :class="judgmentLineClass" :style="judgmentLineStyle"></div>
   </div>
 </template>
 
 <script>
 import FallingNote from './FallingNote.vue';
+import { easingFunctions, distanceToLineSegment } from '../utils.js';
 
 const NOTE_SPEED = 200; // Pixels per second
-const PERFECT_WINDOW = 50; // Distance in pixels
-const GOOD_WINDOW = 100; // Distance in pixels
+const PERFECT_WINDOW = 25; // Distance in pixels
+const GOOD_WINDOW = 50;  // Distance in pixels
 
 export default {
   name: 'GameScreen',
@@ -23,75 +24,84 @@ export default {
   },
   data() {
     return {
-      notes: [],
+      activeNotes: [],
       gameLoopId: null,
       lastFrameTime: null,
-      judgmentLineY: 0,
       judgmentLineClass: '',
       score: 0,
-      combo: 0
+      combo: 0,
+      chart: null,
+      songTime: 0,
+      noteSpawnIndex: 0,
+      eventIndex: 0,
+      judgmentLineX: 50,
+      judgmentLineY: 85,
+      judgmentLineRotation: 0,
+      activeEvent: null,
+      initialLineState: {}
     };
   },
-  mounted() {
-    this.judgmentLineY = this.$refs.judgmentLine.getBoundingClientRect().top;
-
-    // Initialize sample notes with a starting y-position
-    this.notes = [
-      { id: 1, x: 20, y: 0 },
-      { id: 2, x: 40, y: 0 },
-      { id: 3, x: 60, y: -200 }, // Start this one further up
-      { id: 4, x: 80, y: -400 }
-    ];
-
+  computed: {
+    judgmentLineStyle() {
+      return {
+        top: `${this.judgmentLineY}%`,
+        left: `${this.judgmentLineX}%`,
+        transform: `translateX(-50%) translateY(-50%) rotate(${this.judgmentLineRotation}deg)`
+      };
+    }
+  },
+  async mounted() {
+    await this.loadChart('sample-chart.json');
     this.startGameLoop();
   },
   beforeUnmount() {
     this.stopGameLoop();
   },
   methods: {
+    async loadChart(chartName) {
+      try {
+        const response = await fetch(`/charts/${chartName}`);
+        this.chart = await response.json();
+      } catch (error) {
+        console.error('Error loading chart:', error);
+      }
+    },
     handleInteraction() {
-      let judged = false;
+      const lineRect = this.$refs.judgmentLine.getBoundingClientRect();
+      const angle = this.judgmentLineRotation * (Math.PI / 180);
+      const halfWidth = lineRect.width / 2;
+      const lineStart = {
+        x: lineRect.left + halfWidth - halfWidth * Math.cos(angle),
+        y: lineRect.top + lineRect.height / 2 - halfWidth * Math.sin(angle)
+      };
+      const lineEnd = {
+        x: lineRect.left + halfWidth + halfWidth * Math.cos(angle),
+        y: lineRect.top + lineRect.height / 2 + halfWidth * Math.sin(angle)
+      };
 
-      // Find the note closest to the judgment line
       let closestNote = null;
       let minDistance = Infinity;
 
-      this.notes.forEach(note => {
-        const distance = Math.abs(note.y - this.judgmentLineY);
+      this.activeNotes.forEach(note => {
+        const noteCenter = { x: note.x / 100 * window.innerWidth, y: note.y };
+        const distance = distanceToLineSegment(noteCenter, lineStart, lineEnd);
         if (distance < minDistance) {
           minDistance = distance;
           closestNote = note;
         }
       });
 
-      if (closestNote) {
+      if (closestNote && minDistance <= GOOD_WINDOW) {
         if (minDistance <= PERFECT_WINDOW) {
-          console.log(`Note ${closestNote.id}: Perfect!`);
           this.score += 100;
-          this.combo++;
-          this.triggerJudgmentFeedback();
-          this.notes = this.notes.filter(n => n.id !== closestNote.id);
-          judged = true;
-        } else if (minDistance <= GOOD_WINDOW) {
-          console.log(`Note ${closestNote.id}: Good!`);
+        } else {
           this.score += 50;
-          this.combo++;
-          this.triggerJudgmentFeedback();
-          this.notes = this.notes.filter(n => n.id !== closestNote.id);
-          judged = true;
         }
-      }
-
-      if (!judged) {
-        console.log('Miss!');
+        this.combo++;
+        this.activeNotes = this.activeNotes.filter(n => n.id !== closestNote.id);
+      } else {
         this.combo = 0;
       }
-    },
-    triggerJudgmentFeedback() {
-      this.judgmentLineClass = 'judgment-line-hit';
-      setTimeout(() => {
-        this.judgmentLineClass = '';
-      }, 100);
     },
     startGameLoop() {
       this.lastFrameTime = performance.now();
@@ -101,27 +111,66 @@ export default {
       cancelAnimationFrame(this.gameLoopId);
     },
     gameLoop(currentTime) {
-      const deltaTime = (currentTime - this.lastFrameTime) / 1000; // Time in seconds
+      const deltaTime = (currentTime - this.lastFrameTime);
+      this.songTime += deltaTime;
       this.lastFrameTime = currentTime;
 
-      // Update note positions
-      this.notes.forEach(note => {
-        note.y += NOTE_SPEED * deltaTime;
-      });
-
-      // Handle missed notes and remove notes that have gone off-screen
-      const missedNotes = this.notes.filter(note => note.y > this.judgmentLineY + GOOD_WINDOW);
-      if (missedNotes.length > 0) {
-        missedNotes.forEach(note => {
-          console.log(`Note ${note.id}: Missed!`);
-          this.combo = 0;
-        });
-        this.notes = this.notes.filter(note => !missedNotes.includes(note));
+      // Event Processing
+      if (this.chart && this.eventIndex < this.chart.events.length) {
+        const nextEvent = this.chart.events[this.eventIndex];
+        if (this.songTime >= nextEvent.time) {
+          this.activeEvent = nextEvent;
+          this.initialLineState = {
+            x: this.judgmentLineX,
+            y: this.judgmentLineY,
+            rotation: this.judgmentLineRotation
+          };
+          this.eventIndex++;
+        }
       }
 
-      this.notes = this.notes.filter(note => note.y < window.innerHeight + 100); // Remove notes well off-screen
+      if (this.activeEvent) {
+        const progress = Math.min(1, (this.songTime - this.activeEvent.time) / this.activeEvent.duration);
+        const easing = easingFunctions[this.activeEvent.easing] || easingFunctions.linear;
+        const easedProgress = easing(progress);
 
-      // Request the next frame
+        if (this.activeEvent.targetX !== undefined) {
+          this.judgmentLineX = this.initialLineState.x + (this.activeEvent.targetX - this.initialLineState.x) * easedProgress;
+        }
+        if (this.activeEvent.targetY !== undefined) {
+          this.judgmentLineY = this.initialLineState.y + (this.activeEvent.targetY - this.initialLineState.y) * easedProgress;
+        }
+        if (this.activeEvent.targetRotation !== undefined) {
+          this.judgmentLineRotation = this.initialLineState.rotation + (this.activeEvent.targetRotation - this.initialLineState.rotation) * easedProgress;
+        }
+
+        if (progress >= 1) {
+          this.activeEvent = null;
+        }
+      }
+
+      // Note Spawning
+      if (this.chart && this.noteSpawnIndex < this.chart.notes.length) {
+        const nextNote = this.chart.notes[this.noteSpawnIndex];
+        const timeToJudgment = (this.judgmentLineY / 100 * window.innerHeight) / NOTE_SPEED * 1000;
+        if (this.songTime >= nextNote.time - timeToJudgment) {
+          this.activeNotes.push({ ...nextNote, y: 0 });
+          this.noteSpawnIndex++;
+        }
+      }
+
+      // Note Position Update
+      this.activeNotes.forEach(note => {
+        note.y += NOTE_SPEED * (deltaTime / 1000);
+      });
+
+      // Missed Note Handling
+      const missedNotes = this.activeNotes.filter(note => note.y > window.innerHeight);
+      if (missedNotes.length > 0) {
+        this.combo = 0;
+        this.activeNotes = this.activeNotes.filter(note => !missedNotes.includes(note));
+      }
+
       this.gameLoopId = requestAnimationFrame(this.gameLoop);
     }
   }
@@ -138,37 +187,25 @@ export default {
   color: white;
   font-family: sans-serif;
 }
-
 .ui-container {
   position: absolute;
   top: 20px;
   left: 20px;
   text-align: left;
+  z-index: 10;
 }
-
 .score {
   font-size: 24px;
 }
-
 .combo {
   font-size: 36px;
   font-weight: bold;
 }
-
 .judgment-line {
   position: absolute;
-  bottom: 15%;
-  left: 50%;
-  transform: translateX(-50%);
   width: 80%;
   height: 3px;
   background-color: #00FFFF;
   box-shadow: 0 0 10px #00FFFF, 0 0 20px #00FFFF;
-  transition: background-color 0.1s ease, box-shadow 0.1s ease;
-}
-
-.judgment-line-hit {
-  background-color: #FFFFFF;
-  box-shadow: 0 0 15px #FFFFFF, 0 0 30px #FFFFFF;
 }
 </style>
