@@ -16,15 +16,16 @@
       @close="showSettings = false"
     />
     <div v-if="!isPlaying" class="start-button" @click="startGame">Play</div>
-    <FallingNote
-      v-for="note in activeNotes"
-      :key="note.id"
-      :note-data="note"
-      :is-holding="activeHoldNote && activeHoldNote.id === note.id"
-      :song-time="songTime"
-+      :lookahead-time="lookaheadTime"
-      :judgment-line-y-percent="judgmentLineY"
-    />
+    <div class="notes-container">
+      <GeometricNote
+        v-for="note in activeNotes"
+        :key="note.id"
+        :type="note.type"
+        :style="getNoteStyle(note)"
+        :shatter="shatteringNotes.includes(note.id)"
+        @animation-end="removeShatteringNote(note.id)"
+      />
+    </div>
     <HitEffect v-for="effect in hitEffects" :key="effect.id" :x="effect.x" :y="effect.y" :accuracy="effect.accuracy" />
     <div class="judgment-line" ref="judgmentLine" :class="judgmentLineClass" :style="judgmentLineStyle"></div>
     <audio ref="audioPlayer" :src="audioUrl" @ended="endGame"></audio>
@@ -33,7 +34,7 @@
 </template>
 
 <script>
-import FallingNote from './FallingNote.vue';
+import GeometricNote from './GeometricNote.vue';
 import HitEffect from './HitEffect.vue';
 import DynamicBackground from './DynamicBackground.vue';
 import SettingsMenu from './SettingsMenu.vue';
@@ -46,7 +47,7 @@ const SWIPE_THRESHOLD = 50;
 export default {
   name: 'GameScreen',
   components: {
-    FallingNote,
+    GeometricNote,
     HitEffect,
     DynamicBackground,
     SettingsMenu
@@ -62,6 +63,7 @@ export default {
       chart: null,
       songTime: 0,
       noteSpawnIndex: 0,
+      nextNoteId: 0,
       eventIndex: 0,
       judgmentLineX: 50,
       judgmentLineY: 85,
@@ -74,6 +76,7 @@ export default {
       swipeStartX: 0,
       hitEffects: [],
       nextHitEffectId: 0,
+      shatteringNotes: [],
       showSettings: false,
       volume: 1.0,
       noteSpeed: 2000
@@ -111,12 +114,27 @@ export default {
     }
   },
   async mounted() {
-    await this.loadChart('sample-chart.json');
+    await this.loadChart('sample.json');
   },
   beforeUnmount() {
     this.stopGameLoop();
   },
   methods: {
+    removeShatteringNote(noteId) {
+      this.shatteringNotes = this.shatteringNotes.filter(id => id !== noteId);
+    },
+    getNoteStyle(note) {
+      const timeToHit = note.time - this.songTime;
+      const progress = 1 - (timeToHit / this.lookaheadTime);
+      const yPos = progress * this.judgmentLineY; // Position relative to judgment line's percentage
+
+      return {
+        left: `${note.x * 100}%`,
+        top: `${yPos}%`,
+        position: 'absolute',
+        transform: 'translateX(-50%)', // Center the note
+      };
+    },
     async loadChart(chartName) {
       try {
         const response = await fetch(`/charts/${chartName}`);
@@ -173,6 +191,7 @@ export default {
         if (closestNote.type === 'tap') {
           this.score += (accuracy === 'perfect' ? 100 : 50);
           this.combo++;
+          this.shatteringNotes.push(closestNote.id);
           this.activeNotes = this.activeNotes.filter(n => n.id !== closestNote.id);
           this.triggerHitEffect(event.clientX, event.clientY, accuracy);
         } else if (closestNote.type === 'hold') {
@@ -193,6 +212,7 @@ export default {
           const accuracy = (timeDiff <= PERFECT_WINDOW) ? 'perfect' : 'good';
           this.score += (accuracy === 'perfect' ? 200 : 100);
           this.combo++;
+          this.shatteringNotes.push(this.activeHoldNote.id);
           this.activeNotes = this.activeNotes.filter(n => n.id !== this.activeHoldNote.id);
           this.triggerHitEffect(event.clientX, event.clientY, accuracy);
         } else {
@@ -211,6 +231,7 @@ export default {
             // Swipe accuracy is not time-based in this implementation
             this.score += 150;
             this.combo++;
+            this.shatteringNotes.push(this.activeSwipeNote.id);
             this.activeNotes = this.activeNotes.filter(n => n.id !== this.activeSwipeNote.id);
             this.triggerHitEffect(event.clientX, event.clientY, 'perfect');
           } else {
@@ -260,17 +281,13 @@ export default {
       }
 
       while (this.chart && this.noteSpawnIndex < this.chart.notes.length && this.chart.notes[this.noteSpawnIndex].time < this.songTime + this.lookaheadTime) {
-        this.activeNotes.push({ ...this.chart.notes[this.noteSpawnIndex] });
+        this.activeNotes.push({
+          ...this.chart.notes[this.noteSpawnIndex],
+          id: this.nextNoteId++,
+        });
         this.noteSpawnIndex++;
       }
 
-      const judgmentLineRect = this.$refs.judgmentLine.getBoundingClientRect();
-      const judgmentLineYPx = judgmentLineRect.top + judgmentLineRect.height / 2;
-      this.activeNotes.forEach(note => {
-        const timeToHit = note.time - this.songTime;
-        const progress = 1 - (timeToHit / this.lookaheadTime);
-        note.y = progress * judgmentLineYPx;
-      });
 
       // Handle catch notes
       const judgedCatchNotes = [];
@@ -324,6 +341,14 @@ export default {
   overflow: hidden;
   color: #EAEAEA; /* Pale White */
   font-family: 'Arial', sans-serif;
+}
+.notes-container {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  z-index: 5;
 }
 .ui-container {
   position: absolute;

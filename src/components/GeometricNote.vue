@@ -1,7 +1,6 @@
 <template>
-  <div class="note-container" @click="shatter">
+  <div class="note-container">
     <div :class="['note', type, { shattered: isShattered }]" @animationend="resetShatter">
-      <!-- We can add pseudo-elements for the shatter particles -->
       <div class="particle" v-for="i in 4" :key="i"></div>
     </div>
   </div>
@@ -18,20 +17,27 @@ export default {
         return ['tap', 'hold', 'swipe', 'catch'].indexOf(value) !== -1;
       },
     },
+    shatter: {
+      type: Boolean,
+      default: false,
+    },
   },
   data() {
     return {
       isShattered: false,
     };
   },
-  methods: {
-    shatter() {
-      if (!this.isShattered) {
+  watch: {
+    shatter(newValue) {
+      if (newValue) {
         this.isShattered = true;
       }
     },
+  },
+  methods: {
     resetShatter() {
       this.isShattered = false;
+      this.$emit('animation-end');
     },
   },
 };
@@ -97,7 +103,6 @@ export default {
   100% { transform: translate(-60px, 60px) rotate(90deg); opacity: 0; }
 }
 @keyframes shatter-p4 { /* Bottom-right */
-  0% { transform: translate(0, 0); opacity: 1; }
-  100% { transform: translate(60px, 60px) rotate(-90deg); opacity: 0; }
+  0% { transform: translate(60px, 60px) rotate(-90deg); opacity: 0; }
 }
 </style>

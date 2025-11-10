@@ -1,0 +1,11 @@
+{
+  "name": "Sample Song",
+  "audioUrl": "/audio/sample.mp3",
+  "notes": [
+    { "type": "tap", "time": 1000, "x": 0.25 },
+    { "type": "tap", "time": 2000, "x": 0.75 },
+    { "type": "hold", "time": 3000, "x": 0.5, "duration": 1000 },
+    { "type": "swipe", "time": 4500, "x": 0.25, "direction": "right" },
+    { "type": "catch", "time": 5500, "x": 0.75 }
+  ]
+}
