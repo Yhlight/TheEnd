@@ -8,20 +8,13 @@ export class ScoreManager {
   }
 
   /**
-   * Increases the combo count.
+   * Called when a note is successfully hit.
    */
-  increaseCombo() {
+  onHit() {
     this.combo++;
     if (this.combo > this.maxCombo) {
       this.maxCombo = this.combo;
     }
-  }
-
-  /**
-   * Called when a note is successfully hit. Handles scoring and combo.
-   */
-  onHit() {
-    this.increaseCombo();
     // Simple scoring: 100 points per hit, plus a combo bonus
     this.score += 100 + this.combo * 10;
   }

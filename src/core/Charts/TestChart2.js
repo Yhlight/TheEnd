@@ -14,11 +14,8 @@ export const testChart2 = {
     { time: 4000, x: 0.5,  type: 'hold', duration: 1200 },
   ],
   lineEvents: [
-    // Move and rotate from top-left to bottom-right
     { time: 0,    duration: 1500, value: { y: 0.7, rotation: 15 }, easing: 'easeInOutQuad' },
-    // Move and rotate back
     { time: 1500, duration: 1500, value: { y: 0.2, rotation: -15 }, easing: 'easeInOutQuad' },
-    // Settle in the center
     { time: 3000, duration: 2000, value: { y: 0.8, rotation: 0 }, easing: 'easeOutCubic' },
   ]
 };

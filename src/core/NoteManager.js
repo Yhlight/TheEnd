@@ -1,6 +1,7 @@
 // src/core/NoteManager.js
 import { TapNote } from './TapNote.js';
 import { HoldNote } from './HoldNote.js';
+import { FlickNote } from './FlickNote.js';
 
 const BASE_SCROLL_TIME = 3000; // The time it takes for a note to fall at 1x speed
 
@@ -12,17 +13,15 @@ export class NoteManager {
     this.judgementLine = judgementLine;
     this.noteSpeed = noteSpeed;
 
-    // Calculate the actual scroll time based on the speed
     this.scrollTime = BASE_SCROLL_TIME / this.noteSpeed;
 
     this.notes = [];
-    this.activeHolds = new Set(); // Tracks notes currently being held down
+    this.activeHolds = new Set();
     this.nextNoteIndex = 0;
   }
 
   update(gameTime) {
     const judgementLineY = this.judgementLine.y;
-    // Spawn new notes ahead of time
     while (
       this.nextNoteIndex < this.chart.notes.length &&
       gameTime >= (this.chart.notes[this.nextNoteIndex].time - this.scrollTime)
@@ -30,19 +29,23 @@ export class NoteManager {
       const noteData = this.chart.notes[this.nextNoteIndex];
       let newNote = null;
 
-      // Pass the calculated scrollTime to each new note
-      if (noteData.type === 'hold') {
-        newNote = new HoldNote(this.canvas, noteData.x * this.canvas.width, judgementLineY, this.scrollTime, noteData);
-      } else { // Default to tap note
-        newNote = new TapNote(this.canvas, noteData.x * this.canvas.width, judgementLineY, this.scrollTime, noteData);
+      switch (noteData.type) {
+        case 'hold':
+          newNote = new HoldNote(this.canvas, noteData.x * this.canvas.width, judgementLineY, this.scrollTime, noteData);
+          break;
+        case 'flick':
+          newNote = new FlickNote(this.canvas, noteData.x * this.canvas.width, judgementLineY, this.scrollTime, noteData);
+          break;
+        default: // 'tap' and any other type
+          newNote = new TapNote(this.canvas, noteData.x * this.canvas.width, judgementLineY, this.scrollTime, noteData);
+          break;
       }
 
       this.notes.push(newNote);
       this.nextNoteIndex++;
     }
 
-    // Update all active notes and mark missed ones
-    const missThreshold = 100; // Miss if it goes 100px past the line
+    const missThreshold = 100;
     for (const note of this.notes) {
       if (!note.isMissed && note.y > missThreshold) {
         this.scoreManager.onMiss();
@@ -51,9 +54,7 @@ export class NoteManager {
       note.update();
     }
 
-    // --- Hold Note Logic ---
-    const holdReleaseWindow = 100; // Can release 100ms early/late
-
+    const holdReleaseWindow = 100;
     for (const note of this.notes) {
       if (note.type !== 'hold' || note.isMissed) continue;
 
@@ -93,20 +94,21 @@ export class NoteManager {
   checkTapHit() {
     const hitWindow = 75;
     let hitNote = null;
-    let closestTapNote = null;
+    let closestHittableNote = null;
     let minDistance = Infinity;
 
     for (const note of this.notes) {
-      if (note.isMissed || note.type !== 'tap') continue;
+      if (note.isMissed || (note.type !== 'tap' && note.type !== 'flick')) continue;
+
       const dist = Math.abs(note.y);
       if (dist < minDistance) {
         minDistance = dist;
-        closestTapNote = note;
+        closestHittableNote = note;
       }
     }
 
-    if (closestTapNote && minDistance < hitWindow) {
-      hitNote = closestTapNote;
+    if (closestHittableNote && minDistance < hitWindow) {
+      hitNote = closestHittableNote;
       this.notes = this.notes.filter(note => note !== hitNote);
     }
 
@@ -148,9 +150,6 @@ export class NoteManager {
   updateNoteSpeed(newSpeed) {
     this.noteSpeed = newSpeed;
     this.scrollTime = BASE_SCROLL_TIME / this.noteSpeed;
-
-    // Recalculate speed for all active notes
-    // We use the initial judgement line Y as a consistent reference for distance.
     const referenceY = this.judgementLine.y;
     for (const note of this.notes) {
       note.recalculateSpeed(this.scrollTime, referenceY);
