@@ -30,12 +30,31 @@ let scoreManager = null;
 let audioManager = null;
 let dynamicBackground = null;
 
+// Title screen specific state
 let titleTextAlpha = ref(0);
 let titleTextFadeIn = true;
+let titleCrystals = [];
 
 const songBoxWidth = 400;
 const songBoxHeight = 100;
 const songBoxGap = 20;
+
+const initializeTitleScreen = () => {
+  titleCrystals = [];
+  if (!gameCanvas.value) return;
+  for (let i = 0; i < 20; i++) { // Create 20 crystals
+    titleCrystals.push({
+      x: Math.random() * gameCanvas.value.width,
+      y: Math.random() * gameCanvas.value.height,
+      size: Math.random() * 25 + 10, // size 10 to 35
+      vx: (Math.random() - 0.5) * 0.4, // slow horizontal drift
+      vy: (Math.random() - 0.5) * 0.4, // slow vertical drift
+      rotation: Math.random() * 360,
+      rotationSpeed: (Math.random() - 0.5) * 0.3,
+      alpha: Math.random() * 0.3 + 0.1 // 0.1 to 0.4 opacity
+    });
+  }
+};
 
 const initializeGame = () => {
   if (!gameCanvas.value) return;
@@ -44,6 +63,10 @@ const initializeGame = () => {
   const resizeCanvas = () => {
     gameCanvas.value.width = window.innerWidth;
     gameCanvas.value.height = window.innerHeight;
+    // Re-initialize title screen elements on resize to fit new dimensions
+    if (gameState.value === 'title') {
+      initializeTitleScreen();
+    }
   };
 
   resizeCanvas();
@@ -55,6 +78,8 @@ const initializeGame = () => {
   effectManager = new EffectManager();
   audioManager = new AudioManager();
   dynamicBackground = new DynamicBackground(gameCanvas.value);
+
+  initializeTitleScreen(); // Initialize crystals first time
 
   gameCanvas.value.addEventListener('mousedown', handlePress);
   gameCanvas.value.addEventListener('touchstart', handlePress);
@@ -82,6 +107,9 @@ const startGame = (chart) => {
 
 onMounted(initializeGame);
 
+// UI Element Positions
+const pauseButton = { x: 20, y: 20, width: 40, height: 40 };
+
 const handlePress = (event) => {
   event.preventDefault();
   const rect = gameCanvas.value.getBoundingClientRect();
@@ -103,12 +131,20 @@ const handlePress = (event) => {
       });
       break;
     case 'playing':
+      // Check for pause button press first
+      if (x >= pauseButton.x && x <= pauseButton.x + pauseButton.width && y >= pauseButton.y && y <= pauseButton.y + pauseButton.height) {
+        gameState.value = 'paused';
+        audioElement.value.pause();
+        return;
+      }
+
       if (noteManager && effectManager && scoreManager && audioManager) {
         // Priority: Drag > Hold > Tap
         const startedDragNote = noteManager.checkDragStart();
         if (startedDragNote) {
           judgementLine.flash(startedDragNote.color);
           audioManager.playHitSound();
+          dynamicBackground.triggerEffect();
           return;
         }
 
@@ -116,6 +152,7 @@ const handlePress = (event) => {
         if (startedHoldNote) {
           judgementLine.flash(startedHoldNote.color);
           audioManager.playHitSound();
+          dynamicBackground.triggerEffect();
           return;
         }
 
@@ -125,10 +162,16 @@ const handlePress = (event) => {
           effectManager.createExplosion(hitTapNote.x, hitTapNote.y, hitTapNote.color);
           audioManager.playHitSound();
           judgementLine.flash(hitTapNote.color);
+          dynamicBackground.triggerEffect();
         } else {
           // scoreManager.onMiss(); // Miss on empty space is optional
         }
       }
+      break;
+    case 'paused':
+      // Click anywhere to unpause
+      gameState.value = 'playing';
+      audioElement.value.play();
       break;
     case 'results':
       scoreManager.reset();
@@ -156,9 +199,12 @@ const handleMove = (event) => {
 
 
 const update = () => {
+  // Always update background for a lively feel, even when paused
   dynamicBackground.update();
+
   switch (gameState.value) {
     case 'title':
+      // Update blinking text
       if (titleTextFadeIn) {
         titleTextAlpha.value += 0.01;
         if (titleTextAlpha.value >= 1) titleTextFadeIn = false;
@@ -166,6 +212,17 @@ const update = () => {
         titleTextAlpha.value -= 0.01;
         if (titleTextAlpha.value <= 0.2) titleTextFadeIn = true;
       }
+      // Update crystals
+      titleCrystals.forEach(crystal => {
+        crystal.x += crystal.vx;
+        crystal.y += crystal.vy;
+        crystal.rotation += crystal.rotationSpeed;
+        // Wrap around screen edges for continuous floating
+        if (crystal.x > gameCanvas.value.width + crystal.size) crystal.x = -crystal.size;
+        if (crystal.x < -crystal.size) crystal.x = gameCanvas.value.width + crystal.size;
+        if (crystal.y > gameCanvas.value.height + crystal.size) crystal.y = -crystal.size;
+        if (crystal.y < -crystal.size) crystal.y = gameCanvas.value.height + crystal.size;
+      });
       break;
     case 'playing':
       if (!audioElement.value) return;
@@ -177,6 +234,9 @@ const update = () => {
       judgementLine.update();
       noteManager.update(gameTime);
       effectManager.update();
+      break;
+    case 'paused':
+      // Do nothing to freeze the game state
       break;
   }
 };
@@ -195,6 +255,12 @@ const draw = () => {
       break;
     case 'playing':
       drawGameHUD();
+      break;
+    case 'paused':
+      // Draw the frozen game state first
+      drawGameHUD();
+      // Then draw the pause overlay
+      drawPauseScreen();
       break;
     case 'results':
       drawResultsScreen();
@@ -235,6 +301,30 @@ const drawResultsScreen = () => {
 const drawTitleScreen = () => {
   const centerX = gameCanvas.value.width / 2;
   const centerY = gameCanvas.value.height / 2;
+
+  // Draw floating crystals
+  titleCrystals.forEach(crystal => {
+    ctx.save();
+    ctx.translate(crystal.x, crystal.y);
+    ctx.rotate(crystal.rotation * Math.PI / 180);
+    ctx.fillStyle = `rgba(200, 220, 255, ${crystal.alpha})`;
+    ctx.strokeStyle = `rgba(255, 255, 255, ${crystal.alpha + 0.2})`;
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = 'rgba(180, 210, 255, 0.7)';
+    ctx.shadowBlur = 10;
+    // Draw a rhombus shape
+    ctx.beginPath();
+    ctx.moveTo(0, -crystal.size);
+    ctx.lineTo(crystal.size / 1.5, 0);
+    ctx.lineTo(0, crystal.size);
+    ctx.lineTo(-crystal.size / 1.5, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  });
+
+  // Draw the main title
   ctx.save();
   ctx.font = 'bold 120px Arial';
   ctx.fillStyle = 'white';
@@ -243,6 +333,8 @@ const drawTitleScreen = () => {
   ctx.shadowBlur = 20;
   ctx.fillText("TheEnd", centerX, centerY - 50);
   ctx.restore();
+
+  // Draw the "Click to Start" prompt
   ctx.save();
   ctx.font = '30px Arial';
   ctx.fillStyle = `rgba(255, 255, 255, ${titleTextAlpha.value})`;
@@ -273,7 +365,41 @@ const drawSongSelectScreen = () => {
   });
 };
 
+const drawPauseScreen = () => {
+  const centerX = gameCanvas.value.width / 2;
+  const centerY = gameCanvas.value.height / 2;
+
+  // Dark overlay
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  ctx.fillRect(0, 0, gameCanvas.value.width, gameCanvas.value.height);
+
+  // "Paused" text
+  ctx.save();
+  ctx.font = 'bold 90px Arial';
+  ctx.fillStyle = 'white';
+  ctx.textAlign = 'center';
+  ctx.shadowColor = 'rgba(0, 255, 255, 0.7)';
+  ctx.shadowBlur = 20;
+  ctx.fillText("Paused", centerX, centerY - 50);
+  ctx.restore();
+
+  // "Click to Resume" text
+  ctx.save();
+  ctx.font = '30px Arial';
+  ctx.fillStyle = `rgba(255, 255, 255, ${titleTextAlpha.value})`; // Use blinking alpha
+  ctx.textAlign = 'center';
+  ctx.fillText("Click anywhere to Resume", centerX, centerY + 50);
+  ctx.restore();
+};
+
 const drawGameHUD = () => {
+  // Draw Pause Button
+  ctx.strokeStyle = 'white';
+  ctx.lineWidth = 3;
+  // Two vertical bars for the pause icon
+  ctx.strokeRect(pauseButton.x + 8, pauseButton.y + 8, 8, 24);
+  ctx.strokeRect(pauseButton.x + 24, pauseButton.y + 8, 8, 24);
+
   if (audioElement.value && audioElement.value.duration) {
     const progress = audioElement.value.currentTime / audioElement.value.duration;
     const progressBarWidth = progress * gameCanvas.value.width;

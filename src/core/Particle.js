@@ -6,26 +6,58 @@ export class Particle {
     this.y = y;
     this.color = color;
 
-    // Randomize movement properties for variety
-    this.size = Math.random() * 5 + 2; // Size between 2 and 7
-    this.vx = (Math.random() - 0.5) * 8; // Horizontal velocity
-    this.vy = (Math.random() - 0.5) * 8; // Vertical velocity
+    // Give particles a more powerful initial velocity burst outwards
+    const angle = Math.random() * Math.PI * 2;
+    const speed = Math.random() * 8 + 3; // Speed between 3 and 11
+    this.vx = Math.cos(angle) * speed;
+    this.vy = Math.sin(angle) * speed;
 
-    // Lifespan
-    this.life = 100; // Particle lives for 100 frames
+    this.size = Math.random() * 6 + 3; // Size between 3 and 9
+
+    // Physics properties
+    this.gravity = 0.2;
+    this.friction = 0.98; // Air resistance
+    this.rotation = Math.random() * 360;
+    this.rotationSpeed = (Math.random() - 0.5) * 15;
+
+    // Lifespan and fade properties
+    this.maxLife = Math.random() * 60 + 40; // Lives for 40 to 100 frames
+    this.life = this.maxLife;
   }
 
   update() {
+    // Apply physics
+    this.vy += this.gravity;
+    this.vx *= this.friction;
+    this.vy *= this.friction;
+
     this.x += this.vx;
     this.y += this.vy;
-    this.life -= 1; // Decrease life
+
+    this.rotation += this.rotationSpeed;
+
+    this.life -= 1;
   }
 
   draw(ctx) {
     ctx.save();
-    ctx.globalAlpha = this.life / 100; // Fade out as it dies
+
+    // Center the rotation point
+    ctx.translate(this.x + this.size / 2, this.y + this.size / 2);
+    ctx.rotate(this.rotation * Math.PI / 180);
+
+    // Calculate alpha and size based on lifespan
+    const alpha = Math.max(0, this.life / this.maxLife);
+    const currentSize = this.size * alpha; // Shrink as it fades
+
+    ctx.globalAlpha = alpha;
     ctx.fillStyle = this.color;
-    ctx.fillRect(this.x, this.y, this.size, this.size);
+    ctx.shadowColor = this.color;
+    ctx.shadowBlur = 5;
+
+    // Draw the particle centered at (0, 0) because of the translation
+    ctx.fillRect(-currentSize / 2, -currentSize / 2, currentSize, currentSize);
+
     ctx.restore();
   }
 
