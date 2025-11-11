@@ -19,7 +19,7 @@ export class NoteManager {
 
     this.notes = [];
     this.activeHolds = new Set();
-    this.activeDragNote = null; // To track the currently held drag note
+    this.activeDragNote = null;
     this.nextNoteIndex = 0;
   }
 
@@ -32,15 +32,13 @@ export class NoteManager {
     this.chart = newChart;
     this.notes = [];
     this.activeHolds.clear();
-    this.activeDragNote = null; // Reset active drag note
+    this.activeDragNote = null;
     this.nextNoteIndex = 0;
-    console.log("New chart loaded.");
   }
 
   update(gameTime) {
     if (!this.chart) return;
 
-    // Spawn new notes
     while (
       this.nextNoteIndex < this.chart.notes.length &&
       gameTime >= (this.chart.notes[this.nextNoteIndex].time - this.scrollTime)
@@ -58,7 +56,6 @@ export class NoteManager {
       this.nextNoteIndex++;
     }
 
-    // Update all notes and handle misses
     for (const note of this.notes) {
       note.update(gameTime);
       const missThreshold = this.judgementLine.y + 100;
@@ -66,34 +63,28 @@ export class NoteManager {
           this.scoreManager.onMiss();
           note.markAsMissed();
           this.audioManager.playMissSound();
-
-          // Use a generic position for the miss text, as the note might be far off-screen
           const missX = this.canvas.width / 2;
           const missY = this.judgementLine.y - 50;
-          this.effectManager.createJudgementText(missX, missY, 'Miss', '#FF8080'); // A reddish color for miss
+          this.effectManager.createJudgementText(missX, missY, 'Miss', '#FF8080');
       }
     }
 
-    // Update active holds
     this.activeHolds.forEach(holdNote => {
       const endTime = holdNote.time + holdNote.duration;
       if (gameTime >= endTime) {
-        // Award a final 'Perfect' for completing the hold
         this.scoreManager.onHit('Perfect');
         holdNote.isAlive = () => false;
         this.activeHolds.delete(holdNote);
       } else {
-        // Award a small amount of score/combo for holding
         this.scoreManager.increaseCombo(0.2);
         this.scoreManager.score += 2;
       }
     });
 
-    // Update active drag note for successful completion
     if (this.activeDragNote) {
       const endTime = this.activeDragNote.time + this.activeDragNote.duration;
       if (gameTime >= endTime) {
-        this.scoreManager.onHit('Perfect'); // Final hit for completing the drag
+        this.scoreManager.onHit('Perfect');
         this.activeDragNote.isAlive = () => false;
         this.activeDragNote = null;
       }
@@ -108,7 +99,6 @@ export class NoteManager {
     }
   }
 
-  // Define judgement windows in milliseconds
   static judgementWindows = {
     Perfect: 40,
     Good: 80,
@@ -119,7 +109,6 @@ export class NoteManager {
     let closestNote = null;
     let minTimeDiff = Infinity;
 
-    // Find the closest tappable note in time
     for (const note of this.notes) {
       if (note.isMissed || (note.type !== 'tap' && note.type !== 'flick')) continue;
 
@@ -131,17 +120,12 @@ export class NoteManager {
     }
 
     if (closestNote && minTimeDiff <= NoteManager.judgementWindows.Bad) {
-      // Determine the judgement
       let judgement = 'Bad';
       if (minTimeDiff <= NoteManager.judgementWindows.Good) judgement = 'Good';
       if (minTimeDiff <= NoteManager.judgementWindows.Perfect) judgement = 'Perfect';
-
-      // Remove the note from the active list
       this.notes = this.notes.filter(note => note !== closestNote);
-
       return { note: closestNote, judgement };
     }
-
     return null;
   }
 
@@ -162,13 +146,10 @@ export class NoteManager {
         let judgement = 'Bad';
         if (minTimeDiff <= NoteManager.judgementWindows.Good) judgement = 'Good';
         if (minTimeDiff <= NoteManager.judgementWindows.Perfect) judgement = 'Perfect';
-
         closestNote.isBeingHeld = true;
         this.activeHolds.add(closestNote);
-
         return { note: closestNote, judgement };
     }
-
     return null;
   }
 
@@ -183,7 +164,7 @@ export class NoteManager {
   }
 
   checkDragStart(gameTime) {
-    if (this.activeDragNote) return null; // Can't start a new drag if one is active
+    if (this.activeDragNote) return null;
 
     let closestNote = null;
     let minTimeDiff = Infinity;
@@ -201,20 +182,16 @@ export class NoteManager {
         let judgement = 'Bad';
         if (minTimeDiff <= NoteManager.judgementWindows.Good) judgement = 'Good';
         if (minTimeDiff <= NoteManager.judgementWindows.Perfect) judgement = 'Perfect';
-
         closestNote.isBeingHeld = true;
         this.activeDragNote = closestNote;
-
         return { note: closestNote, judgement };
     }
-
     return null;
   }
 
   checkDragUpdate(pointerX) {
     if (!this.activeDragNote) return;
-
-    const hitBoxWidth = this.activeDragNote.width * 2; // A generous hitbox
+    const hitBoxWidth = this.activeDragNote.width * 2;
     const noteCenterX = this.activeDragNote.x;
 
     if (Math.abs(pointerX - noteCenterX) > hitBoxWidth / 2) {
@@ -222,14 +199,12 @@ export class NoteManager {
       this.activeDragNote.markAsMissed();
       this.activeDragNote = null;
     } else {
-      // Give continuous score/combo for dragging
       this.scoreManager.increaseCombo(0.2);
     }
   }
 
   checkDragEnd() {
     if (this.activeDragNote) {
-      // Player released finger before the note ended
       this.scoreManager.onMiss();
       this.activeDragNote.markAsMissed();
       this.activeDragNote = null;

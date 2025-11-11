@@ -22,8 +22,26 @@ const audioElement = ref(null);
 
 // Game state management
 const gameState = reactive({
-  current: 'title', // 'title', 'songSelect', 'playing', 'results', 'settings'
+  current: 'title', // 'title', 'songSelect', 'playing', 'paused', 'settings', 'results'
 });
+
+// UI element definitions (for hit detection)
+const uiElements = {
+  pauseButton: { x: 10, y: 10, width: 50, height: 50 },
+  paused: {
+      resumeButton: { x: 0, y: 0, width: 200, height: 50 }, // Positions will be calculated
+      retryButton: { x: 0, y: 0, width: 200, height: 50 },
+      settingsButton: { x: 0, y: 0, width: 200, height: 50 },
+  },
+  settings: {
+      backButton: { x: 10, y: 10, width: 100, height: 40 },
+      noteSpeed: { label: 'Note Speed', x: 0, y: 0, width: 300, height: 20, value: 1, min: 0.5, max: 5 },
+      bgmVolume: { label: 'BGM Volume', x: 0, y: 0, width: 300, height: 20, value: 1, min: 0, max: 1 },
+      sfxVolume: { label: 'SFX Volume', x: 0, y: 0, width: 300, height: 20, value: 1, min: 0, max: 1 },
+      bgBrightness: { label: 'BG Brightness', x: 0, y: 0, width: 300, height: 20, value: 1, min: 0, max: 1 },
+  }
+};
+
 let ctx = null;
 let judgementLine = null;
 let noteManager = null;
@@ -36,6 +54,13 @@ let dynamicBackground = null;
 const songSelectState = reactive({
   selectedIndex: 0,
   cards: [],
+});
+
+const settings = reactive({
+    noteSpeed: 1,
+    bgmVolume: 1,
+    sfxVolume: 1,
+    bgBrightness: 1,
 });
 
 const CARD_WIDTH = 400;
@@ -51,6 +76,8 @@ const initializeGame = () => {
     gameCanvas.value.height = window.innerHeight;
     // Recalculate card positions on resize
     calculateCardPositions();
+    calculatePausedMenuPositions();
+    calculateSettingsMenuPositions();
   };
 
   resizeCanvas();
@@ -59,7 +86,7 @@ const initializeGame = () => {
   judgementLine = new JudgementLine(gameCanvas.value);
   scoreManager = new ScoreManager();
   effectManager = new EffectManager();
-  audioManager = new AudioManager();
+  audioManager = new AudioManager(audioElement.value);
   dynamicBackground = new DynamicBackground(gameCanvas.value);
 
   // Pass all manager dependencies to the NoteManager
@@ -71,7 +98,6 @@ const initializeGame = () => {
     audioManager,
     effectManager
   );
-  dynamicBackground = new DynamicBackground(gameCanvas.value);
 
   // Set up input listeners
   gameCanvas.value.addEventListener('mousedown', handlePress);
@@ -83,20 +109,42 @@ const initializeGame = () => {
 
 
   console.log('Game initialized.');
-};
-
-const startGame = () => {
-  if (audioElement.value) {
-    audioElement.value.play().then(() => {
-      isPlaying.value = true;
-      gameLoop();
-    }).catch(error => {
-      console.error("Audio playback failed:", error);
-    });
-  }
+  loadSettings();
+  gameLoop();
 };
 
 onMounted(initializeGame);
+
+const saveSettings = () => {
+    localStorage.setItem('theEndSettings', JSON.stringify(settings));
+};
+
+const loadSettings = () => {
+    const saved = localStorage.getItem('theEndSettings');
+    if (saved) {
+        Object.assign(settings, JSON.parse(saved));
+    }
+    applySettings(); // Apply loaded settings
+};
+
+const applySettings = () => {
+    if (noteManager) noteManager.setNoteSpeed(settings.noteSpeed);
+    if (audioManager) {
+        audioManager.setBgmVolume(settings.bgmVolume);
+        audioManager.setSfxVolume(settings.sfxVolume);
+    }
+    if (dynamicBackground) dynamicBackground.setBrightness(settings.bgBrightness);
+};
+
+
+const retryCurrentSong = () => {
+    scoreManager.reset();
+    const selectedSong = songLibrary[songSelectState.selectedIndex];
+    noteManager.loadChart(selectedSong.chart);
+    audioElement.value.currentTime = 0;
+    audioElement.value.play();
+    gameState.current = 'playing';
+};
 
 const calculateCardPositions = () => {
     songSelectState.cards = songLibrary.map((song, index) => {
@@ -106,131 +154,55 @@ const calculateCardPositions = () => {
     });
 };
 
-// Data structure for drawing stylized numbers (5x7 matrix)
-const NUMBER_MAP = {
-  '0': [
-    " XXX ",
-    "X   X",
-    "X   X",
-    "X   X",
-    "X   X",
-    "X   X",
-    " XXX ",
-  ],
-  '1': [
-    "  X  ",
-    " XX  ",
-    "  X  ",
-    "  X  ",
-    "  X  ",
-    "  X  ",
-    " XXX ",
-  ],
-  '2': [
-    " XXX ",
-    "X   X",
-    "    X",
-    "   X ",
-    "  X  ",
-    " X   ",
-    "XXXXX",
-  ],
-  '3': [
-    " XXX ",
-    "X   X",
-    "    X",
-    " XXX ",
-    "    X",
-    "X   X",
-    " XXX ",
-  ],
-  '4': [
-    "X   X",
-    "X   X",
-    "X   X",
-    "XXXXX",
-    "    X",
-    "    X",
-    "    X",
-  ],
-  '5': [
-    "XXXXX",
-    "X    ",
-    "X    ",
-    "XXXX ",
-    "    X",
-    "X   X",
-    " XXX ",
-  ],
-  '6': [
-    " XXX ",
-    "X   X",
-    "X    ",
-    "XXXX ",
-    "X   X",
-    "X   X",
-    " XXX ",
-  ],
-  '7': [
-    "XXXXX",
-    "X   X",
-    "    X",
-    "   X ",
-    "  X  ",
-    "  X  ",
-    "  X  ",
-  ],
-  '8': [
-    " XXX ",
-    "X   X",
-    "X   X",
-    " XXX ",
-    "X   X",
-    "X   X",
-    " XXX ",
-  ],
-  '9': [
-    " XXX ",
-    "X   X",
-    "X   X",
-    " XXXX",
-    "    X",
-    "X   X",
-    " XXX ",
-  ],
+const calculatePausedMenuPositions = () => {
+    const centerX = gameCanvas.value.width / 2;
+    const centerY = gameCanvas.value.height / 2;
+    const buttonHeight = uiElements.paused.resumeButton.height;
+    const buttonMargin = 20;
+
+    uiElements.paused.resumeButton.x = centerX - uiElements.paused.resumeButton.width / 2;
+    uiElements.paused.resumeButton.y = centerY - buttonHeight - buttonMargin;
+
+    uiElements.paused.retryButton.x = centerX - uiElements.paused.retryButton.width / 2;
+    uiElements.paused.retryButton.y = centerY;
+
+    uiElements.paused.settingsButton.x = centerX - uiElements.paused.settingsButton.width / 2;
+    uiElements.paused.settingsButton.y = centerY + buttonHeight + buttonMargin;
 };
 
-/**
- * Draws a number on the canvas using a stylized square matrix.
- * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
- * @param {string} text - The string of numbers to draw.
- * @param {number} x - The x-coordinate of the top-right corner of the text.
- * @param {number} y - The y-coordinate of the top-right corner of the text.
- * @param {number} squareSize - The size of each square pixel.
- * @param {string} color - The color of the squares.
- */
+const calculateSettingsMenuPositions = () => {
+    const centerX = gameCanvas.value.width / 2;
+    const startY = 150;
+    const itemMargin = 80;
+
+    Object.values(uiElements.settings).forEach((item, index) => {
+        if (item.label) {
+            item.x = centerX - item.width / 2;
+            item.y = startY + index * itemMargin;
+        }
+    });
+};
+
+// Data structure for drawing stylized numbers (5x7 matrix)
+const NUMBER_MAP = {
+  '0':[" XXX ","X   X","X   X","X   X","X   X","X   X"," XXX ",],"1":["  X  "," XX  ","  X  ","  X  ","  X  ","  X  "," XXX ",],"2":[" XXX ","X   X","    X","   X ","  X  "," X   ","XXXXX",],"3":[" XXX ","X   X","    X"," XXX ","    X","X   X"," XXX ",],"4":["X   X","X   X","X   X","XXXXX","    X","    X","    X",],"5":["XXXXX","X    ","X    ","XXXX ","    X","X   X"," XXX ",],"6":[" XXX ","X   X","X    ","XXXX ","X   X","X   X"," XXX ",],"7":["XXXXX","X   X","    X","   X ","  X  ","  X  ","  X  ",],"8":[" XXX ","X   X","X   X"," XXX ","X   X","X   X"," XXX ",],"9":[" XXX ","X   X","X   X"," XXXX","    X","X   X"," XXX ",],
+};
+
 const drawStylizedNumber = (ctx, text, x, y, squareSize, color) => {
   const textWidth = text.length * 5 * squareSize + (text.length - 1) * squareSize;
   let currentX = x - textWidth;
-
   for (const char of text) {
     const matrix = NUMBER_MAP[char];
     if (!matrix) continue;
-
     for (let row = 0; row < matrix.length; row++) {
       for (let col = 0; col < matrix[row].length; col++) {
         if (matrix[row][col] === 'X') {
           ctx.fillStyle = color;
-          ctx.fillRect(
-            currentX + col * squareSize,
-            y + row * squareSize,
-            squareSize,
-            squareSize
-          );
+          ctx.fillRect(currentX + col * squareSize,y + row * squareSize,squareSize,squareSize);
         }
       }
     }
-    currentX += 6 * squareSize; // 5 columns for the char + 1 for spacing
+    currentX += 6 * squareSize;
   }
 };
 
@@ -297,6 +269,14 @@ const drawSongSelect = () => {
 const drawPlaying = () => {
   dynamicBackground.draw(ctx);
 
+  const pb = uiElements.pauseButton;
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.fillRect(pb.x, pb.y, pb.width, pb.height);
+  ctx.fillStyle = 'white';
+  ctx.fillRect(pb.x + 15, pb.y + 10, 8, 30);
+  ctx.fillRect(pb.x + 30, pb.y + 10, 8, 30);
+
+
   if (audioElement.value && audioElement.value.duration) {
     const progress = audioElement.value.currentTime / audioElement.value.duration;
     ctx.fillStyle = 'rgba(0, 255, 255, 0.5)';
@@ -316,9 +296,60 @@ const drawPlaying = () => {
   }
 };
 
+const drawPaused = () => {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.fillRect(0, 0, gameCanvas.value.width, gameCanvas.value.height);
+
+    const buttons = uiElements.paused;
+    Object.entries(buttons).forEach(([key, btn]) => {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.fillRect(btn.x, btn.y, btn.width, btn.height);
+        ctx.fillStyle = 'black';
+        ctx.font = '24px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const text = key.replace('Button', '').toUpperCase();
+        ctx.fillText(text, btn.x + btn.width / 2, btn.y + btn.height / 2);
+    });
+};
+
+const drawSettings = () => {
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 0, gameCanvas.value.width, gameCanvas.value.height);
+
+    const backBtn = uiElements.settings.backButton;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.fillRect(backBtn.x, backBtn.y, backBtn.width, backBtn.height);
+    ctx.fillStyle = 'black';
+    ctx.font = '20px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Back', backBtn.x + backBtn.width / 2, backBtn.y + backBtn.height / 2);
+
+    Object.entries(uiElements.settings).forEach(([key, slider]) => {
+        if (!slider.label) return;
+
+        ctx.fillStyle = 'white';
+        ctx.font = '20px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(slider.label, slider.x, slider.y - 15);
+
+        ctx.fillStyle = '#555';
+        ctx.fillRect(slider.x, slider.y, slider.width, slider.height);
+
+        const valueRatio = (settings[key] - slider.min) / (slider.max - slider.min);
+        const handleX = slider.x + valueRatio * slider.width;
+        ctx.fillStyle = 'cyan';
+        ctx.fillRect(handleX - 10, slider.y - 5, 20, slider.height + 10);
+
+        ctx.textAlign = 'right';
+        ctx.fillText(settings[key].toFixed(1), slider.x + slider.width, slider.y - 15);
+    });
+};
+
 
 // --- Input Handlers ---
-
+let activeSlider = null;
 const handlePress = (event) => {
   event.preventDefault();
   const rect = gameCanvas.value.getBoundingClientRect();
@@ -342,6 +373,13 @@ const handlePress = (event) => {
       });
       break;
     case 'playing':
+      const pb = uiElements.pauseButton;
+      if (x > pb.x && x < pb.x + pb.width && y > pb.y && y < pb.y + pb.height) {
+        audioElement.value.pause();
+        gameState.current = 'paused';
+        return;
+      }
+
       const gameTime = audioElement.value.currentTime * 1000;
       const tapResult = noteManager.checkTapHit(gameTime);
       if (tapResult) {
@@ -367,24 +405,66 @@ const handlePress = (event) => {
           audioManager.playHitSound();
       }
       break;
+    case 'paused':
+        const { resumeButton, retryButton, settingsButton } = uiElements.paused;
+        if (x > resumeButton.x && x < resumeButton.x + resumeButton.width && y > resumeButton.y && y < resumeButton.y + resumeButton.height) {
+            audioElement.value.play();
+            gameState.current = 'playing';
+        } else if (x > retryButton.x && x < retryButton.x + retryButton.width && y > retryButton.y && y < retryButton.y + retryButton.height) {
+            retryCurrentSong();
+        } else if (x > settingsButton.x && x < settingsButton.x + settingsButton.width && y > settingsButton.y && y < settingsButton.y + settingsButton.height) {
+            gameState.current = 'settings';
+        }
+        break;
+    case 'settings':
+        const backBtn = uiElements.settings.backButton;
+        if (x > backBtn.x && x < backBtn.x + backBtn.width && y > backBtn.y && y < backBtn.y + backBtn.height) {
+            gameState.current = 'paused';
+            return;
+        }
+
+        for (const [key, slider] of Object.entries(uiElements.settings)) {
+            if (slider.label && x > slider.x && x < slider.x + slider.width && y > slider.y - 10 && y < slider.y + slider.height + 10) {
+                activeSlider = key;
+                updateSlider(x);
+                break;
+            }
+        }
+        break;
   }
 };
 
 const handleMove = (event) => {
-  event.preventDefault();
-  if (gameState.current !== 'playing' || !noteManager) return;
+    event.preventDefault();
+    const rect = gameCanvas.value.getBoundingClientRect();
+    const x = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
 
-  const rect = gameCanvas.value.getBoundingClientRect();
-  const pointerX = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
-  const relativeX = pointerX - judgementLine.x;
-  noteManager.checkDragUpdate(relativeX);
+    if (gameState.current === 'settings' && activeSlider) {
+        updateSlider(x);
+    } else if (gameState.current === 'playing' && noteManager) {
+        const relativeX = x - judgementLine.x;
+        noteManager.checkDragUpdate(relativeX);
+    }
+};
+
+const updateSlider = (x) => {
+    const slider = uiElements.settings[activeSlider];
+    let valueRatio = (x - slider.x) / slider.width;
+    valueRatio = Math.max(0, Math.min(1, valueRatio)); // Clamp between 0 and 1
+    settings[activeSlider] = slider.min + (slider.max - slider.min) * valueRatio;
+    applySettings();
 };
 
 const handleRelease = (event) => {
   event.preventDefault();
-  if (gameState.current !== 'playing' || !noteManager) return;
-  noteManager.checkHoldEnd();
-  noteManager.checkDragEnd();
+  if (gameState.current === 'playing' && noteManager) {
+    noteManager.checkHoldEnd();
+    noteManager.checkDragEnd();
+  }
+  if (activeSlider) {
+      activeSlider = null;
+      saveSettings();
+  }
 };
 
 let gameStartTime = null;
@@ -398,6 +478,8 @@ const gameLoop = () => {
     case 'title': updateTitle(); break;
     case 'songSelect': updateSongSelect(); break;
     case 'playing': updatePlaying(); break;
+    case 'paused': /* No updates needed */ break;
+    case 'settings': /* No updates needed */ break;
   }
 
   // Clear canvas and draw based on state
@@ -406,6 +488,11 @@ const gameLoop = () => {
     case 'title': drawTitle(); break;
     case 'songSelect': drawSongSelect(); break;
     case 'playing': drawPlaying(); break;
+    case 'paused':
+        drawPlaying(); // Draw the game screen underneath
+        drawPaused();
+        break;
+    case 'settings': drawSettings(); break;
   }
 
   requestAnimationFrame(gameLoop);
@@ -416,5 +503,4 @@ const gameLoop = () => {
 /* Styles remain the same */
 .game-container { position: relative; width: 100vw; height: 100vh; }
 .game-canvas { display: block; background-color: #1a1a1a; }
-.start-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); color: white; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 2em; }
 </style>

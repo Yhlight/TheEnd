@@ -2,7 +2,6 @@
 
 /**
  * A mock library of songs and their charts.
- * In a real application, this would likely be fetched from a server or read from files.
  */
 export const songLibrary = [
   {
@@ -20,15 +19,22 @@ export const songLibrary = [
         { time: 4250, x: 0.8, type: 'tap' },
         { time: 4500, x: 0.5, type: 'flick' },
         { time: 5000, x: 0.5, type: 'tap' },
+        {
+          time: 8000,
+          type: 'drag',
+          duration: 2000,
+          path: [
+            [0, 0.1],
+            [500, 0.3],
+            [1000, 0.7],
+            [1500, 0.9],
+            [2000, 0.5]
+          ]
+        },
       ],
-      // Events to move the judgement line
-      // All values are relative to the default state
       lineEvents: [
-        // At 2s, move y up by 150px and rotate 15deg over 0.5s
         { time: 2000, duration: 500, value: { y: -150, rotation: 15 }, easing: 'easeOutQuad' },
-        // At 3s, move y down by 150px and rotate -15deg over 0.5s
         { time: 3000, duration: 500, value: { y: 150, rotation: -15 }, easing: 'easeOutQuad' },
-        // At 4s, return to the default position (y=0, rotation=0) over 1s
         { time: 4000, duration: 1000, value: { y: 0, rotation: 0 }, easing: 'easeInOutQuad' },
       ]
     }

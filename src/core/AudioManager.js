@@ -19,14 +19,12 @@ export class AudioManager {
 
   async _loadHitSound() {
     try {
-      // A simple, short click sound is often used for rhythm games
       const response = await fetch('/hit.wav');
       if (!response.ok) {
         throw new Error(`Failed to fetch hit sound: ${response.statusText}`);
       }
       const arrayBuffer = await response.arrayBuffer();
       this.hitSoundBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
-      console.log('Hit sound loaded successfully.');
     } catch (error)
  {
       console.error('Error loading hit sound:', error);
@@ -35,14 +33,12 @@ export class AudioManager {
 
   async _loadMissSound() {
     try {
-      // TODO: Replace with a real miss sound file when available.
       const response = await fetch('/hit.wav'); // Using hit.wav as a placeholder
       if (!response.ok) {
         throw new Error(`Failed to fetch miss sound: ${response.statusText}`);
       }
       const arrayBuffer = await response.arrayBuffer();
       this.missSoundBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
-      console.log('Miss sound loaded (using placeholder).');
     } catch (error)
  {
       console.error('Error loading miss sound:', error);
@@ -68,7 +64,7 @@ export class AudioManager {
     this._playSound(this.missSoundBuffer);
   }
 
-  setMusicVolume(volume) {
+  setBgmVolume(volume) {
     if (this.musicElement) {
       this.musicElement.volume = volume;
     }
@@ -76,24 +72,5 @@ export class AudioManager {
 
   setSfxVolume(volume) {
     this.sfxVolume = volume;
-  }
-
-  playMusic() {
-    if (this.musicElement) {
-      this.musicElement.play().catch(e => console.error("Music play failed:", e));
-    }
-  }
-
-  pauseMusic() {
-    if (this.musicElement) {
-      this.musicElement.pause();
-    }
-  }
-
-  resetMusic() {
-     if (this.musicElement) {
-      this.musicElement.pause();
-      this.musicElement.currentTime = 0;
-    }
   }
 }
