@@ -177,7 +177,7 @@ export default {
       if (!this.isPlaying || !this.isDragging) return;
 
       this.notes.forEach(note => {
-        if (note.type === 'swipe' && !note.judged) {
+        if ((note.type === 'swipe' || note.type === 'catch') && !note.judged) {
           const timingError = Math.abs(note.time - this.songTime);
           if (timingError <= TIMING_WINDOWS.good) {
             note.judged = true;
