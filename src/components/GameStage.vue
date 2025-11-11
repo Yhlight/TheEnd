@@ -6,7 +6,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, reactive } from 'vue';
 import { JudgementLine } from '../core/JudgementLine.js';
 import { NoteManager } from '../core/NoteManager.js';
 import { songLibrary } from '../core/ChartData.js';
@@ -21,6 +21,9 @@ const audioElement = ref(null);
 
 // Game State Management
 const gameState = ref('title');
+const settings = reactive({
+  noteSpeed: 3.0,
+});
 
 let ctx = null;
 let judgementLine = null;
@@ -74,7 +77,7 @@ const initializeGame = () => {
 
   judgementLine = new JudgementLine(gameCanvas.value);
   scoreManager = new ScoreManager();
-  noteManager = new NoteManager(gameCanvas.value, null, scoreManager, judgementLine);
+  noteManager = new NoteManager(gameCanvas.value, null, scoreManager, judgementLine, settings.noteSpeed);
   effectManager = new EffectManager();
   audioManager = new AudioManager();
   dynamicBackground = new DynamicBackground(gameCanvas.value);
@@ -109,6 +112,15 @@ onMounted(initializeGame);
 
 // UI Element Positions
 const pauseButton = { x: 20, y: 20, width: 40, height: 40 };
+// This object will be populated with coordinates dynamically in the draw function
+const settingsMenu = {
+    buttons: {},
+    noteSpeed: {
+      minusButton: {},
+      plusButton: {}
+    }
+};
+
 
 const handlePress = (event) => {
   event.preventDefault();
@@ -139,39 +151,61 @@ const handlePress = (event) => {
       }
 
       if (noteManager && effectManager && scoreManager && audioManager) {
-        // Priority: Drag > Hold > Tap
-        const startedDragNote = noteManager.checkDragStart();
-        if (startedDragNote) {
-          judgementLine.flash(startedDragNote.color);
-          audioManager.playHitSound();
-          dynamicBackground.triggerEffect();
-          return;
-        }
-
-        const startedHoldNote = noteManager.checkHoldStart();
-        if (startedHoldNote) {
-          judgementLine.flash(startedHoldNote.color);
-          audioManager.playHitSound();
-          dynamicBackground.triggerEffect();
-          return;
-        }
-
         const hitTapNote = noteManager.checkTapHit();
-        if (hitTapNote) {
-          scoreManager.onHit();
-          effectManager.createExplosion(hitTapNote.x, hitTapNote.y, hitTapNote.color);
-          audioManager.playHitSound();
-          judgementLine.flash(hitTapNote.color);
-          dynamicBackground.triggerEffect();
-        } else {
-          // scoreManager.onMiss(); // Miss on empty space is optional
+        const startedHoldNote = noteManager.checkHoldStart();
+        const startedDragNote = noteManager.checkDragStart();
+
+        if (hitTapNote || startedHoldNote || startedDragNote) {
+            const note = hitTapNote || startedHoldNote || startedDragNote;
+            if(hitTapNote) scoreManager.onHit();
+            effectManager.createExplosion(note.x, note.y, note.color);
+            audioManager.playHitSound();
+            judgementLine.flash(note.color);
+            dynamicBackground.triggerEffect();
         }
       }
       break;
     case 'paused':
-      // Click anywhere to unpause
-      gameState.value = 'playing';
-      audioElement.value.play();
+      // Check for settings menu interactions
+      // Check main action buttons
+      for (const key in settingsMenu.buttons) {
+          const btn = settingsMenu.buttons[key];
+          if (x >= btn.x && x <= btn.x + btn.width && y >= btn.y && y <= btn.y + btn.height) {
+              switch(key) {
+                  case 'resume':
+                      gameState.value = 'playing';
+                      if(audioElement.value) audioElement.value.play();
+                      return;
+                  case 'restart':
+                      scoreManager.reset();
+                      startGame(noteManager.chart);
+                      return;
+                  case 'exit':
+                      gameState.value = 'songSelect';
+                      scoreManager.reset();
+                      if(audioElement.value) {
+                        audioElement.value.pause();
+                        audioElement.value.currentTime = 0;
+                      }
+                      return;
+              }
+          }
+      }
+
+      // Check note speed buttons
+      const speedControls = settingsMenu.noteSpeed;
+      const minusBtn = speedControls.minusButton;
+      if (minusBtn.x && x >= minusBtn.x && x <= minusBtn.x + minusBtn.width && y >= minusBtn.y && y <= minusBtn.y + minusBtn.height) {
+          settings.noteSpeed = Math.max(0.5, parseFloat((settings.noteSpeed - 0.5).toFixed(1)));
+          if (noteManager) noteManager.setNoteSpeed(settings.noteSpeed);
+          return;
+      }
+      const plusBtn = speedControls.plusButton;
+      if (plusBtn.x && x >= plusBtn.x && x <= plusBtn.x + plusBtn.width && y >= plusBtn.y && y <= plusBtn.y + plusBtn.height) {
+          settings.noteSpeed = Math.min(10, parseFloat((settings.noteSpeed + 0.5).toFixed(1)));
+          if (noteManager) noteManager.setNoteSpeed(settings.noteSpeed);
+          return;
+      }
       break;
     case 'results':
       scoreManager.reset();
@@ -259,8 +293,8 @@ const draw = () => {
     case 'paused':
       // Draw the frozen game state first
       drawGameHUD();
-      // Then draw the pause overlay
-      drawPauseScreen();
+      // Then draw the settings menu overlay
+      drawSettingsMenu();
       break;
     case 'results':
       drawResultsScreen();
@@ -365,31 +399,77 @@ const drawSongSelectScreen = () => {
   });
 };
 
-const drawPauseScreen = () => {
-  const centerX = gameCanvas.value.width / 2;
-  const centerY = gameCanvas.value.height / 2;
+const drawSettingsMenu = () => {
+    const centerX = gameCanvas.value.width / 2;
+    const centerY = gameCanvas.value.height / 2;
 
-  // Dark overlay
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-  ctx.fillRect(0, 0, gameCanvas.value.width, gameCanvas.value.height);
+    // Semi-transparent overlay
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+    ctx.fillRect(0, 0, gameCanvas.value.width, gameCanvas.value.height);
 
-  // "Paused" text
-  ctx.save();
-  ctx.font = 'bold 90px Arial';
-  ctx.fillStyle = 'white';
-  ctx.textAlign = 'center';
-  ctx.shadowColor = 'rgba(0, 255, 255, 0.7)';
-  ctx.shadowBlur = 20;
-  ctx.fillText("Paused", centerX, centerY - 50);
-  ctx.restore();
+    // Menu Title
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 60px Arial';
+    ctx.textAlign = 'center';
+    ctx.shadowColor = 'rgba(0, 255, 255, 0.7)';
+    ctx.shadowBlur = 15;
+    ctx.fillText("Settings", centerX, centerY - 220);
+    ctx.shadowBlur = 0;
 
-  // "Click to Resume" text
-  ctx.save();
-  ctx.font = '30px Arial';
-  ctx.fillStyle = `rgba(255, 255, 255, ${titleTextAlpha.value})`; // Use blinking alpha
-  ctx.textAlign = 'center';
-  ctx.fillText("Click anywhere to Resume", centerX, centerY + 50);
-  ctx.restore();
+    // --- Note Speed Control ---
+    const speedY = centerY - 120;
+    ctx.font = '30px Arial';
+    ctx.fillText("Note Speed", centerX, speedY);
+
+    // Display speed value
+    ctx.font = 'bold 40px Arial';
+    ctx.fillText(settings.noteSpeed.toFixed(1), centerX, speedY + 50);
+
+    // Draw '+' and '-' buttons and store their positions
+    const btnSize = 50;
+    const minusBtnData = { x: centerX - 120, y: speedY + 20, width: btnSize, height: btnSize };
+    const plusBtnData = { x: centerX + 70, y: speedY + 20, width: btnSize, height: btnSize };
+    settingsMenu.noteSpeed.minusButton = minusBtnData;
+    settingsMenu.noteSpeed.plusButton = plusBtnData;
+
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(minusBtnData.x, minusBtnData.y, minusBtnData.width, minusBtnData.height);
+    ctx.strokeRect(plusBtnData.x, plusBtnData.y, plusBtnData.width, plusBtnData.height);
+
+    ctx.font = 'bold 40px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText("-", minusBtnData.x + btnSize / 2, minusBtnData.y + btnSize / 2);
+    ctx.fillText("+", plusBtnData.x + btnSize / 2, plusBtnData.y + btnSize / 2);
+    ctx.textBaseline = 'alphabetic'; // Reset for other text elements
+
+    // --- Action Buttons ---
+    const buttonWidth = 250;
+    const buttonHeight = 60;
+    const buttonGap = 20;
+    const buttons = [
+        { id: 'resume', text: 'Resume' },
+        { id: 'restart', text: 'Restart' },
+        { id: 'exit', text: 'Back to Menu' }
+    ];
+    let startY = centerY + 40; // Adjust starting Y position
+
+    buttons.forEach((btnInfo, index) => {
+        const btnY = startY + index * (buttonHeight + buttonGap);
+        const btnX = centerX - buttonWidth / 2;
+
+        // Store calculated position for click detection
+        settingsMenu.buttons[btnInfo.id] = { x: btnX, y: btnY, width: buttonWidth, height: buttonHeight };
+
+        // Draw button
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(btnX, btnY, buttonWidth, buttonHeight);
+        ctx.font = '30px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(btnInfo.text, centerX, btnY + 40);
+    });
 };
 
 const drawGameHUD = () => {

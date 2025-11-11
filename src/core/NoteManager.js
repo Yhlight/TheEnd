@@ -21,6 +21,11 @@ export class NoteManager {
     this.nextNoteIndex = 0;
   }
 
+  setNoteSpeed(newSpeed) {
+    this.noteSpeed = newSpeed;
+    this.scrollTime = BASE_SCROLL_TIME / this.noteSpeed;
+  }
+
   loadChart(newChart) {
     this.chart = newChart;
     this.notes = [];
