@@ -61,8 +61,12 @@ const initializeGame = () => {
   );
   dynamicBackground = new DynamicBackground(gameCanvas.value);
 
-  gameCanvas.value.addEventListener('mousedown', handleInput);
-  gameCanvas.value.addEventListener('touchstart', handleInput);
+  // Set up input listeners
+  gameCanvas.value.addEventListener('mousedown', handlePress);
+  gameCanvas.value.addEventListener('touchstart', handlePress);
+  gameCanvas.value.addEventListener('mouseup', handleRelease);
+  gameCanvas.value.addEventListener('touchend', handleRelease);
+
 
   console.log('Game initialized.');
 };
@@ -208,7 +212,7 @@ const drawStylizedNumber = (ctx, text, x, y, squareSize, color) => {
   }
 };
 
-const handleInput = (event) => {
+const handlePress = (event) => {
   event.preventDefault();
   if (!isPlaying.value) return;
   const gameTime = audioElement.value.currentTime * 1000;
@@ -227,9 +231,25 @@ const handleInput = (event) => {
       dynamicBackground.triggerEffect();
 
     } else {
-      // This is a tap on an empty space, which could be a miss or just nothing.
-      // The miss logic is handled by notes passing the judgement line in update().
+      // If no tap note was hit, check for a hold note start
+      const holdResult = noteManager.checkHoldStart(gameTime);
+      if (holdResult) {
+        const { note, judgement } = holdResult;
+        // Provide initial feedback for starting the hold
+        scoreManager.onHit(judgement);
+        effectManager.createJudgementText(note.x, judgementLine.y - 50, judgement, note.color);
+        audioManager.playHitSound(); // Maybe a different sound for holds later
+      }
     }
+  }
+};
+
+const handleRelease = (event) => {
+  event.preventDefault();
+  if (!isPlaying.value) return;
+
+  if (noteManager) {
+    noteManager.checkHoldEnd();
   }
 };
 

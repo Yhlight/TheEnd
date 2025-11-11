@@ -7,13 +7,19 @@
  */
 export const testChart = {
   notes: [
-    { time: 1000, x: 0.25 }, // Appears at 1s, at 25% of screen width
-    { time: 1500, x: 0.75 }, // Appears at 1.5s, at 75% of screen width
-    { time: 2000, x: 0.5 },  // Appears at 2s, at 50% of screen width
-    { time: 2750, x: 0.25 },
-    { time: 3000, x: 0.75 },
-    { time: 3250, x: 0.5 },
-    { time: 3500, x: 0.75 },
-    { time: 3750, x: 0.25 },
+    // Existing tap notes
+    { time: 1000, x: 0.25, type: 'tap' },
+    { time: 2000, x: 0.75, type: 'tap' },
+
+    // Add a short hold note
+    { time: 3000, x: 0.5, type: 'hold', duration: 500 }, // Starts at 3s, lasts for 0.5s
+
+    // Add another tap note
+    { time: 4000, x: 0.25, type: 'tap' },
+
+    // Add a longer hold note
+    { time: 5000, x: 0.75, type: 'hold', duration: 1000 }, // Starts at 5s, lasts for 1s
+
+    { time: 6500, x: 0.5, type: 'tap' },
   ]
 };
