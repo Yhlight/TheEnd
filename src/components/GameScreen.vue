@@ -1,5 +1,10 @@
 <template>
-  <div class="game-screen" @click="handleTap">
+  <div
+    class="game-screen"
+    @pointerdown="handleInteractionStart"
+    @pointerup="handleInteractionEnd"
+    @pointerleave="handleInteractionEnd"
+  >
     <div class="grid-background"></div>
     <progress-bar :song-time="songTime" :song-duration="songDuration" v-if="isPlaying" />
     <HUD :score="score" :combo="combo" v-if="isPlaying" />
@@ -12,7 +17,10 @@
       <geometric-note
         v-for="note in visibleNotes"
         :key="note.id"
-        :note-type="note.type"
+        :note="note"
+        :lookahead-time="lookaheadTime"
+        :viewport-height="viewportHeight"
+        :hold-progress="note.holdProgress"
         :style="{ top: note.y + '%', left: note.x + '%' }"
       />
     </div>
@@ -47,6 +55,7 @@ export default {
       chart: null,
       notes: [],
       activeEffects: [],
+      activeHolds: {},
       judgmentLinePosition: 85,
       judgmentLineRotation: 0,
       isPlaying: false,
@@ -57,12 +66,16 @@ export default {
       score: 0,
       combo: 0,
       lineFlashing: false,
+      viewportHeight: 0,
     };
+  },
+  mounted() {
+    this.viewportHeight = window.innerHeight;
   },
   computed: {
     visibleNotes() {
       return this.notes.filter(note => {
-        if (note.judged) return false;
+        if (note.judged && !note.active) return false;
         const timeUntilHit = note.time - this.songTime;
         return timeUntilHit <= this.lookaheadTime && timeUntilHit > -TIMING_WINDOWS.miss;
       });
@@ -73,7 +86,7 @@ export default {
       try {
         const response = await fetch('/charts/sample.json');
         this.chart = await response.json();
-        this.notes = this.chart.notes.map(note => ({ ...note, judged: false }));
+        this.notes = this.chart.notes.map(note => ({ ...note, judged: false, active: false, holdProgress: 0 }));
         if (this.chart.events && this.chart.events.length > 0) {
           this.judgmentLinePosition = this.chart.events[0].y;
           this.judgmentLineRotation = this.chart.events[0].rotation;
@@ -94,21 +107,44 @@ export default {
       this.isPlaying = true;
       this.score = 0;
       this.combo = 0;
-      this.notes.forEach(note => { note.judged = false; });
+      this.activeHolds = {};
+      this.notes.forEach(note => {
+        note.judged = false;
+        note.active = false;
+        note.holdProgress = 0;
+      });
       this.$refs.audioPlayer.currentTime = 0;
       this.$refs.audioPlayer.play();
       requestAnimationFrame(this.gameLoop);
     },
-    handleTap() {
+    handleInteractionStart(event) {
       if (!this.isPlaying) return;
-      const hittableNote = this.notes.find(note => {
-        if (note.judged) return false;
+
+      let closestNote = null;
+      let minTimeDiff = Infinity;
+
+      this.notes.forEach(note => {
+        if (note.judged || note.active) return;
+        if (note.type !== 'tap' && note.type !== 'hold') return;
+
         const timingError = Math.abs(note.time - this.songTime);
-        return timingError <= TIMING_WINDOWS.good;
+        if (timingError <= TIMING_WINDOWS.good) {
+          if (timingError < minTimeDiff) {
+            minTimeDiff = timingError;
+            closestNote = note;
+          }
+        }
       });
 
+      const hittableNote = closestNote;
       if (hittableNote) {
-        hittableNote.judged = true;
+        if (hittableNote.type === 'tap') {
+          hittableNote.judged = true;
+        } else if (hittableNote.type === 'hold') {
+          hittableNote.active = true;
+          this.activeHolds[event.pointerId] = hittableNote;
+        }
+
         this.triggerLineFlash();
         this.playHitSound();
         const timingError = Math.abs(hittableNote.time - this.songTime);
@@ -122,6 +158,16 @@ export default {
           this.combo++;
           this.spawnHitEffect(hittableNote, 'good');
         }
+      }
+    },
+    handleInteractionEnd(event) {
+      const activeHold = this.activeHolds[event.pointerId];
+      if (activeHold) {
+        // Premature release, considered a combo break
+        activeHold.active = false;
+        activeHold.judged = true; // Mark as judged to remove from screen
+        this.combo = 0; // Penalty for early release
+        delete this.activeHolds[event.pointerId];
       }
     },
     playHitSound() {
@@ -150,49 +196,87 @@ export default {
       return start + (end - start) * progress;
     },
     updateJudgmentLine() {
-      const events = this.chart.events;
+      const { events } = this.chart;
       if (!events || events.length === 0) return;
 
-      const currentEventIndex = events.findIndex(event => event.time > this.songTime);
-
-      if (currentEventIndex === 0) {
-        this.judgmentLinePosition = events[0].y;
-        this.judgmentLineRotation = events[0].rotation;
-        return;
+      let currentEvent = events[0];
+      for (let i = events.length - 1; i >= 0; i--) {
+        if (this.songTime >= events[i].time) {
+          currentEvent = events[i];
+          break;
+        }
       }
 
-      if (currentEventIndex === -1) {
-        const lastEvent = events[events.length - 1];
-        this.judgmentLinePosition = lastEvent.y;
-        this.judgmentLineRotation = lastEvent.rotation;
-        return;
+      let nextEvent = null;
+      for (let i = 0; i < events.length; i++) {
+        if (events[i].time > this.songTime) {
+          nextEvent = events[i];
+          break;
+        }
       }
 
-      const prevEvent = events[currentEventIndex - 1];
-      const nextEvent = events[currentEventIndex];
-      const eventDuration = nextEvent.time - prevEvent.time;
-      const timeSincePrevEvent = this.songTime - prevEvent.time;
-      const progress = Math.max(0, Math.min(1, timeSincePrevEvent / eventDuration));
-
-      this.judgmentLinePosition = this.lerp(prevEvent.y, nextEvent.y, progress);
-      this.judgmentLineRotation = this.lerp(prevEvent.rotation, nextEvent.rotation, progress);
+      if (nextEvent) {
+        const progress = (this.songTime - currentEvent.time) / (nextEvent.time - currentEvent.time);
+        this.judgmentLinePosition = this.lerp(currentEvent.y, nextEvent.y, progress);
+        this.judgmentLineRotation = this.lerp(currentEvent.rotation, nextEvent.rotation, progress);
+      } else {
+        this.judgmentLinePosition = currentEvent.y;
+        this.judgmentLineRotation = currentEvent.rotation;
+      }
     },
     gameLoop() {
       if (!this.isPlaying) return;
+
       this.songTime = this.$refs.audioPlayer.currentTime * 1000;
-      this.updateJudgmentLine();
-      this.notes.forEach(note => {
-        if (note.judged) return;
-        const timeUntilHit = note.time - this.songTime;
-        if (timeUntilHit < -TIMING_WINDOWS.miss) {
-          this.combo = 0;
+
+      // Update active holds
+      for (const pointerId in this.activeHolds) {
+        const note = this.activeHolds[pointerId];
+        const holdEndTime = note.time + note.duration;
+
+        if (this.songTime >= holdEndTime) {
+          // Hold completed successfully
+          note.active = false;
           note.judged = true;
+          this.score += 200; // Bonus for completing the hold
+          this.combo++;
+          this.spawnHitEffect(note, 'perfect');
+          delete this.activeHolds[pointerId];
         } else {
-          const progress = timeUntilHit / this.lookaheadTime;
-          note.y = this.judgmentLinePosition * (1 - progress);
+          // Update visual progress
+          const progress = (this.songTime - note.time) / note.duration;
+          note.holdProgress = Math.max(0, Math.min(1, progress));
+        }
+      }
+
+      // Check for missed notes
+      this.notes.forEach(note => {
+        if (!note.judged && !note.active && (this.songTime > note.time + TIMING_WINDOWS.miss)) {
+          note.judged = true; // Mark as judged to remove it
+          this.combo = 0; // Reset combo on miss
         }
       });
-      requestAnimationFrame(this.gameLoop);
+
+      this.updateJudgmentLine();
+
+      // Calculate note positions
+      this.notes.forEach(note => {
+        const timeUntilHit = note.time - this.songTime;
+        const progress = 1 - (timeUntilHit / this.lookaheadTime);
+        note.y = this.lerp(0, this.judgmentLinePosition, progress);
+        if (note.type === 'hold' && note.active) {
+          const endTimeUntilHit = (note.time + note.duration) - this.songTime;
+          const endProgress = 1 - (endTimeUntilHit / this.lookaheadTime);
+          const endY = this.lerp(0, this.judgmentLinePosition, endProgress);
+          note.endY = endY;
+        }
+      });
+
+      if (this.songTime >= this.songDuration && this.songDuration > 0) {
+        this.isPlaying = false;
+      } else {
+        requestAnimationFrame(this.gameLoop);
+      }
     }
   },
   created() {
@@ -202,5 +286,5 @@ export default {
 </script>
 
 <style scoped>
-/* Styles are correct */
+/* Unchanged */
 </style>
