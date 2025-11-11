@@ -22,7 +22,7 @@ const audioElement = ref(null);
 
 // Game state management
 const gameState = reactive({
-  current: 'title', // 'title', 'songSelect', 'playing', 'paused', 'settings', 'results'
+  current: 'title', // 'title', 'songSelect', 'playing', 'paused', 'settings', 'results', 'editor'
 });
 
 // UI element definitions (for hit detection)
@@ -43,6 +43,14 @@ const uiElements = {
   },
   results: {
       backButton: { x: 0, y: 0, width: 300, height: 50 }, // Position calculated dynamically
+  },
+  songSelect: {
+      editButton: { x: 0, y: 0, width: 100, height: 50 },
+  },
+  editor: {
+      playPauseButton: { x: 10, y: 10, width: 100, height: 50 },
+      exportButton: { x: 120, y: 10, width: 100, height: 50 },
+      timeline: { x: 0, y: 100, width: 0, height: 50 } // Width is dynamic
   }
 };
 
@@ -76,6 +84,14 @@ const CARD_WIDTH = 350;
 const CARD_HEIGHT = 200;
 const CARD_MARGIN = 40;
 const SELECTED_CARD_SCALE = 1.2;
+
+const editorState = reactive({
+    zoom: 1, // Pixels per second
+    scrollX: 0,
+    scrollY: 0,
+    playhead: 0, // In milliseconds
+    isScrubbing: false,
+});
 
 const initializeGame = () => {
   if (!gameCanvas.value) return;
@@ -288,6 +304,10 @@ const updatePlaying = () => {
   }
 };
 
+const updateEditor = () => {
+    // TODO: Implement editor update logic
+};
+
 // --- Game State Drawers ---
 
 const drawTitle = () => {
@@ -347,6 +367,21 @@ const drawSongSelect = () => {
         ctx.fillText(card.song.artist, renderX + scaledWidth / 2, renderY + scaledHeight / 2 + 30 * scale);
 
         ctx.restore();
+
+        // Draw Edit button for the selected card
+        if (index === songSelectState.selectedIndex) {
+            const editBtn = uiElements.songSelect.editButton;
+            editBtn.x = renderX + scaledWidth + 20;
+            editBtn.y = renderY + (scaledHeight - editBtn.height) / 2;
+
+            ctx.fillStyle = 'rgba(255, 165, 0, 0.8)';
+            ctx.fillRect(editBtn.x, editBtn.y, editBtn.width, editBtn.height);
+            ctx.fillStyle = 'white';
+            ctx.font = '24px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('Edit', editBtn.x + editBtn.width / 2, editBtn.y + editBtn.height / 2);
+        }
     });
 };
 
@@ -484,6 +519,107 @@ const drawResults = () => {
     ctx.fillText('Back to Song Select', backBtn.x + backBtn.width / 2, backBtn.y + backBtn.height / 2);
 };
 
+const drawEditor = () => {
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 0, gameCanvas.value.width, gameCanvas.value.height);
+
+    // Draw Play/Pause button
+    const playPauseBtn = uiElements.editor.playPauseButton;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.fillRect(playPauseBtn.x, playPauseBtn.y, playPauseBtn.width, playPauseBtn.height);
+    ctx.fillStyle = 'black';
+    ctx.font = '20px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(audioElement.value.paused ? 'Play' : 'Pause', playPauseBtn.x + playPauseBtn.width / 2, playPauseBtn.y + playPauseBtn.height / 2);
+
+    // Draw Export button
+    const exportBtn = uiElements.editor.exportButton;
+    ctx.fillStyle = 'rgba(0, 255, 0, 0.8)';
+    ctx.fillRect(exportBtn.x, exportBtn.y, exportBtn.width, exportBtn.height);
+    ctx.fillStyle = 'black';
+    ctx.fillText('Export', exportBtn.x + exportBtn.width / 2, exportBtn.y + exportBtn.height / 2);
+
+
+    ctx.fillStyle = 'white';
+    ctx.font = '24px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Chart Editor', gameCanvas.value.width / 2, 30);
+
+    drawTimeline();
+    drawNotesOnTimeline();
+    drawPlayhead();
+};
+
+const drawTimeline = () => {
+    const timelineY = 100;
+    const pixelsPerSecond = 100 * editorState.zoom;
+    const songDuration = audioElement.value.duration || 100; // seconds
+    const timelineWidth = songDuration * pixelsPerSecond;
+
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, timelineY);
+    ctx.lineTo(gameCanvas.value.width, timelineY);
+    ctx.stroke();
+
+    // Draw time markers
+    for (let i = 0; i < songDuration; i++) {
+        const x = i * pixelsPerSecond - editorState.scrollX;
+        ctx.fillStyle = '#888';
+        ctx.fillRect(x, timelineY - 10, 1, 20);
+        ctx.font = '12px sans-serif';
+        ctx.fillText(i, x, timelineY - 15);
+    }
+};
+
+const drawNotesOnTimeline = () => {
+    if (!noteManager || !noteManager.chart) return;
+
+    const timelineY = 100;
+    const pixelsPerSecond = 100 * editorState.zoom;
+
+    noteManager.notes.forEach(note => {
+        const x = (note.time / 1000) * pixelsPerSecond - editorState.scrollX;
+        ctx.fillStyle = note.color;
+
+        switch (note.noteData.type) {
+            case 'hold':
+                const duration = (note.duration / 1000) * pixelsPerSecond;
+                ctx.fillRect(x - 2, timelineY - 20, duration, 40);
+                break;
+            case 'drag':
+                // For simplicity, just draw the start of the drag note
+                ctx.beginPath();
+                ctx.moveTo(x, timelineY - 10);
+                ctx.lineTo(x + 10, timelineY);
+                ctx.lineTo(x, timelineY + 10);
+                ctx.lineTo(x - 10, timelineY);
+                ctx.closePath();
+                ctx.fill();
+                break;
+            default: // tap, flick
+                ctx.beginPath();
+                ctx.arc(x, timelineY, 10, 0, Math.PI * 2);
+                ctx.fill();
+        }
+    });
+};
+
+const drawPlayhead = () => {
+    const timelineY = 100;
+    const pixelsPerSecond = 100 * editorState.zoom;
+    const playheadX = (audioElement.value.currentTime) * pixelsPerSecond - editorState.scrollX;
+
+    ctx.strokeStyle = 'cyan';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(playheadX, timelineY - 30);
+    ctx.lineTo(playheadX, timelineY + 30);
+    ctx.stroke();
+};
+
 
 // --- Input Handlers ---
 let activeSlider = null;
@@ -498,6 +634,16 @@ const handlePress = (event) => {
       gameState.current = 'songSelect';
       break;
     case 'songSelect':
+        // Check for edit button press first
+        const editBtn = uiElements.songSelect.editButton;
+        if (x > editBtn.x && x < editBtn.x + editBtn.width && y > editBtn.y && y < editBtn.y + editBtn.height) {
+            const selectedSong = songLibrary[songSelectState.selectedIndex];
+            noteManager.loadChart(selectedSong.chart);
+            // Don't play music immediately, let the editor control it
+            gameState.current = 'editor';
+            return;
+        }
+
       if (Math.abs(y - gameCanvas.value.height / 2) < CARD_HEIGHT * SELECTED_CARD_SCALE) {
         // Check if the click is on the selected card to start the game
         const selectedCard = songSelectState.cards[songSelectState.selectedIndex];
@@ -585,6 +731,24 @@ const handlePress = (event) => {
             gameState.current = 'songSelect';
         }
         break;
+    case 'editor':
+        const playPauseBtn = uiElements.editor.playPauseButton;
+        const exportBtn = uiElements.editor.exportButton;
+        const timeline = uiElements.editor.timeline;
+
+        if (x > playPauseBtn.x && x < playPauseBtn.x + playPauseBtn.width && y > playPauseBtn.y && y < playPauseBtn.y + playPauseBtn.height) {
+            if (audioElement.value.paused) {
+                audioElement.value.play();
+            } else {
+                audioElement.value.pause();
+            }
+        } else if (x > exportBtn.x && x < exportBtn.x + exportBtn.width && y > exportBtn.y && y < exportBtn.y + exportBtn.height) {
+            exportChart();
+        } else if (y > timeline.y - timeline.height / 2 && y < timeline.y + timeline.height / 2) {
+            editorState.isScrubbing = true;
+            updatePlayheadFromScrub(x);
+        }
+        break;
   }
 };
 
@@ -593,7 +757,9 @@ const handleMove = (event) => {
     const rect = gameCanvas.value.getBoundingClientRect();
     const x = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
 
-    if (gameState.current === 'songSelect' && songSelectState.isDragging) {
+    if (gameState.current === 'editor' && editorState.isScrubbing) {
+        updatePlayheadFromScrub(x);
+    } else if (gameState.current === 'songSelect' && songSelectState.isDragging) {
         songSelectState.targetScrollX = x - songSelectState.dragStartX;
     } else if (gameState.current === 'settings' && activeSlider) {
         updateSlider(x);
@@ -601,6 +767,33 @@ const handleMove = (event) => {
         const relativeX = x - judgementLine.x;
         noteManager.checkDragUpdate(relativeX);
     }
+};
+
+const updatePlayheadFromScrub = (x) => {
+    const pixelsPerSecond = 100 * editorState.zoom;
+    const timeInSeconds = (x + editorState.scrollX) / pixelsPerSecond;
+    audioElement.value.currentTime = Math.max(0, Math.min(audioElement.value.duration, timeInSeconds));
+};
+
+const exportChart = () => {
+    if (!noteManager || !noteManager.chart) return;
+
+    const chartData = {
+        notes: noteManager.notes.map(note => note.noteData),
+        lineEvents: judgementLine.events,
+    };
+
+    const jsonString = JSON.stringify(chartData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${songLibrary[songSelectState.selectedIndex].title.replace(' ', '_')}_chart.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 };
 
 const updateSlider = (x) => {
@@ -618,6 +811,8 @@ const handleRelease = (event) => {
     noteManager.checkDragEnd();
   } else if (gameState.current === 'songSelect') {
     songSelectState.isDragging = false;
+  } else if (gameState.current === 'editor') {
+    editorState.isScrubbing = false;
   }
   if (activeSlider) {
       activeSlider = null;
@@ -639,6 +834,7 @@ const gameLoop = () => {
     case 'paused': /* No updates needed */ break;
     case 'settings': /* No updates needed */ break;
     case 'results': /* No updates needed */ break;
+    case 'editor': updateEditor(); break;
   }
 
   // Clear canvas and draw based on state
@@ -653,6 +849,7 @@ const gameLoop = () => {
         break;
     case 'settings': drawSettings(); break;
     case 'results': drawResults(); break;
+    case 'editor': drawEditor(); break;
   }
 
   requestAnimationFrame(gameLoop);

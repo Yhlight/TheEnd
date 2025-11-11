@@ -35,33 +35,31 @@ export class NoteManager {
     this.activeDragNote = null;
     this.nextNoteIndex = 0;
 
-    if (newChart && newChart.lineEvents) {
-      this.judgementLine.loadEvents(newChart.lineEvents);
-    } else {
-      this.judgementLine.loadEvents([]); // Clear events if the new chart has none
+    if (newChart) {
+        // Instantiate all notes at once for the editor
+        this.notes = newChart.notes.map(noteData => {
+            const judgementLineY = this.judgementLine.y;
+            switch (noteData.type) {
+                case 'hold': return new HoldNote(this.canvas, 0, judgementLineY, this.scrollTime, noteData);
+                case 'flick': return new FlickNote(this.canvas, 0, judgementLineY, this.scrollTime, noteData);
+                case 'drag': return new DragNote(this.canvas, 0, judgementLineY, this.scrollTime, noteData);
+                default: return new TapNote(this.canvas, 0, judgementLineY, this.scrollTime, noteData);
+            }
+        });
+
+        if (newChart.lineEvents) {
+            this.judgementLine.loadEvents(newChart.lineEvents);
+        } else {
+            this.judgementLine.loadEvents([]);
+        }
     }
   }
 
   update(gameTime) {
     if (!this.chart) return;
 
-    while (
-      this.nextNoteIndex < this.chart.notes.length &&
-      gameTime >= (this.chart.notes[this.nextNoteIndex].time - this.scrollTime)
-    ) {
-      const noteData = this.chart.notes[this.nextNoteIndex];
-      let newNote = null;
-      const judgementLineY = this.judgementLine.y;
-      switch (noteData.type) {
-        case 'hold': newNote = new HoldNote(this.canvas, 0, judgementLineY, this.scrollTime, noteData); break;
-        case 'flick': newNote = new FlickNote(this.canvas, 0, judgementLineY, this.scrollTime, noteData); break;
-        case 'drag': newNote = new DragNote(this.canvas, 0, judgementLineY, this.scrollTime, noteData); break;
-        default: newNote = new TapNote(this.canvas, 0, judgementLineY, this.scrollTime, noteData); break;
-      }
-      if(newNote) this.notes.push(newNote);
-      this.nextNoteIndex++;
-    }
-
+    // The note spawning logic is removed as notes are pre-loaded.
+    // We just need to update their positions.
     for (const note of this.notes) {
       note.update(gameTime);
       const missThreshold = this.judgementLine.y + 100;
