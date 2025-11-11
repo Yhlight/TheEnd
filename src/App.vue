@@ -1,14 +1,14 @@
 <template>
-  <VisualPrototype />
+  <GameScreen />
 </template>
 
 <script>
-import VisualPrototype from './components/VisualPrototype.vue';
+import GameScreen from './components/GameScreen.vue';
 
 export default {
   name: 'App',
   components: {
-    VisualPrototype
+    GameScreen
   }
 };
 </script>
