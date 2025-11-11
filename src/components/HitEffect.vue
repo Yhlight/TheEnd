@@ -1,6 +1,6 @@
 <template>
   <div class="hit-effect" :style="{ left: x + '%', top: y + '%' }">
-    <div v-for="i in 5" :key="i" class="particle" :style="particleStyle(i)"></div>
+    <div v-for="i in particleCount" :key="i" class="particle" :class="judgment" :style="particleStyle(i)"></div>
   </div>
 </template>
 
@@ -10,19 +10,27 @@ export default {
   props: {
     x: { type: Number, required: true },
     y: { type: Number, required: true },
+    judgment: {
+      type: String,
+      default: 'good', // 'good' or 'perfect'
+    },
+  },
+  computed: {
+    particleCount() {
+      return this.judgment === 'perfect' ? 8 : 5;
+    },
   },
   methods: {
     particleStyle(i) {
-      // Give each particle a random direction and animation delay
       const angle = Math.random() * 360;
       const distance = 50 + Math.random() * 50;
       return {
         '--angle': `${angle}deg`,
         '--distance': `${distance}px`,
-        'animation-delay': `${i * 0.02}s`
+        'animation-delay': `${i * 0.02}s`,
       };
-    }
-  }
+    },
+  },
 };
 </script>
 
@@ -30,6 +38,7 @@ export default {
 .hit-effect {
   position: absolute;
   transform: translate(-50%, -50%);
+  pointer-events: none; /* Prevent effects from capturing clicks */
 }
 
 .particle {
@@ -38,8 +47,15 @@ export default {
   height: 15px;
   background-color: transparent;
   border: 2px solid #fff;
-  box-shadow: 0 0 10px #fff, 0 0 15px #ff00ff;
   animation: shatter 0.5s ease-out forwards;
+}
+
+.particle.good {
+  box-shadow: 0 0 10px #fff, 0 0 15px #ff00ff;
+}
+
+.particle.perfect {
+  box-shadow: 0 0 15px #fff, 0 0 25px #00ffff, 0 0 35px #00ffff;
 }
 
 @keyframes shatter {

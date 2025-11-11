@@ -5,6 +5,13 @@
     { "id": 2, "type": "tap", "time": 2000, "x": 80 },
     { "id": 3, "type": "swipe", "time": 3000, "x": 50 },
     { "id": 4, "type": "hold", "time": 4000, "x": 30 },
-    { "id": 5, "type": "catch", "time": 5000, "x": 70 }
+    { "id": 5, "type": "catch", "time": 5000, "x": 70 },
+    { "id": 6, "type": "tap", "time": 6000, "x": 50 }
+  ],
+  "events": [
+    { "time": 0,    "y": 85, "rotation": 0 },
+    { "time": 2000, "y": 70, "rotation": 0 },
+    { "time": 4000, "y": 70, "rotation": 15 },
+    { "time": 6000, "y": 85, "rotation": 0 }
   ]
 }
