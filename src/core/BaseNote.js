@@ -10,18 +10,15 @@ export class BaseNote {
     this.width = 100;
     this.height = 30;
     this.color = '#FFFFFF';
-    this.recalculateSpeed(scrollTime, judgementLineY);
-    const timeToFall = scrollTime / 1000;
-    this.y = -(this.speed * 60 * timeToFall);
-    this.isMissed = false;
-    this.fadeDuration = 20;
-    this.fadeTimer = 0;
-  }
 
-  recalculateSpeed(scrollTime, judgementLineY) {
-    const timeToFall = scrollTime / 1000;
-    const pixelsPerSecond = judgementLineY / timeToFall;
-    this.speed = pixelsPerSecond / 60;
+    // Store properties needed for time-based updates
+    this.scrollTime = scrollTime;
+    this.judgementLineY = judgementLineY;
+    this.y = 0; // Initial y will be calculated in update
+
+    this.isMissed = false;
+    this.fadeDuration = 20; // frames
+    this.fadeTimer = 0;
   }
 
   markAsMissed() {
@@ -31,13 +28,19 @@ export class BaseNote {
     }
   }
 
-  update() {
+  update(gameTime) {
     if (this.isMissed) {
       if (this.fadeTimer > 0) {
         this.fadeTimer--;
       }
     } else {
-      this.y += this.speed;
+      // Time-based position calculation
+      const timeUntilHit = this.time - gameTime;
+      // Progress: 0 when note is spawning, 1 when note should be at the judgement line
+      const progress = 1 - (timeUntilHit / this.scrollTime);
+
+      // Notes start appearing from the top (y=0)
+      this.y = this.judgementLineY * progress;
     }
   }
 

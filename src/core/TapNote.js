@@ -4,16 +4,20 @@ import { BaseNote } from './BaseNote.js';
 export class TapNote extends BaseNote {
   constructor(canvas, x, judgementLineY, scrollTime, noteData) {
     super(canvas, x, judgementLineY, scrollTime, noteData);
+    this.judgementLineY = judgementLineY; // Store this for distance calculation
     this.approachAnimationProgress = 0;
     this.approachThreshold = 200;
   }
 
-  update() {
-    super.update();
+  update(gameTime) {
+    super.update(gameTime); // This now correctly updates this.y based on time
     if (!this.isMissed) {
-      const distance = -this.y;
-      if (distance < this.approachThreshold) {
+      // Approach animation is based on distance to judgement line, which is now derived from time
+      const distance = this.judgementLineY - this.y;
+      if (distance < this.approachThreshold && distance > 0) {
         this.approachAnimationProgress = 1 - (distance / this.approachThreshold);
+      } else {
+        this.approachAnimationProgress = 0;
       }
     }
   }

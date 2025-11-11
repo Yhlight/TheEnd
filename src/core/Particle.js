@@ -5,6 +5,7 @@ export class Particle {
     this.x = x;
     this.y = y;
     this.color = color;
+    this.shape = Math.random() > 0.5 ? 'square' : 'triangle';
 
     // Give particles a more powerful initial velocity burst outwards
     const angle = Math.random() * Math.PI * 2;
@@ -56,7 +57,16 @@ export class Particle {
     ctx.shadowBlur = 5;
 
     // Draw the particle centered at (0, 0) because of the translation
-    ctx.fillRect(-currentSize / 2, -currentSize / 2, currentSize, currentSize);
+    if (this.shape === 'square') {
+      ctx.fillRect(-currentSize / 2, -currentSize / 2, currentSize, currentSize);
+    } else { // triangle
+      ctx.beginPath();
+      ctx.moveTo(0, -currentSize / 2);
+      ctx.lineTo(currentSize / 2, currentSize / 2);
+      ctx.lineTo(-currentSize / 2, currentSize / 2);
+      ctx.closePath();
+      ctx.fill();
+    }
 
     ctx.restore();
   }

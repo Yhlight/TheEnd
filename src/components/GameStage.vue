@@ -46,10 +46,19 @@ const initializeGame = () => {
 
   judgementLine = new JudgementLine(gameCanvas.value);
   scoreManager = new ScoreManager();
-  // Pass the judgementLine object directly to the NoteManager
-  noteManager = new NoteManager(gameCanvas.value, testChart, scoreManager, judgementLine);
   effectManager = new EffectManager();
   audioManager = new AudioManager();
+  dynamicBackground = new DynamicBackground(gameCanvas.value);
+
+  // Pass all manager dependencies to the NoteManager
+  noteManager = new NoteManager(
+    gameCanvas.value,
+    testChart,
+    scoreManager,
+    judgementLine,
+    audioManager,
+    effectManager
+  );
   dynamicBackground = new DynamicBackground(gameCanvas.value);
 
   gameCanvas.value.addEventListener('mousedown', handleInput);
@@ -74,16 +83,24 @@ onMounted(initializeGame);
 const handleInput = (event) => {
   event.preventDefault();
   if (!isPlaying.value) return;
+  const gameTime = audioElement.value.currentTime * 1000;
 
   if (noteManager && effectManager && scoreManager && audioManager) {
-    const hitNote = noteManager.checkHit(); // No longer needs judgementLineY
-    if (hitNote) {
-      scoreManager.onHit();
-      effectManager.createExplosion(hitNote.x, hitNote.y, hitNote.color);
+    const hitResult = noteManager.checkTapHit(gameTime);
+    if (hitResult) {
+      const { note, judgement } = hitResult;
+      scoreManager.onHit(judgement);
+      effectManager.createExplosion(note.x, judgementLine.y, note.color);
+      effectManager.createJudgementText(note.x, judgementLine.y - 50, judgement, note.color);
       audioManager.playHitSound();
-      judgementLine.flash(); // Trigger the flash effect
+      judgementLine.flash(note.color); // Trigger the flash effect
+
+      // Also trigger the background grid effect
+      dynamicBackground.triggerEffect();
+
     } else {
-      scoreManager.onMiss();
+      // This is a tap on an empty space, which could be a miss or just nothing.
+      // The miss logic is handled by notes passing the judgement line in update().
     }
   }
 };
@@ -92,8 +109,8 @@ const update = () => {
   if (!isPlaying.value || !audioElement.value) return;
   const gameTime = audioElement.value.currentTime * 1000;
 
-  if (judgementLine) judgementLine.update();
-  if (noteManager) noteManager.update(gameTime); // No longer needs judgementLineY
+  if (judgementLine) judgementLine.update(gameTime);
+  if (noteManager) noteManager.update(gameTime);
   if (effectManager) effectManager.update();
   if (dynamicBackground) dynamicBackground.update();
 };
