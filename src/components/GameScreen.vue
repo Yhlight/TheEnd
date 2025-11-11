@@ -15,6 +15,7 @@
         <h2>Paused</h2>
         <button @click.stop="togglePause">Resume</button>
         <button @click.stop="showSettings = true">Settings</button>
+        <button @click.stop="$emit('exit')">Exit to Menu</button>
       </div>
       <settings-menu
         v-if="showSettings"
@@ -23,11 +24,13 @@
       />
     </div>
 
-    <div v-if="!isPlaying" class="play-button-container">
-      <button @click.stop="startGame" :disabled="!chartLoaded">
-        {{ chartLoaded ? 'Play' : 'Loading...' }}
-      </button>
+    <div v-if="!isPlaying && !chartLoaded" class="play-button-container">
+      <p>Loading Chart...</p>
     </div>
+     <div v-if="!isPlaying && chartLoaded" class="play-button-container">
+      <button @click.stop="startGame">Play</button>
+    </div>
+
     <div class="notes-container">
       <geometric-note
         v-for="note in visibleNotes"
@@ -66,6 +69,13 @@ let effectIdCounter = 0;
 export default {
   name: 'GameScreen',
   components: { GeometricNote, JudgmentLine, HitEffect, HUD, ProgressBar, SettingsMenu },
+  props: {
+    chartUrl: {
+      type: String,
+      required: true,
+    },
+  },
+  emits: ['exit'],
   data() {
     return {
       chart: null,
@@ -90,6 +100,7 @@ export default {
   },
   mounted() {
     this.viewportHeight = window.innerHeight;
+    this.loadChart();
   },
   computed: {
     visibleNotes() {
@@ -102,8 +113,10 @@ export default {
   },
   methods: {
     async loadChart() {
+      if (!this.chartUrl) return;
+      this.chartLoaded = false;
       try {
-        const response = await fetch('/charts/sample.json');
+        const response = await fetch(this.chartUrl);
         this.chart = await response.json();
         this.notes = this.chart.notes.map(note => ({ ...note, judged: false, active: false, holdProgress: 0 }));
         if (this.chart.events && this.chart.events.length > 0) {
@@ -111,7 +124,6 @@ export default {
           this.judgmentLineRotation = this.chart.events[0].rotation;
         }
         this.$refs.audioPlayer.src = this.chart.audioUrl;
-        this.chartLoaded = true;
       } catch (error) {
         console.error("Failed to load chart:", error);
       }
@@ -119,6 +131,7 @@ export default {
     onSongLoaded() {
       if (this.$refs.audioPlayer) {
         this.songDuration = this.$refs.audioPlayer.duration * 1000;
+        this.chartLoaded = true;
       }
     },
     startGame() {
@@ -127,6 +140,8 @@ export default {
       this.score = 0;
       this.combo = 0;
       this.activeHolds = {};
+      this.isPaused = false;
+      this.showSettings = false;
       this.notes.forEach(note => {
         note.judged = false;
         note.active = false;
@@ -137,7 +152,7 @@ export default {
       requestAnimationFrame(this.gameLoop);
     },
     handleInteractionStart(event) {
-      if (!this.isPlaying) return;
+      if (!this.isPlaying || this.isPaused) return;
       this.isDragging = true;
 
       let closestNote = null;
@@ -191,7 +206,7 @@ export default {
       }
     },
     handleInteractionMove(event) {
-      if (!this.isPlaying || !this.isDragging) return;
+      if (!this.isPlaying || this.isPaused || !this.isDragging) return;
 
       this.notes.forEach(note => {
         if ((note.type === 'swipe' || note.type === 'catch') && !note.judged) {
@@ -219,6 +234,7 @@ export default {
       if (this.isPaused) {
         this.$refs.audioPlayer.pause();
       } else {
+        this.showSettings = false; // Close settings on resume
         this.$refs.audioPlayer.play();
         requestAnimationFrame(this.gameLoop);
       }
@@ -252,7 +268,7 @@ export default {
       this.activeEffects.push(newEffect);
       setTimeout(() => {
         this.activeEffects = this.activeEffects.filter(e => e.id !== newEffect.id);
-      }, 500);
+      }, 1000);
     },
     lerp(start, end, progress) {
       return start + (end - start) * progress;
@@ -288,40 +304,30 @@ export default {
     },
     gameLoop() {
       if (!this.isPlaying || this.isPaused) return;
-
       this.songTime = this.$refs.audioPlayer.currentTime * 1000;
-
-      // Update active holds
       for (const pointerId in this.activeHolds) {
         const note = this.activeHolds[pointerId];
         const holdEndTime = note.time + note.duration;
 
         if (this.songTime >= holdEndTime) {
-          // Hold completed successfully
           note.active = false;
           note.judged = true;
-          this.score += 200; // Bonus for completing the hold
+          this.score += 200;
           this.combo++;
           this.spawnHitEffect(note, 'perfect');
           delete this.activeHolds[pointerId];
         } else {
-          // Update visual progress
           const progress = (this.songTime - note.time) / note.duration;
           note.holdProgress = Math.max(0, Math.min(1, progress));
         }
       }
-
-      // Check for missed notes
       this.notes.forEach(note => {
         if (!note.judged && !note.active && (this.songTime > note.time + TIMING_WINDOWS.miss)) {
-          note.judged = true; // Mark as judged to remove it
-          this.combo = 0; // Reset combo on miss
+          note.judged = true;
+          this.combo = 0;
         }
       });
-
       this.updateJudgmentLine();
-
-      // Calculate note positions
       this.notes.forEach(note => {
         const timeUntilHit = note.time - this.songTime;
         const progress = 1 - (timeUntilHit / this.lookaheadTime);
@@ -336,19 +342,16 @@ export default {
 
       if (this.songTime >= this.songDuration && this.songDuration > 0) {
         this.isPlaying = false;
+        this.$emit('exit');
       } else {
         requestAnimationFrame(this.gameLoop);
       }
     }
   },
-  created() {
-    this.loadChart();
-  }
 };
 </script>
 
 <style scoped>
-/* Most styles are unchanged */
 .game-screen {
   width: 100vw;
   height: 100vh;
@@ -361,13 +364,53 @@ export default {
   user-select: none;
 }
 .grid-background {
-  /* Style for the background */
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-image:
+    linear-gradient(rgba(128, 0, 128, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(128, 0, 128, 0.1) 1px, transparent 1px);
+  background-size: 50px 50px;
+  animation: bg-scroll 10s linear infinite;
 }
+
+@keyframes bg-scroll {
+  0% { background-position: 0 0; }
+  100% { background-position: 50px 50px; }
+}
+
 .play-button-container {
-  /* Style for the play button */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 10;
+  color: #fff;
 }
+.play-button-container button {
+  padding: 15px 30px;
+  font-size: 24px;
+  background: rgba(0,0,0,0.4);
+  color: white;
+  border: 2px solid white;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0 0 15px #fff, 0 0 25px #00ffff;
+  transition: all 0.2s;
+}
+.play-button-container button:hover {
+  box-shadow: 0 0 25px #fff, 0 0 45px #00ffff;
+}
+
 .notes-container {
-  /* Style for the notes container */
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5;
 }
 
 .pause-overlay {
