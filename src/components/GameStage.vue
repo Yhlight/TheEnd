@@ -80,6 +80,134 @@ const startGame = () => {
 
 onMounted(initializeGame);
 
+// Data structure for drawing stylized numbers (5x7 matrix)
+const NUMBER_MAP = {
+  '0': [
+    " XXX ",
+    "X   X",
+    "X   X",
+    "X   X",
+    "X   X",
+    "X   X",
+    " XXX ",
+  ],
+  '1': [
+    "  X  ",
+    " XX  ",
+    "  X  ",
+    "  X  ",
+    "  X  ",
+    "  X  ",
+    " XXX ",
+  ],
+  '2': [
+    " XXX ",
+    "X   X",
+    "    X",
+    "   X ",
+    "  X  ",
+    " X   ",
+    "XXXXX",
+  ],
+  '3': [
+    " XXX ",
+    "X   X",
+    "    X",
+    " XXX ",
+    "    X",
+    "X   X",
+    " XXX ",
+  ],
+  '4': [
+    "X   X",
+    "X   X",
+    "X   X",
+    "XXXXX",
+    "    X",
+    "    X",
+    "    X",
+  ],
+  '5': [
+    "XXXXX",
+    "X    ",
+    "X    ",
+    "XXXX ",
+    "    X",
+    "X   X",
+    " XXX ",
+  ],
+  '6': [
+    " XXX ",
+    "X   X",
+    "X    ",
+    "XXXX ",
+    "X   X",
+    "X   X",
+    " XXX ",
+  ],
+  '7': [
+    "XXXXX",
+    "X   X",
+    "    X",
+    "   X ",
+    "  X  ",
+    "  X  ",
+    "  X  ",
+  ],
+  '8': [
+    " XXX ",
+    "X   X",
+    "X   X",
+    " XXX ",
+    "X   X",
+    "X   X",
+    " XXX ",
+  ],
+  '9': [
+    " XXX ",
+    "X   X",
+    "X   X",
+    " XXXX",
+    "    X",
+    "X   X",
+    " XXX ",
+  ],
+};
+
+/**
+ * Draws a number on the canvas using a stylized square matrix.
+ * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
+ * @param {string} text - The string of numbers to draw.
+ * @param {number} x - The x-coordinate of the top-right corner of the text.
+ * @param {number} y - The y-coordinate of the top-right corner of the text.
+ * @param {number} squareSize - The size of each square pixel.
+ * @param {string} color - The color of the squares.
+ */
+const drawStylizedNumber = (ctx, text, x, y, squareSize, color) => {
+  const textWidth = text.length * 5 * squareSize + (text.length - 1) * squareSize;
+  let currentX = x - textWidth;
+
+  for (const char of text) {
+    const matrix = NUMBER_MAP[char];
+    if (!matrix) continue;
+
+    for (let row = 0; row < matrix.length; row++) {
+      for (let col = 0; col < matrix[row].length; col++) {
+        if (matrix[row][col] === 'X') {
+          ctx.fillStyle = color;
+          ctx.fillRect(
+            currentX + col * squareSize,
+            y + row * squareSize,
+            squareSize,
+            squareSize
+          );
+        }
+      }
+    }
+    currentX += 6 * squareSize; // 5 columns for the char + 1 for spacing
+  }
+};
+
 const handleInput = (event) => {
   event.preventDefault();
   if (!isPlaying.value) return;
@@ -135,15 +263,15 @@ const draw = () => {
   if (effectManager) effectManager.draw(ctx);
 
   if (scoreManager) {
-    ctx.fillStyle = 'white';
-    ctx.font = '24px Arial';
-    ctx.textAlign = 'right';
-    ctx.fillText(`Score: ${scoreManager.getScore()}`, gameCanvas.value.width - 20, 40);
+    // Draw Score
+    drawStylizedNumber(ctx, scoreManager.getScore().toString(), gameCanvas.value.width - 20, 20, 4, 'white');
 
+    // Draw Combo
     if (scoreManager.getCombo() > 1) {
-      ctx.font = '32px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(`${scoreManager.getCombo()}`, gameCanvas.value.width / 2, gameCanvas.value.height / 2);
+      const comboText = scoreManager.getCombo().toString();
+      const textWidth = comboText.length * 5 * 8 + (comboText.length - 1) * 8;
+      const x = (gameCanvas.value.width / 2) + (textWidth / 2);
+      drawStylizedNumber(ctx, comboText, x, gameCanvas.value.height * 0.4, 8, 'white');
     }
   }
 };
