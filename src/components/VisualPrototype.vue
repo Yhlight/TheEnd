@@ -2,22 +2,67 @@
   <div class="visual-prototype">
     <div class="grid-background"></div>
     <div class="notes-container">
-      <!-- Displaying each note type for visual testing -->
-      <geometric-note note-type="tap" style="top: 20%; left: 20%;" />
-      <geometric-note note-type="hold" style="top: 40%; left: 35%;" />
-      <geometric-note note-type="swipe" style="top: 60%; left: 50%;" />
-      <geometric-note note-type="catch" style="top: 80%; left: 65%;" />
+      <!-- Dynamically rendering notes based on component state -->
+      <geometric-note
+        v-for="note in notes"
+        :key="note.id"
+        :note-type="note.type"
+        :style="{ top: note.y + '%', left: note.x + '%' }"
+      />
     </div>
+    <judgment-line :style="{ top: judgmentLinePosition + '%' }" />
   </div>
 </template>
 
 <script>
 import GeometricNote from './GeometricNote.vue';
+import JudgmentLine from './JudgmentLine.vue';
 
 export default {
   name: 'VisualPrototype',
   components: {
-    GeometricNote
+    GeometricNote,
+    JudgmentLine
+  },
+  data() {
+    return {
+      notes: [
+        // Start notes above the screen
+        { id: 1, type: 'tap', x: 20, y: -10 },
+        { id: 2, type: 'hold', x: 35, y: -40 },
+        { id: 3, type: 'swipe', x: 50, y: -70 },
+        { id: 4, type: 'catch', x: 65, y: -100 }
+      ],
+      judgmentLinePosition: 85, // Positioned at 85% from the top
+      lastFrameTime: null,
+      fallSpeed: 15 // % of screen height per second
+    };
+  },
+  methods: {
+    gameLoop(currentTime) {
+      if (!this.lastFrameTime) {
+        this.lastFrameTime = currentTime;
+      }
+      // Calculate time elapsed since the last frame in seconds
+      const deltaTime = (currentTime - this.lastFrameTime) / 1000;
+
+      // Update positions of all notes
+      this.notes.forEach(note => {
+        note.y += this.fallSpeed * deltaTime;
+        // If a note goes off the bottom, reset it to the top
+        if (note.y > 110) {
+          note.y = -10;
+        }
+      });
+
+      this.lastFrameTime = currentTime;
+      // Request the next frame to create the loop
+      requestAnimationFrame(this.gameLoop);
+    }
+  },
+  mounted() {
+    // Start the game loop as soon as the component is mounted
+    this.gameLoop();
   }
 };
 </script>
