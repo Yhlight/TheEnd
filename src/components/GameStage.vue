@@ -1,18 +1,16 @@
 <template>
   <div class="game-container">
     <canvas ref="gameCanvas" class="game-canvas"></canvas>
-    <div v-if="!isPlaying" class="start-overlay" @click="startGame">
-      <h1>Click to Start</h1>
-    </div>
+    <!-- The start overlay is now controlled by the 'title' game state -->
     <audio ref="audioElement" src="/song.mp3" style="display: none;"></audio>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, reactive } from 'vue';
 import { JudgementLine } from '../core/JudgementLine.js';
 import { NoteManager } from '../core/NoteManager.js';
-import { testChart } from '../core/Chart.js';
+import { songLibrary } from '../core/ChartData.js';
 import { EffectManager } from '../core/EffectManager.js';
 import { ScoreManager } from '../core/ScoreManager.js';
 import { AudioManager } from '../core/AudioManager.js';
@@ -22,8 +20,10 @@ import { DynamicBackground } from '../core/DynamicBackground.js';
 const gameCanvas = ref(null);
 const audioElement = ref(null);
 
-// Game state
-const isPlaying = ref(false);
+// Game state management
+const gameState = reactive({
+  current: 'title', // 'title', 'songSelect', 'playing', 'results', 'settings'
+});
 let ctx = null;
 let judgementLine = null;
 let noteManager = null;
@@ -32,6 +32,16 @@ let scoreManager = null;
 let audioManager = null;
 let dynamicBackground = null;
 
+// Song select state
+const songSelectState = reactive({
+  selectedIndex: 0,
+  cards: [],
+});
+
+const CARD_WIDTH = 400;
+const CARD_HEIGHT = 100;
+const CARD_MARGIN = 20;
+
 const initializeGame = () => {
   if (!gameCanvas.value) return;
   ctx = gameCanvas.value.getContext('2d');
@@ -39,6 +49,8 @@ const initializeGame = () => {
   const resizeCanvas = () => {
     gameCanvas.value.width = window.innerWidth;
     gameCanvas.value.height = window.innerHeight;
+    // Recalculate card positions on resize
+    calculateCardPositions();
   };
 
   resizeCanvas();
@@ -53,7 +65,7 @@ const initializeGame = () => {
   // Pass all manager dependencies to the NoteManager
   noteManager = new NoteManager(
     gameCanvas.value,
-    testChart,
+    null, // Chart will be loaded on song selection
     scoreManager,
     judgementLine,
     audioManager,
@@ -66,6 +78,8 @@ const initializeGame = () => {
   gameCanvas.value.addEventListener('touchstart', handlePress);
   gameCanvas.value.addEventListener('mouseup', handleRelease);
   gameCanvas.value.addEventListener('touchend', handleRelease);
+  gameCanvas.value.addEventListener('mousemove', handleMove);
+  gameCanvas.value.addEventListener('touchmove', handleMove);
 
 
   console.log('Game initialized.');
@@ -83,6 +97,14 @@ const startGame = () => {
 };
 
 onMounted(initializeGame);
+
+const calculateCardPositions = () => {
+    songSelectState.cards = songLibrary.map((song, index) => {
+        const x = (gameCanvas.value.width - CARD_WIDTH) / 2;
+        const y = (gameCanvas.value.height / 2) - (songLibrary.length * (CARD_HEIGHT + CARD_MARGIN) / 2) + (index * (CARD_HEIGHT + CARD_MARGIN));
+        return { song, x, y, width: CARD_WIDTH, height: CARD_HEIGHT };
+    });
+};
 
 // Data structure for drawing stylized numbers (5x7 matrix)
 const NUMBER_MAP = {
@@ -212,136 +234,180 @@ const drawStylizedNumber = (ctx, text, x, y, squareSize, color) => {
   }
 };
 
-const handlePress = (event) => {
-  event.preventDefault();
-  if (!isPlaying.value) return;
-  const gameTime = audioElement.value.currentTime * 1000;
+// --- Game State Updaters ---
 
-  if (noteManager && effectManager && scoreManager && audioManager) {
-    const hitResult = noteManager.checkTapHit(gameTime);
-    if (hitResult) {
-      const { note, judgement } = hitResult;
-      scoreManager.onHit(judgement);
-      effectManager.createExplosion(note.x, judgementLine.y, note.color);
-      effectManager.createJudgementText(note.x, judgementLine.y - 50, judgement, note.color);
-      audioManager.playHitSound();
-      judgementLine.flash(note.color); // Trigger the flash effect
-
-      // Also trigger the background grid effect
-      dynamicBackground.triggerEffect();
-
-    } else {
-      // If no tap note was hit, check for a hold note start
-      const holdResult = noteManager.checkHoldStart(gameTime);
-      if (holdResult) {
-        const { note, judgement } = holdResult;
-        // Provide initial feedback for starting the hold
-        scoreManager.onHit(judgement);
-        effectManager.createJudgementText(note.x, judgementLine.y - 50, judgement, note.color);
-        audioManager.playHitSound(); // Maybe a different sound for holds later
-      }
-    }
-  }
+const updateTitle = () => {
+    dynamicBackground.update();
 };
 
-const handleRelease = (event) => {
-  event.preventDefault();
-  if (!isPlaying.value) return;
-
-  if (noteManager) {
-    noteManager.checkHoldEnd();
-  }
+const updateSongSelect = () => {
+    dynamicBackground.update();
 };
 
-let gameStartTime = null; // For fallback timer
-
-const update = () => {
-  if (!isPlaying.value || !audioElement.value) return;
-
-  // TEMPORARY FALLBACK for headless browser audio issues
+const updatePlaying = () => {
   let gameTime = audioElement.value.currentTime * 1000;
   if (gameTime === 0) {
-    if (gameStartTime === null) {
-      gameStartTime = performance.now();
-    }
+    if (gameStartTime === null) { gameStartTime = performance.now(); }
     gameTime = performance.now() - gameStartTime;
   }
-
-  if (judgementLine) judgementLine.update(gameTime);
-  if (noteManager) noteManager.update(gameTime);
-  if (effectManager) effectManager.update();
-  if (dynamicBackground) dynamicBackground.update();
-
-  // TEMPORARY AUTOPLAY LOGIC FOR VERIFICATION
-  if (noteManager) {
-    const chart = testChart;
-    for (const noteData of chart.notes) {
-      const noteTime = noteData.time;
-      if (gameTime >= noteTime && !(window.autoplayHitNotes && window.autoplayHitNotes[noteTime])) {
-        if (noteData.type === 'hold') {
-            const holdResult = noteManager.checkHoldStart(noteTime);
-            if(holdResult) {
-                const { note, judgement } = holdResult;
-                scoreManager.onHit(judgement);
-                effectManager.createJudgementText(note.x, judgementLine.y - 50, judgement, note.color);
-                audioManager.playHitSound();
-            }
-        } else { // Handles both 'tap' and 'flick'
-            const hitResult = noteManager.checkTapHit(noteTime);
-            if (hitResult) {
-              const { note, judgement } = hitResult;
-              scoreManager.onHit(judgement);
-              effectManager.createExplosion(note.x, judgementLine.y, note.color);
-              effectManager.createJudgementText(note.x, judgementLine.y - 50, judgement, note.color);
-              audioManager.playHitSound();
-              judgementLine.flash(note.color);
-              dynamicBackground.triggerEffect();
-            }
-        }
-        if (!window.autoplayHitNotes) window.autoplayHitNotes = {};
-        window.autoplayHitNotes[noteTime] = true;
-      }
-    }
-  }
+  judgementLine.update(gameTime);
+  noteManager.update(gameTime);
+  effectManager.update();
+  dynamicBackground.update();
 };
 
-const draw = () => {
-  if (!ctx || !gameCanvas.value) return;
-  ctx.clearRect(0, 0, gameCanvas.value.width, gameCanvas.value.height);
+// --- Game State Drawers ---
 
-  // Draw background first, so it's behind everything else
-  if (dynamicBackground) dynamicBackground.draw(ctx);
+const drawTitle = () => {
+    dynamicBackground.draw(ctx);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(0, 0, gameCanvas.value.width, gameCanvas.value.height);
+    ctx.fillStyle = 'white';
+    ctx.font = '48px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('TheEnd', gameCanvas.value.width / 2, gameCanvas.value.height / 2 - 50);
+    ctx.font = '24px sans-serif';
+    ctx.fillText('Click to Start', gameCanvas.value.width / 2, gameCanvas.value.height / 2 + 20);
+};
 
-  // Draw progress bar
+const drawSongSelect = () => {
+    dynamicBackground.draw(ctx);
+    songSelectState.cards.forEach((card, index) => {
+        if (index === songSelectState.selectedIndex) {
+            ctx.fillStyle = 'rgba(0, 255, 255, 0.7)';
+            ctx.strokeStyle = 'cyan';
+            ctx.lineWidth = 4;
+        } else {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+        }
+        ctx.fillRect(card.x, card.y, card.width, card.height);
+        ctx.strokeRect(card.x, card.y, card.width, card.height);
+
+        ctx.fillStyle = 'white';
+        ctx.font = '32px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(card.song.title, card.x + 20, card.y + 45);
+        ctx.font = '20px sans-serif';
+        ctx.fillText(card.song.artist, card.x + 20, card.y + 75);
+    });
+};
+
+const drawPlaying = () => {
+  dynamicBackground.draw(ctx);
+
   if (audioElement.value && audioElement.value.duration) {
     const progress = audioElement.value.currentTime / audioElement.value.duration;
-    const progressBarWidth = progress * gameCanvas.value.width;
-    ctx.fillStyle = 'rgba(0, 255, 255, 0.5)'; // Semi-transparent cyan
-    ctx.fillRect(0, 0, progressBarWidth, 5); // 5px height at the top
+    ctx.fillStyle = 'rgba(0, 255, 255, 0.5)';
+    ctx.fillRect(0, 0, progress * gameCanvas.value.width, 5);
   }
 
-  if (judgementLine) judgementLine.draw();
-  if (noteManager) noteManager.draw();
-  if (effectManager) effectManager.draw(ctx);
+  judgementLine.draw();
+  noteManager.draw(ctx, judgementLine.x);
+  effectManager.draw(ctx);
 
-  if (scoreManager) {
-    // Draw Score
-    drawStylizedNumber(ctx, scoreManager.getScore().toString(), gameCanvas.value.width - 20, 20, 4, 'white');
-
-    // Draw Combo
-    if (scoreManager.getCombo() > 1) {
+  drawStylizedNumber(ctx, scoreManager.getScore().toString(), gameCanvas.value.width - 20, 20, 4, 'white');
+  if (scoreManager.getCombo() > 1) {
       const comboText = scoreManager.getCombo().toString();
       const textWidth = comboText.length * 5 * 8 + (comboText.length - 1) * 8;
       const x = (gameCanvas.value.width / 2) + (textWidth / 2);
       drawStylizedNumber(ctx, comboText, x, gameCanvas.value.height * 0.4, 8, 'white');
-    }
   }
 };
 
+
+// --- Input Handlers ---
+
+const handlePress = (event) => {
+  event.preventDefault();
+  const rect = gameCanvas.value.getBoundingClientRect();
+  const x = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
+  const y = (event.touches ? event.touches[0].clientY : event.clientY) - rect.top;
+
+  switch (gameState.current) {
+    case 'title':
+      gameState.current = 'songSelect';
+      break;
+    case 'songSelect':
+      songSelectState.cards.forEach((card, index) => {
+        if (x > card.x && x < card.x + card.width && y > card.y && y < card.y + card.height) {
+          songSelectState.selectedIndex = index;
+          const selectedSong = songLibrary[index];
+          noteManager.loadChart(selectedSong.chart);
+          audioElement.value.play().catch(e => console.error("Audio error:", e));
+          gameState.current = 'playing';
+          gameStartTime = null; // Reset fallback timer
+        }
+      });
+      break;
+    case 'playing':
+      const gameTime = audioElement.value.currentTime * 1000;
+      const tapResult = noteManager.checkTapHit(gameTime);
+      if (tapResult) {
+          scoreManager.onHit(tapResult.judgement);
+          effectManager.createExplosion(tapResult.note.x, judgementLine.y, tapResult.note.color);
+          effectManager.createJudgementText(tapResult.note.x, judgementLine.y - 50, tapResult.judgement, tapResult.note.color);
+          audioManager.playHitSound();
+          judgementLine.flash(tapResult.note.color);
+          dynamicBackground.triggerEffect();
+          return;
+      }
+      const holdResult = noteManager.checkHoldStart(gameTime);
+      if (holdResult) {
+          scoreManager.onHit(holdResult.judgement);
+          effectManager.createJudgementText(holdResult.note.x, judgementLine.y - 50, holdResult.judgement, holdResult.note.color);
+          audioManager.playHitSound();
+          return;
+      }
+      const dragResult = noteManager.checkDragStart(gameTime);
+      if (dragResult) {
+          scoreManager.onHit(dragResult.judgement);
+          effectManager.createJudgementText(dragResult.note.x, judgementLine.y - 50, dragResult.judgement, dragResult.note.color);
+          audioManager.playHitSound();
+      }
+      break;
+  }
+};
+
+const handleMove = (event) => {
+  event.preventDefault();
+  if (gameState.current !== 'playing' || !noteManager) return;
+
+  const rect = gameCanvas.value.getBoundingClientRect();
+  const pointerX = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
+  const relativeX = pointerX - judgementLine.x;
+  noteManager.checkDragUpdate(relativeX);
+};
+
+const handleRelease = (event) => {
+  event.preventDefault();
+  if (gameState.current !== 'playing' || !noteManager) return;
+  noteManager.checkHoldEnd();
+  noteManager.checkDragEnd();
+};
+
+let gameStartTime = null;
+
+// --- Main Game Loop ---
 const gameLoop = () => {
-  if (!isPlaying.value) return;
-  update();
-  draw();
+  if (!ctx || !gameCanvas.value) return;
+
+  // Update logic based on state
+  switch (gameState.current) {
+    case 'title': updateTitle(); break;
+    case 'songSelect': updateSongSelect(); break;
+    case 'playing': updatePlaying(); break;
+  }
+
+  // Clear canvas and draw based on state
+  ctx.clearRect(0, 0, gameCanvas.value.width, gameCanvas.value.height);
+  switch (gameState.current) {
+    case 'title': drawTitle(); break;
+    case 'songSelect': drawSongSelect(); break;
+    case 'playing': drawPlaying(); break;
+  }
+
   requestAnimationFrame(gameLoop);
 };
 </script>

@@ -25,5 +25,19 @@ export const testChart = {
 
     // End with a flick
     { time: 7000, x: 0.5, type: 'flick' },
+
+    // Example Drag Note
+    {
+      time: 8000,
+      type: 'drag',
+      duration: 2000,
+      path: [
+        [0, 0.1],      // Start at 8000ms, at 10% of screen width
+        [500, 0.3],    // At 8500ms, move to 30%
+        [1000, 0.7],   // At 9000ms, move to 70%
+        [1500, 0.9],   // At 9500ms, move to 90%
+        [2000, 0.5]    // End at 10000ms, back at 50%
+      ]
+    },
   ]
 };
