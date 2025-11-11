@@ -24,26 +24,19 @@ export default {
   border: 4px solid #fff;
   box-shadow: 0 0 15px #fff, 0 0 25px #ff00ff, inset 0 0 10px #fff;
 }
-
-/* Tap Note - Square */
 .tap {
-  /* Default shape is already a square */
+  /* Default shape */
 }
-
-/* Hold Note - Rectangle */
 .hold {
+  /* Back to a static representation for now */
   height: 160px;
 }
-
-/* Swipe Note - Rhombus */
 .swipe {
   transform: rotate(45deg);
 }
-
-/* Catch Note - Line Segment */
 .catch {
   width: 120px;
-  height: 4px; /* A thin line */
+  height: 4px;
   border: none;
   background-color: #fff;
   box-shadow: 0 0 15px #fff, 0 0 25px #00ffff;

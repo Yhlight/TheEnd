@@ -94,7 +94,7 @@ export default {
       this.isPlaying = true;
       this.score = 0;
       this.combo = 0;
-      this.notes.forEach(note => note.judged = false);
+      this.notes.forEach(note => { note.judged = false; });
       this.$refs.audioPlayer.currentTime = 0;
       this.$refs.audioPlayer.play();
       requestAnimationFrame(this.gameLoop);
@@ -132,9 +132,7 @@ export default {
     },
     triggerLineFlash() {
       this.lineFlashing = true;
-      setTimeout(() => {
-        this.lineFlashing = false;
-      }, 200);
+      setTimeout(() => { this.lineFlashing = false; }, 200);
     },
     spawnHitEffect(note, judgment) {
       const newEffect = {
@@ -154,24 +152,28 @@ export default {
     updateJudgmentLine() {
       const events = this.chart.events;
       if (!events || events.length === 0) return;
-      const currentEventIndex = events.findIndex(e => e.time > this.songTime) - 1;
-      if (currentEventIndex < -1) {
-        const firstEvent = events[0];
-        this.judgmentLinePosition = firstEvent.y;
-        this.judgmentLineRotation = firstEvent.rotation;
+
+      const currentEventIndex = events.findIndex(event => event.time > this.songTime);
+
+      if (currentEventIndex === 0) {
+        this.judgmentLinePosition = events[0].y;
+        this.judgmentLineRotation = events[0].rotation;
         return;
       }
-      if (currentEventIndex === -2) {
+
+      if (currentEventIndex === -1) {
         const lastEvent = events[events.length - 1];
         this.judgmentLinePosition = lastEvent.y;
         this.judgmentLineRotation = lastEvent.rotation;
         return;
       }
-      const prevEvent = events[currentEventIndex];
-      const nextEvent = events[currentEventIndex + 1];
+
+      const prevEvent = events[currentEventIndex - 1];
+      const nextEvent = events[currentEventIndex];
       const eventDuration = nextEvent.time - prevEvent.time;
       const timeSincePrevEvent = this.songTime - prevEvent.time;
       const progress = Math.max(0, Math.min(1, timeSincePrevEvent / eventDuration));
+
       this.judgmentLinePosition = this.lerp(prevEvent.y, nextEvent.y, progress);
       this.judgmentLineRotation = this.lerp(prevEvent.rotation, nextEvent.rotation, progress);
     },
@@ -200,5 +202,5 @@ export default {
 </script>
 
 <style scoped>
-/* No style changes needed here */
+/* Styles are correct */
 </style>
