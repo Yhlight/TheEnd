@@ -37,8 +37,13 @@ export default {
   width: 100%;
   height: 4px;
   background-color: #fff;
-  box-shadow: 0 0 15px #fff, 0 0 25px #ff00ff;
-  transition: box-shadow 0.1s; /* Smooth transitions for the glow */
+  box-shadow:
+    0 0 5px #fff,
+    0 0 10px #fff,
+    0 0 20px #ff00ff,
+    0 0 30px #ff00ff,
+    0 0 40px #ff00ff;
+  transition: box-shadow 0.1s, background-color 0.1s;
 }
 
 .judgment-line.flash {
@@ -47,14 +52,29 @@ export default {
 
 @keyframes flash-anim {
   0% {
-    box-shadow: 0 0 15px #fff, 0 0 25px #ff00ff;
+    box-shadow:
+      0 0 5px #fff,
+      0 0 10px #fff,
+      0 0 20px #ff00ff,
+      0 0 30px #ff00ff,
+      0 0 40px #ff00ff;
   }
   50% {
-    box-shadow: 0 0 30px #fff, 0 0 50px #00ffff;
-    background-color: #aaf;
+    background-color: #ccf;
+    box-shadow:
+      0 0 10px #fff,
+      0 0 20px #fff,
+      0 0 30px #00ffff,
+      0 0 50px #00ffff,
+      0 0 80px #00ffff;
   }
   100% {
-    box-shadow: 0 0 15px #fff, 0 0 25px #ff00ff;
+    box-shadow:
+      0 0 5px #fff,
+      0 0 10px #fff,
+      0 0 20px #ff00ff,
+      0 0 30px #ff00ff,
+      0 0 40px #ff00ff;
   }
 }
 </style>

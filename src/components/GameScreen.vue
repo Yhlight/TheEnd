@@ -4,6 +4,7 @@
     @pointerdown="handleInteractionStart"
     @pointerup="handleInteractionEnd"
     @pointerleave="handleInteractionEnd"
+    @pointermove="handleInteractionMove"
   >
     <div class="grid-background"></div>
     <progress-bar :song-time="songTime" :song-duration="songDuration" v-if="isPlaying" />
@@ -56,6 +57,7 @@ export default {
       notes: [],
       activeEffects: [],
       activeHolds: {},
+      isDragging: false,
       judgmentLinePosition: 85,
       judgmentLineRotation: 0,
       isPlaying: false,
@@ -119,6 +121,7 @@ export default {
     },
     handleInteractionStart(event) {
       if (!this.isPlaying) return;
+      this.isDragging = true;
 
       let closestNote = null;
       let minTimeDiff = Infinity;
@@ -161,14 +164,37 @@ export default {
       }
     },
     handleInteractionEnd(event) {
+      this.isDragging = false;
       const activeHold = this.activeHolds[event.pointerId];
       if (activeHold) {
-        // Premature release, considered a combo break
         activeHold.active = false;
-        activeHold.judged = true; // Mark as judged to remove from screen
-        this.combo = 0; // Penalty for early release
+        activeHold.judged = true;
+        this.combo = 0;
         delete this.activeHolds[event.pointerId];
       }
+    },
+    handleInteractionMove(event) {
+      if (!this.isPlaying || !this.isDragging) return;
+
+      this.notes.forEach(note => {
+        if (note.type === 'swipe' && !note.judged) {
+          const timingError = Math.abs(note.time - this.songTime);
+          if (timingError <= TIMING_WINDOWS.good) {
+            note.judged = true;
+            this.triggerLineFlash();
+            this.playHitSound();
+            if (timingError <= TIMING_WINDOWS.perfect) {
+              this.score += 100;
+              this.combo++;
+              this.spawnHitEffect(note, 'perfect');
+            } else {
+              this.score += 50;
+              this.combo++;
+              this.spawnHitEffect(note, 'good');
+            }
+          }
+        }
+      });
     },
     playHitSound() {
       if (this.$refs.hitSfxPlayer) {

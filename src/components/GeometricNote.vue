@@ -39,7 +39,11 @@ export default {
   height: 80px;
   background-color: rgba(0, 0, 0, 0.5);
   border: 4px solid #fff;
-  box-shadow: 0 0 15px #fff, 0 0 25px #ff00ff, inset 0 0 10px #fff;
+  box-shadow:
+    0 0 5px #fff,
+    0 0 10px #fff,
+    0 0 20px #ff00ff,
+    inset 0 0 10px rgba(255, 255, 255, 0.8);
 }
 .hold {
   border-radius: 10px;
@@ -50,7 +54,7 @@ export default {
   bottom: 0;
   width: 100%;
   background-color: #ff00ff;
-  box-shadow: 0 0 15px #ff00ff;
+  box-shadow: 0 0 15px #ff00ff, 0 0 25px #ff00ff;
   opacity: 0.8;
 }
 .tap {
@@ -58,12 +62,22 @@ export default {
 }
 .swipe {
   transform: rotate(45deg);
+  /* box-shadow doesn't work well with rotated elements, use filter */
+  filter: drop-shadow(0 0 5px #fff) drop-shadow(0 0 15px #ff00ff);
+  /* Reset box-shadow and border for swipe to avoid visual glitches */
+  box-shadow: none;
+  border: 4px solid #fff;
+  background-color: rgba(0, 0, 0, 0.8);
 }
 .catch {
   width: 120px;
   height: 4px;
   border: none;
   background-color: #fff;
-  box-shadow: 0 0 15px #fff, 0 0 25px #00ffff;
+  box-shadow:
+    0 0 5px #fff,
+    0 0 10px #fff,
+    0 0 20px #00ffff,
+    0 0 30px #00ffff;
 }
 </style>
