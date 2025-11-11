@@ -4,50 +4,80 @@ export class JudgementLine {
     this.ctx = canvas.getContext('2d');
     this.y = 0;
 
-    // Flash effect properties
-    this.flashDuration = 10; // Flash lasts for 10 frames
-    this.flashTimer = 0;
-
-    this.update();
+    // Shockwave effect properties
+    this.shockwaves = []; // To hold active shockwave animations
+    this.shockwaveDuration = 30; // Shockwave lasts for 30 frames
   }
 
   update() {
     this.y = this.canvas.height * 0.8;
-    if (this.flashTimer > 0) {
-      this.flashTimer--;
+
+    // Update all active shockwaves
+    for (let i = this.shockwaves.length - 1; i >= 0; i--) {
+      const shockwave = this.shockwaves[i];
+      shockwave.progress += 1 / this.shockwaveDuration;
+      if (shockwave.progress >= 1) {
+        this.shockwaves.splice(i, 1); // Remove completed shockwaves
+      }
     }
   }
 
   /**
-   * Triggers the flash animation.
+   * Triggers the shockwave animation.
+   * @param {string} color - The color of the shockwave, typically from the hit note.
    */
-  flash() {
-    this.flashTimer = this.flashDuration;
+  flash(color = '#FFFFFF') {
+    this.shockwaves.push({
+      progress: 0,
+      color: color
+    });
   }
 
   draw() {
-    const isFlashing = this.flashTimer > 0;
-    const flashProgress = this.flashTimer / this.flashDuration;
+    const ctx = this.ctx;
 
-    this.ctx.beginPath();
-    this.ctx.moveTo(0, this.y);
-    this.ctx.lineTo(this.canvas.width, this.y);
+    // Draw the base judgement line
+    ctx.beginPath();
+    ctx.moveTo(0, this.y);
+    ctx.lineTo(this.canvas.width, this.y);
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 3;
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = '#00FFFF';
+    ctx.stroke();
 
-    // Base style
-    this.ctx.strokeStyle = '#FFFFFF';
-    this.ctx.lineWidth = 3;
-    this.ctx.shadowBlur = 10;
-    this.ctx.shadowColor = '#00FFFF';
+    // Draw all active shockwaves
+    this.shockwaves.forEach(shockwave => {
+      const easeOutQuad = t => t * (2 - t);
+      const easedProgress = easeOutQuad(shockwave.progress);
 
-    // Enhance style when flashing
-    if (isFlashing) {
-      this.ctx.lineWidth = 3 + 4 * flashProgress; // Line gets thicker and then shrinks
-      this.ctx.shadowBlur = 10 + 15 * flashProgress;
-    }
+      const radius = easedProgress * 200; // Max radius of 200px
+      const alpha = 1 - easedProgress;
+      const lineWidth = 5 * (1 - easedProgress);
 
-    this.ctx.stroke();
+      ctx.save();
+      ctx.beginPath();
 
-    // Reset shadow for other elements
-    this.ctx.shadowBlur = 0;
+      // Draw 3 expanding lines for the shockwave effect
+      for (let i = 0; i < 3; i++) {
+        const waveRadius = radius + i * 20; // Stagger the lines
+        ctx.moveTo(0, this.y - waveRadius);
+        ctx.lineTo(this.canvas.width, this.y - waveRadius);
+        ctx.moveTo(0, this.y + waveRadius);
+        ctx.lineTo(this.canvas.width, this.y + waveRadius);
+      }
+
+      ctx.strokeStyle = shockwave.color;
+      ctx.globalAlpha = alpha;
+      ctx.lineWidth = lineWidth;
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = shockwave.color;
+      ctx.stroke();
+      ctx.restore();
+    });
+
+    // Reset shadow and alpha for other elements
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
   }
 }

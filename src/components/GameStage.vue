@@ -107,7 +107,8 @@ const handleInput = (event) => {
           scoreManager.onHit();
           effectManager.createExplosion(hitNote.x, hitNote.y, hitNote.color);
           audioManager.playHitSound();
-          judgementLine.flash();
+          // Pass the note's color to the flash method to create a colored shockwave
+          judgementLine.flash(hitNote.color);
         } else {
           scoreManager.onMiss();
         }
