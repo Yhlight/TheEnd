@@ -15,6 +15,7 @@ import { EffectManager } from '../core/EffectManager.js';
 import { ScoreManager } from '../core/ScoreManager.js';
 import { AudioManager } from '../core/AudioManager.js';
 import { DynamicBackground } from '../core/DynamicBackground.js';
+import { Easing } from '../core/Easing.js';
 
 // Refs for DOM elements
 const gameCanvas = ref(null);
@@ -50,7 +51,14 @@ const uiElements = {
   editor: {
       playPauseButton: { x: 10, y: 10, width: 100, height: 50 },
       exportButton: { x: 120, y: 10, width: 100, height: 50 },
-      timeline: { x: 0, y: 100, width: 0, height: 50 } // Width is dynamic
+      timeline: { x: 0, y: 100, width: 0, height: 50 }, // Width is dynamic
+      noteTypeButtons: {
+          tap: { x: 230, y: 10, width: 60, height: 50 },
+          hold: { x: 300, y: 10, width: 60, height: 50 },
+          flick: { x: 370, y: 10, width: 60, height: 50 },
+          drag: { x: 440, y: 10, width: 60, height: 50 },
+      },
+      deleteModeButton: { x: 510, y: 10, width: 100, height: 50 },
   }
 };
 
@@ -91,6 +99,16 @@ const editorState = reactive({
     scrollY: 0,
     playhead: 0, // In milliseconds
     isScrubbing: false,
+    noteCreationType: 'tap', // 'tap', 'hold', 'flick', 'drag'
+    isDeleteMode: false,
+});
+
+const resultsState = reactive({
+    animationPhase: 'start', // 'start', 'scoring', 'judgements', 'grade', 'done'
+    timer: 0,
+    displayScore: 0,
+    judgementAlpha: [0, 0, 0, 0], // For fade-in effect
+    gradeAlpha: 0,
 });
 
 const initializeGame = () => {
@@ -300,13 +318,62 @@ const updatePlaying = () => {
 
   // Check for song end
   if (audioElement.value && audioElement.value.ended) {
+    // Reset and start animation when transitioning to results
+    Object.assign(resultsState, {
+        animationPhase: 'scoring',
+        timer: 0,
+        displayScore: 0,
+        judgementAlpha: [0, 0, 0, 0],
+        gradeAlpha: 0,
+    });
     gameState.current = 'results';
   }
 };
 
 const updateEditor = () => {
-    // TODO: Implement editor update logic
+    // Follow the playhead
+    const pixelsPerSecond = 100 * editorState.zoom;
+    const playheadX = (audioElement.value.currentTime) * pixelsPerSecond;
+    const screenCenter = gameCanvas.value.width / 2;
+    if (playheadX - editorState.scrollX > screenCenter + 100 || playheadX - editorState.scrollX < screenCenter - 100) {
+        editorState.scrollX = playheadX - screenCenter;
+    }
 };
+
+const updateResults = () => {
+    resultsState.timer += 1/60; // Approximate delta time
+
+    const finalScore = scoreManager.getScore();
+    const scoreRollDuration = 2; // seconds
+
+    if (resultsState.animationPhase === 'scoring') {
+        if (resultsState.timer < scoreRollDuration) {
+            resultsState.displayScore = Math.floor(Easing.easeOutCubic(resultsState.timer / scoreRollDuration) * finalScore);
+        } else {
+            resultsState.displayScore = finalScore;
+            resultsState.animationPhase = 'judgements';
+            resultsState.timer = 0;
+        }
+    } else if (resultsState.animationPhase === 'judgements') {
+        const judgementFadeInDuration = 0.5; // seconds per item
+        const index = Math.floor(resultsState.timer / judgementFadeInDuration);
+        if (index < 4) {
+            resultsState.judgementAlpha[index] = Math.min(1, resultsState.judgementAlpha[index] + 0.1);
+        } else {
+            resultsState.animationPhase = 'grade';
+            resultsState.timer = 0;
+        }
+    } else if (resultsState.animationPhase === 'grade') {
+        const gradeFadeInDuration = 1;
+        if (resultsState.timer < gradeFadeInDuration) {
+            resultsState.gradeAlpha = Easing.easeInQuad(resultsState.timer / gradeFadeInDuration);
+        } else {
+            resultsState.gradeAlpha = 1;
+            resultsState.animationPhase = 'done';
+        }
+    }
+};
+
 
 // --- Game State Drawers ---
 
@@ -477,8 +544,8 @@ const drawResults = () => {
     ctx.textAlign = 'center';
     ctx.fillText('Results', centerX, 80);
 
-    // Score and Combo
-    drawStylizedNumber(ctx, scoreManager.getScore().toString(), centerX + 150, 150, 6, 'white');
+    // Animated Score and static Max Combo
+    drawStylizedNumber(ctx, resultsState.displayScore.toString(), centerX + 150, 150, 6, 'white');
     ctx.font = '24px sans-serif';
     ctx.textAlign = 'right';
     ctx.fillText('Score', centerX - 20, 180);
@@ -487,17 +554,20 @@ const drawResults = () => {
     ctx.textAlign = 'right';
     ctx.fillText('Max Combo', centerX - 20, 240);
 
-    // Judgements
+    // Animated Judgements
     const judgements = scoreManager.getJudgementCounts();
     const judgementYStart = 300;
     Object.entries(judgements).forEach(([key, value], index) => {
+        ctx.save();
+        ctx.globalAlpha = resultsState.judgementAlpha[index];
         ctx.textAlign = 'left';
         ctx.fillText(key, centerX - 150, judgementYStart + index * 40);
         ctx.textAlign = 'right';
         ctx.fillText(value, centerX + 150, judgementYStart + index * 40);
+        ctx.restore();
     });
 
-    // Grade
+    // Animated Grade
     const accuracy = scoreManager.getAccuracy();
     let grade = 'D';
     if (accuracy >= 98) grade = 'S';
@@ -505,18 +575,24 @@ const drawResults = () => {
     else if (accuracy >= 90) grade = 'B';
     else if (accuracy >= 80) grade = 'C';
 
-    ctx.font = '80px sans-serif';
+    ctx.save();
+    ctx.globalAlpha = resultsState.gradeAlpha;
+    const gradeScale = 1 + (1 - resultsState.gradeAlpha) * 0.5; // Pop-in effect
+    ctx.font = `${80 * gradeScale}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.fillText(grade, centerX, gameCanvas.value.height - 200);
+    ctx.restore();
 
-    // Back button
-    const backBtn = uiElements.results.backButton;
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-    ctx.fillRect(backBtn.x, backBtn.y, backBtn.width, backBtn.height);
-    ctx.fillStyle = 'black';
-    ctx.font = '24px sans-serif';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('Back to Song Select', backBtn.x + backBtn.width / 2, backBtn.y + backBtn.height / 2);
+    // Back button (only appears when animation is done)
+    if (resultsState.animationPhase === 'done') {
+        const backBtn = uiElements.results.backButton;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.fillRect(backBtn.x, backBtn.y, backBtn.width, backBtn.height);
+        ctx.fillStyle = 'black';
+        ctx.font = '24px sans-serif';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Back to Song Select', backBtn.x + backBtn.width / 2, backBtn.y + backBtn.height / 2);
+    }
 };
 
 const drawEditor = () => {
@@ -539,6 +615,26 @@ const drawEditor = () => {
     ctx.fillRect(exportBtn.x, exportBtn.y, exportBtn.width, exportBtn.height);
     ctx.fillStyle = 'black';
     ctx.fillText('Export', exportBtn.x + exportBtn.width / 2, exportBtn.y + exportBtn.height / 2);
+
+    // Draw Note Type buttons
+    const noteButtons = uiElements.editor.noteTypeButtons;
+    Object.entries(noteButtons).forEach(([type, btn]) => {
+        if (type === editorState.noteCreationType) {
+            ctx.fillStyle = 'rgba(0, 255, 255, 1)';
+        } else {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        }
+        ctx.fillRect(btn.x, btn.y, btn.width, btn.height);
+        ctx.fillStyle = 'black';
+        ctx.fillText(type.charAt(0).toUpperCase() + type.slice(1), btn.x + btn.width / 2, btn.y + btn.height / 2);
+    });
+
+    // Draw Delete Mode button
+    const deleteBtn = uiElements.editor.deleteModeButton;
+    ctx.fillStyle = editorState.isDeleteMode ? 'rgba(255, 0, 0, 1)' : 'rgba(255, 255, 255, 0.8)';
+    ctx.fillRect(deleteBtn.x, deleteBtn.y, deleteBtn.width, deleteBtn.height);
+    ctx.fillStyle = 'black';
+    ctx.fillText('Delete', deleteBtn.x + deleteBtn.width / 2, deleteBtn.y + deleteBtn.height / 2);
 
 
     ctx.fillStyle = 'white';
@@ -735,19 +831,57 @@ const handlePress = (event) => {
         const playPauseBtn = uiElements.editor.playPauseButton;
         const exportBtn = uiElements.editor.exportButton;
         const timeline = uiElements.editor.timeline;
+        const noteButtons = uiElements.editor.noteTypeButtons;
+        const deleteBtn = uiElements.editor.deleteModeButton;
 
         if (x > playPauseBtn.x && x < playPauseBtn.x + playPauseBtn.width && y > playPauseBtn.y && y < playPauseBtn.y + playPauseBtn.height) {
-            if (audioElement.value.paused) {
-                audioElement.value.play();
-            } else {
-                audioElement.value.pause();
-            }
-        } else if (x > exportBtn.x && x < exportBtn.x + exportBtn.width && y > exportBtn.y && y < exportBtn.y + exportBtn.height) {
-            exportChart();
-        } else if (y > timeline.y - timeline.height / 2 && y < timeline.y + timeline.height / 2) {
-            editorState.isScrubbing = true;
-            updatePlayheadFromScrub(x);
+            if (audioElement.value.paused) audioElement.value.play();
+            else audioElement.value.pause();
+            return;
         }
+        if (x > exportBtn.x && x < exportBtn.x + exportBtn.width && y > exportBtn.y && y < exportBtn.y + exportBtn.height) {
+            exportChart();
+            return;
+        }
+        if (x > deleteBtn.x && x < deleteBtn.x + deleteBtn.width && y > deleteBtn.y && y < deleteBtn.y + deleteBtn.height) {
+            editorState.isDeleteMode = !editorState.isDeleteMode;
+            return;
+        }
+
+        for (const [type, btn] of Object.entries(noteButtons)) {
+            if (x > btn.x && x < btn.x + btn.width && y > btn.y && y < btn.y + btn.height) {
+                editorState.noteCreationType = type;
+                editorState.isDeleteMode = false; // Turn off delete mode when selecting a note type
+                return;
+            }
+        }
+
+        if (y > timeline.y - timeline.height / 2 && y < timeline.y + timeline.height / 2) {
+            const pixelsPerSecond = 100 * editorState.zoom;
+            const timeInMs = Math.round(((x + editorState.scrollX) / pixelsPerSecond) * 1000);
+
+            if (editorState.isDeleteMode) {
+                noteManager.deleteNoteAt(timeInMs);
+            } else {
+                const newNoteData = {
+                    time: timeInMs,
+                    x: 0.5, // Default x position
+                    type: editorState.noteCreationType,
+                };
+
+                if (newNoteData.type === 'hold') {
+                    newNoteData.duration = 1000;
+                } else if (newNoteData.type === 'drag') {
+                    newNoteData.duration = 1000;
+                    newNoteData.path = [[0, 0.5], [1000, 0.5]];
+                }
+                noteManager.addNote(newNoteData);
+            }
+            return;
+        }
+
+        editorState.isScrubbing = true;
+        updatePlayheadFromScrub(x);
         break;
   }
 };
@@ -833,7 +967,7 @@ const gameLoop = () => {
     case 'playing': updatePlaying(); break;
     case 'paused': /* No updates needed */ break;
     case 'settings': /* No updates needed */ break;
-    case 'results': /* No updates needed */ break;
+    case 'results': updateResults(); break;
     case 'editor': updateEditor(); break;
   }
 

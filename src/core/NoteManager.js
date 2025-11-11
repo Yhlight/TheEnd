@@ -217,4 +217,57 @@ export class NoteManager {
       this.activeDragNote = null;
     }
   }
+
+  addNote(noteData) {
+    if (!this.chart) return;
+
+    // Add to the chart's source data
+    this.chart.notes.push(noteData);
+
+    // Sort the notes array by time to maintain order
+    this.chart.notes.sort((a, b) => a.time - b.time);
+
+    // Regenerate the instantiated notes array to reflect the change
+    this.notes = this.chart.notes.map(nd => {
+        const judgementLineY = this.judgementLine.y;
+        switch (nd.type) {
+            case 'hold': return new HoldNote(this.canvas, 0, judgementLineY, this.scrollTime, nd);
+            case 'flick': return new FlickNote(this.canvas, 0, judgementLineY, this.scrollTime, nd);
+            case 'drag': return new DragNote(this.canvas, 0, judgementLineY, this.scrollTime, nd);
+            default: return new TapNote(this.canvas, 0, judgementLineY, this.scrollTime, nd);
+        }
+    });
+  }
+
+  deleteNoteAt(time) {
+    if (!this.chart) return;
+
+    // Find the note closest to the given time to delete
+    let closestNoteIndex = -1;
+    let minTimeDiff = 20; // A small window (20ms) to prevent accidental deletion
+
+    this.chart.notes.forEach((noteData, index) => {
+        const timeDiff = Math.abs(noteData.time - time);
+        if (timeDiff < minTimeDiff) {
+            minTimeDiff = timeDiff;
+            closestNoteIndex = index;
+        }
+    });
+
+    if (closestNoteIndex !== -1) {
+        // Remove from the source data
+        this.chart.notes.splice(closestNoteIndex, 1);
+
+        // Regenerate the instantiated notes array
+        this.notes = this.chart.notes.map(nd => {
+            const judgementLineY = this.judgementLine.y;
+            switch (nd.type) {
+                case 'hold': return new HoldNote(this.canvas, 0, judgementLineY, this.scrollTime, nd);
+                case 'flick': return new FlickNote(this.canvas, 0, judgementLineY, this.scrollTime, nd);
+                case 'drag': return new DragNote(this.canvas, 0, judgementLineY, this.scrollTime, nd);
+                default: return new TapNote(this.canvas, 0, judgementLineY, this.scrollTime, nd);
+            }
+        });
+    }
+  }
 }
