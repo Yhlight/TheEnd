@@ -127,6 +127,7 @@ const initializeGame = () => {
 
 const startGame = (chart) => {
   noteManager.loadChart(chart);
+  judgementLine.loadEvents(chart.lineEvents || []);
   audioManager.resetMusic();
   audioManager.playMusic();
   // We change state immediately, audioManager will handle playback errors gracefully
@@ -205,12 +206,14 @@ const handlePress = (event) => {
                       return;
                   case 'restart':
                       scoreManager.reset();
+                      // No need to reset judgement line here, startGame will load the new events
                       startGame(noteManager.chart);
                       return;
                   case 'exit':
                       gameState.value = 'songSelect';
                       scoreManager.reset();
                       audioManager.resetMusic();
+                      judgementLine.loadEvents([]); // Clear events on exit
                       return;
               }
           }
@@ -333,7 +336,7 @@ const update = () => {
         break;
       }
       const gameTime = audioElement.value.currentTime * 1000;
-      judgementLine.update();
+      judgementLine.update(gameTime);
       noteManager.update(gameTime);
       effectManager.update();
       break;
