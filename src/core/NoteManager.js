@@ -7,15 +7,15 @@ import { DragNote } from './DragNote.js';
 const BASE_SCROLL_TIME = 3000;
 
 export class NoteManager {
-  constructor(canvas, chart, scoreManager, judgementLine, audioManager, effectManager, noteSpeed = 1) {
+  constructor(canvas, chart, scoreManager, judgementLine, audioManager, effectManager, settings) {
     this.canvas = canvas;
     this.chart = chart;
     this.scoreManager = scoreManager;
     this.judgementLine = judgementLine;
     this.audioManager = audioManager;
     this.effectManager = effectManager;
-    this.noteSpeed = noteSpeed;
-    this.scrollTime = BASE_SCROLL_TIME / this.noteSpeed;
+    this.settings = settings;
+    this.scrollTime = BASE_SCROLL_TIME / this.settings.noteSpeed;
 
     this.notes = [];
     this.activeHolds = new Set();
@@ -24,8 +24,8 @@ export class NoteManager {
   }
 
   setNoteSpeed(newSpeed) {
-    this.noteSpeed = newSpeed;
-    this.scrollTime = BASE_SCROLL_TIME / this.noteSpeed;
+    this.settings.noteSpeed = newSpeed;
+    this.scrollTime = BASE_SCROLL_TIME / this.settings.noteSpeed;
   }
 
   loadChart(newChart) {
@@ -108,11 +108,12 @@ export class NoteManager {
   checkTapHit(gameTime) {
     let closestNote = null;
     let minTimeDiff = Infinity;
+    const adjustedTime = gameTime - this.settings.offset;
 
     for (const note of this.notes) {
       if (note.isMissed || (note.type !== 'tap' && note.type !== 'flick')) continue;
 
-      const timeDiff = Math.abs(gameTime - note.time);
+      const timeDiff = Math.abs(adjustedTime - note.time);
       if (timeDiff < minTimeDiff) {
         minTimeDiff = timeDiff;
         closestNote = note;
@@ -132,10 +133,11 @@ export class NoteManager {
   checkHoldStart(gameTime) {
     let closestNote = null;
     let minTimeDiff = Infinity;
+    const adjustedTime = gameTime - this.settings.offset;
 
     for (const note of this.notes) {
         if (note.isMissed || note.type !== 'hold') continue;
-        const timeDiff = Math.abs(gameTime - note.time);
+        const timeDiff = Math.abs(adjustedTime - note.time);
         if (timeDiff < minTimeDiff) {
             minTimeDiff = timeDiff;
             closestNote = note;
@@ -168,10 +170,11 @@ export class NoteManager {
 
     let closestNote = null;
     let minTimeDiff = Infinity;
+    const adjustedTime = gameTime - this.settings.offset;
 
     for (const note of this.notes) {
         if (note.isMissed || note.type !== 'drag') continue;
-        const timeDiff = Math.abs(gameTime - note.time);
+        const timeDiff = Math.abs(adjustedTime - note.time);
         if (timeDiff < minTimeDiff) {
             minTimeDiff = timeDiff;
             closestNote = note;

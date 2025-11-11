@@ -24,7 +24,6 @@ class MovingLine extends BackgroundElement {
     }
 
     update() {
-         // This element lives forever until it moves off-screen
          if (this.isHorizontal) {
             this.y += this.speed;
          } else {
@@ -59,12 +58,11 @@ class GridLine extends BackgroundElement {
         this.isHorizontal = isHorizontal;
         this.position = position;
         this.thickness = 1.5;
-        this.fadeInSpeed = 0.25; // Faster fade in
-        this.fadeOutSpeed = 0.08; // Faster fade out
+        this.fadeInSpeed = 0.25;
+        this.fadeOutSpeed = 0.08;
     }
 
     draw(ctx, brightness) {
-        // Use a brighter color for the effect
         ctx.fillStyle = `rgba(200, 200, 200, ${this.life * brightness})`;
         if (this.isHorizontal) {
             ctx.fillRect(0, this.position, this.canvas.width, this.thickness);
@@ -73,9 +71,6 @@ class GridLine extends BackgroundElement {
         }
     }
 }
-
-
-// src/core/FloatingCrystal.js
 
 import { FloatingCrystal } from './FloatingCrystal.js';
 
@@ -93,34 +88,26 @@ export class DynamicBackground {
         this.brightness = Math.max(0, Math.min(1, newBrightness));
     }
 
-    // Call this when a note is hit to create a visual effect
     triggerEffect() {
-        const lineCount = Math.floor(Math.random() * 5) + 5; // 5 to 9 lines
-        // Horizontal lines
+        const lineCount = Math.floor(Math.random() * 5) + 5;
         for (let i = 0; i < lineCount; i++) {
-            const y = Math.random() * this.canvas.height;
-            this.elements.push(new GridLine(this.canvas, true, y));
+            this.elements.push(new GridLine(this.canvas, true, Math.random() * this.canvas.height));
         }
-        // Vertical lines
         for (let i = 0; i < lineCount; i++) {
-            const x = Math.random() * this.canvas.width;
-            this.elements.push(new GridLine(this.canvas, false, x));
+            this.elements.push(new GridLine(this.canvas, false, Math.random() * this.canvas.width));
         }
     }
 
     update() {
-        // Add new moving lines if needed
         const movingLineCount = this.elements.filter(el => el instanceof MovingLine).length;
         if (movingLineCount < this.maxMovingLines && Math.random() > 0.9) {
              this.elements.push(new MovingLine(this.canvas));
         }
 
-        // Add new crystals if needed
         if (this.crystals.length < this.maxCrystals && Math.random() > 0.8) {
             this.crystals.push(new FloatingCrystal(this.canvas));
         }
 
-        // Update all elements
         for (const element of this.elements) {
             element.update();
         }
@@ -128,14 +115,12 @@ export class DynamicBackground {
             crystal.update();
         }
 
-        // Remove dead elements
         this.elements = this.elements.filter(element => !element.isDead());
         this.crystals = this.crystals.filter(crystal => !crystal.isDead());
     }
 
     draw(ctx) {
-        // Set a base background color that is also affected by brightness
-        const baseGray = 26; // Corresponds to #1a1a1a
+        const baseGray = 26;
         ctx.fillStyle = `rgba(${baseGray * this.brightness}, ${baseGray * this.brightness}, ${baseGray * this.brightness}, 1)`;
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 

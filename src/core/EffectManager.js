@@ -1,13 +1,16 @@
 // src/core/EffectManager.js
 import { Particle } from './Particle.js';
 import { JudgementText } from './JudgementText.js';
+import { Shockwave } from './Shockwave.js';
 
 const deltaTime = 1 / 60; // Assuming 60 FPS
 
 export class EffectManager {
-  constructor() {
+  constructor(canvas) {
+    this.canvas = canvas;
     this.particles = [];
     this.judgementTexts = [];
+    this.shockwaves = [];
   }
 
   /**
@@ -26,6 +29,10 @@ export class EffectManager {
     this.judgementTexts.push(new JudgementText(x, y, text, color));
   }
 
+  createShockwave(x, y, color) {
+    this.shockwaves.push(new Shockwave(this.canvas, x, y, color));
+  }
+
   update() {
     // Update particles
     for (const particle of this.particles) {
@@ -38,6 +45,12 @@ export class EffectManager {
       text.update(deltaTime);
     }
     this.judgementTexts = this.judgementTexts.filter(t => t.isAlive());
+
+    // Update shockwaves
+    for (const shockwave of this.shockwaves) {
+        shockwave.update();
+    }
+    this.shockwaves = this.shockwaves.filter(s => !s.isDead());
   }
 
   draw(ctx) {
@@ -49,6 +62,11 @@ export class EffectManager {
     // Draw judgement texts
     for (const text of this.judgementTexts) {
       text.draw(ctx);
+    }
+
+    // Draw shockwaves
+    for (const shockwave of this.shockwaves) {
+        shockwave.draw(ctx);
     }
   }
 }

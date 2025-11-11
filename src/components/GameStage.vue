@@ -39,6 +39,7 @@ const uiElements = {
       bgmVolume: { label: 'BGM Volume', x: 0, y: 0, width: 300, height: 20, value: 1, min: 0, max: 1 },
       sfxVolume: { label: 'SFX Volume', x: 0, y: 0, width: 300, height: 20, value: 1, min: 0, max: 1 },
       bgBrightness: { label: 'BG Brightness', x: 0, y: 0, width: 300, height: 20, value: 1, min: 0, max: 1 },
+      offset: { label: 'Offset (ms)', x: 0, y: 0, width: 300, height: 20, value: 0, min: -100, max: 100 },
   },
   results: {
       backButton: { x: 0, y: 0, width: 300, height: 50 }, // Position calculated dynamically
@@ -64,6 +65,7 @@ const settings = reactive({
     bgmVolume: 1,
     sfxVolume: 1,
     bgBrightness: 1,
+    offset: 0, // In milliseconds
 });
 
 const CARD_WIDTH = 400;
@@ -89,7 +91,7 @@ const initializeGame = () => {
 
   judgementLine = new JudgementLine(gameCanvas.value);
   scoreManager = new ScoreManager();
-  effectManager = new EffectManager();
+  effectManager = new EffectManager(gameCanvas.value);
   audioManager = new AudioManager(audioElement.value);
   dynamicBackground = new DynamicBackground(gameCanvas.value);
 
@@ -100,7 +102,8 @@ const initializeGame = () => {
     scoreManager,
     judgementLine,
     audioManager,
-    effectManager
+    effectManager,
+    settings
   );
 
   // Set up input listeners
@@ -458,6 +461,9 @@ const handlePress = (event) => {
           audioManager.playHitSound();
           judgementLine.flash(tapResult.note.color);
           dynamicBackground.triggerEffect();
+          if (tapResult.judgement === 'Perfect') {
+            effectManager.createShockwave(tapResult.note.x, judgementLine.y, tapResult.note.color);
+          }
           return;
       }
       const holdResult = noteManager.checkHoldStart(gameTime);
