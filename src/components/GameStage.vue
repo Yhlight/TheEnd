@@ -39,6 +39,9 @@ const uiElements = {
       bgmVolume: { label: 'BGM Volume', x: 0, y: 0, width: 300, height: 20, value: 1, min: 0, max: 1 },
       sfxVolume: { label: 'SFX Volume', x: 0, y: 0, width: 300, height: 20, value: 1, min: 0, max: 1 },
       bgBrightness: { label: 'BG Brightness', x: 0, y: 0, width: 300, height: 20, value: 1, min: 0, max: 1 },
+  },
+  results: {
+      backButton: { x: 0, y: 0, width: 300, height: 50 }, // Position calculated dynamically
   }
 };
 
@@ -78,6 +81,7 @@ const initializeGame = () => {
     calculateCardPositions();
     calculatePausedMenuPositions();
     calculateSettingsMenuPositions();
+    calculateResultsPositions();
   };
 
   resizeCanvas();
@@ -183,6 +187,13 @@ const calculateSettingsMenuPositions = () => {
     });
 };
 
+const calculateResultsPositions = () => {
+    const centerX = gameCanvas.value.width / 2;
+    const bottomY = gameCanvas.value.height - 80;
+    uiElements.results.backButton.x = centerX - uiElements.results.backButton.width / 2;
+    uiElements.results.backButton.y = bottomY;
+};
+
 // Data structure for drawing stylized numbers (5x7 matrix)
 const NUMBER_MAP = {
   '0':[" XXX ","X   X","X   X","X   X","X   X","X   X"," XXX ",],"1":["  X  "," XX  ","  X  ","  X  ","  X  ","  X  "," XXX ",],"2":[" XXX ","X   X","    X","   X ","  X  "," X   ","XXXXX",],"3":[" XXX ","X   X","    X"," XXX ","    X","X   X"," XXX ",],"4":["X   X","X   X","X   X","XXXXX","    X","    X","    X",],"5":["XXXXX","X    ","X    ","XXXX ","    X","X   X"," XXX ",],"6":[" XXX ","X   X","X    ","XXXX ","X   X","X   X"," XXX ",],"7":["XXXXX","X   X","    X","   X ","  X  ","  X  ","  X  ",],"8":[" XXX ","X   X","X   X"," XXX ","X   X","X   X"," XXX ",],"9":[" XXX ","X   X","X   X"," XXXX","    X","X   X"," XXX ",],
@@ -226,6 +237,11 @@ const updatePlaying = () => {
   noteManager.update(gameTime);
   effectManager.update();
   dynamicBackground.update();
+
+  // Check for song end
+  if (audioElement.value && audioElement.value.ended) {
+    gameState.current = 'results';
+  }
 };
 
 // --- Game State Drawers ---
@@ -347,6 +363,59 @@ const drawSettings = () => {
     });
 };
 
+const drawResults = () => {
+    dynamicBackground.draw(ctx);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(0, 0, gameCanvas.value.width, gameCanvas.value.height);
+
+    const centerX = gameCanvas.value.width / 2;
+    ctx.fillStyle = 'white';
+    ctx.font = '48px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Results', centerX, 80);
+
+    // Score and Combo
+    drawStylizedNumber(ctx, scoreManager.getScore().toString(), centerX + 150, 150, 6, 'white');
+    ctx.font = '24px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('Score', centerX - 20, 180);
+
+    drawStylizedNumber(ctx, scoreManager.getMaxCombo().toString(), centerX + 150, 220, 4, 'white');
+    ctx.textAlign = 'right';
+    ctx.fillText('Max Combo', centerX - 20, 240);
+
+    // Judgements
+    const judgements = scoreManager.getJudgementCounts();
+    const judgementYStart = 300;
+    Object.entries(judgements).forEach(([key, value], index) => {
+        ctx.textAlign = 'left';
+        ctx.fillText(key, centerX - 150, judgementYStart + index * 40);
+        ctx.textAlign = 'right';
+        ctx.fillText(value, centerX + 150, judgementYStart + index * 40);
+    });
+
+    // Grade
+    const accuracy = scoreManager.getAccuracy();
+    let grade = 'D';
+    if (accuracy >= 98) grade = 'S';
+    else if (accuracy >= 94) grade = 'A';
+    else if (accuracy >= 90) grade = 'B';
+    else if (accuracy >= 80) grade = 'C';
+
+    ctx.font = '80px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(grade, centerX, gameCanvas.value.height - 200);
+
+    // Back button
+    const backBtn = uiElements.results.backButton;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.fillRect(backBtn.x, backBtn.y, backBtn.width, backBtn.height);
+    ctx.fillStyle = 'black';
+    ctx.font = '24px sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Back to Song Select', backBtn.x + backBtn.width / 2, backBtn.y + backBtn.height / 2);
+};
+
 
 // --- Input Handlers ---
 let activeSlider = null;
@@ -431,6 +500,14 @@ const handlePress = (event) => {
             }
         }
         break;
+    case 'results':
+        const backBtn = uiElements.results.backButton;
+        if (x > backBtn.x && x < backBtn.x + backBtn.width && y > backBtn.y && y < backBtn.y + backBtn.height) {
+            scoreManager.reset();
+            noteManager.loadChart(null);
+            gameState.current = 'songSelect';
+        }
+        break;
   }
 };
 
@@ -480,6 +557,7 @@ const gameLoop = () => {
     case 'playing': updatePlaying(); break;
     case 'paused': /* No updates needed */ break;
     case 'settings': /* No updates needed */ break;
+    case 'results': /* No updates needed */ break;
   }
 
   // Clear canvas and draw based on state
@@ -493,6 +571,7 @@ const gameLoop = () => {
         drawPaused();
         break;
     case 'settings': drawSettings(); break;
+    case 'results': drawResults(); break;
   }
 
   requestAnimationFrame(gameLoop);
