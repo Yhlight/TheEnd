@@ -1,7 +1,6 @@
 <template>
   <div class="game-container">
     <canvas ref="gameCanvas" class="game-canvas"></canvas>
-    <!-- The start-overlay is no longer needed as we'll draw it on the canvas -->
     <audio ref="audioElement" src="/song.mp3" style="display: none;"></audio>
   </div>
 </template>
@@ -10,7 +9,8 @@
 import { ref, onMounted } from 'vue';
 import { JudgementLine } from '../core/JudgementLine.js';
 import { NoteManager } from '../core/NoteManager.js';
-import { testChart } from '../core/Chart.js';
+// Import the entire song library instead of the single test chart
+import { songLibrary } from '../core/ChartData.js';
 import { EffectManager } from '../core/EffectManager.js';
 import { ScoreManager } from '../core/ScoreManager.js';
 import { AudioManager } from '../core/AudioManager.js';
@@ -20,7 +20,7 @@ import { DynamicBackground } from '../core/DynamicBackground.js';
 const gameCanvas = ref(null);
 const audioElement = ref(null);
 
-// --- New Game State Management ---
+// Game State Management
 const gameState = ref('title'); // 'title', 'songSelect', 'playing', 'results'
 
 let ctx = null;
@@ -34,6 +34,11 @@ let dynamicBackground = null;
 // Animation state for the title screen
 let titleTextAlpha = ref(0);
 let titleTextFadeIn = true;
+
+// --- Song Selection UI Constants ---
+const songBoxWidth = 400;
+const songBoxHeight = 100;
+const songBoxGap = 20;
 
 const initializeGame = () => {
   if (!gameCanvas.value) return;
@@ -49,7 +54,8 @@ const initializeGame = () => {
 
   judgementLine = new JudgementLine(gameCanvas.value);
   scoreManager = new ScoreManager();
-  noteManager = new NoteManager(gameCanvas.value, testChart, scoreManager, judgementLine);
+  // Initialize NoteManager without a chart initially. It will be loaded on song selection.
+  noteManager = new NoteManager(gameCanvas.value, null, scoreManager, judgementLine);
   effectManager = new EffectManager();
   audioManager = new AudioManager();
   dynamicBackground = new DynamicBackground(gameCanvas.value);
@@ -58,16 +64,17 @@ const initializeGame = () => {
   gameCanvas.value.addEventListener('touchstart', handleInput);
 
   console.log('Game initialized.');
-  gameLoop(); // Start the game loop immediately
+  gameLoop();
 };
 
-const startGame = () => {
+const startGame = (chart) => {
+  noteManager.loadChart(chart); // Load the selected chart
   if (audioElement.value) {
+    audioElement.value.currentTime = 0;
     audioElement.value.play().then(() => {
       gameState.value = 'playing';
     }).catch(error => {
       console.error("Audio playback failed:", error);
-      // Even if audio fails, we can start the game in a silent mode or show an error
       gameState.value = 'playing';
     });
   }
@@ -78,14 +85,27 @@ onMounted(initializeGame);
 const handleInput = (event) => {
   event.preventDefault();
 
+  // Unified input coordinate handling for mouse and touch events
+  const rect = gameCanvas.value.getBoundingClientRect();
+  const x = (event.clientX ?? event.touches[0].clientX) - rect.left;
+  const y = (event.clientY ?? event.touches[0].clientY) - rect.top;
+
   switch (gameState.value) {
     case 'title':
-      // Any click on the title screen transitions to song select
       gameState.value = 'songSelect';
       break;
     case 'songSelect':
-      // For now, any click starts the game. Later, this will handle song selection.
-      startGame();
+      // Check if the click is within any of the song boxes
+      const centerX = gameCanvas.value.width / 2;
+      songLibrary.forEach((song, index) => {
+        const boxX = centerX - songBoxWidth / 2;
+        const boxY = 150 + index * (songBoxHeight + songBoxGap);
+
+        if (x >= boxX && x <= boxX + songBoxWidth && y >= boxY && y <= boxY + songBoxHeight) {
+          // If a song box is clicked, start the game with that song's chart
+          startGame(song.chart);
+        }
+      });
       break;
     case 'playing':
       if (noteManager && effectManager && scoreManager && audioManager) {
@@ -108,7 +128,6 @@ const update = () => {
 
   switch (gameState.value) {
     case 'title':
-      // Update title screen animations (e.g., blinking text)
       if (titleTextFadeIn) {
         titleTextAlpha.value += 0.01;
         if (titleTextAlpha.value >= 1) titleTextFadeIn = false;
@@ -137,12 +156,7 @@ const draw = () => {
       drawTitleScreen();
       break;
     case 'songSelect':
-      // For now, we'll just show a placeholder.
-      // This will be replaced by the song selection UI later.
-       ctx.fillStyle = 'white';
-       ctx.font = '32px Arial';
-       ctx.textAlign = 'center';
-       ctx.fillText("Select a Song (Click anywhere to start)", gameCanvas.value.width / 2, gameCanvas.value.height / 2);
+      drawSongSelectScreen(); // Call the new drawing function
       break;
     case 'playing':
       drawGameHUD();
@@ -154,7 +168,6 @@ const drawTitleScreen = () => {
   const centerX = gameCanvas.value.width / 2;
   const centerY = gameCanvas.value.height / 2;
 
-  // Draw the main title "TheEnd" with geometric style
   ctx.save();
   ctx.font = 'bold 120px Arial';
   ctx.fillStyle = 'white';
@@ -164,7 +177,6 @@ const drawTitleScreen = () => {
   ctx.fillText("TheEnd", centerX, centerY - 50);
   ctx.restore();
 
-  // Draw blinking "Click to Start" text
   ctx.save();
   ctx.font = '30px Arial';
   ctx.fillStyle = `rgba(255, 255, 255, ${titleTextAlpha.value})`;
@@ -173,8 +185,40 @@ const drawTitleScreen = () => {
   ctx.restore();
 };
 
+const drawSongSelectScreen = () => {
+  const centerX = gameCanvas.value.width / 2;
+
+  // Draw the title
+  ctx.fillStyle = 'white';
+  ctx.font = '48px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText("Select a Song", centerX, 80);
+
+  // Draw the song list
+  songLibrary.forEach((song, index) => {
+    const boxX = centerX - songBoxWidth / 2;
+    const boxY = 150 + index * (songBoxHeight + songBoxGap);
+
+    // Draw the container box
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(boxX, boxY, songBoxWidth, songBoxHeight);
+
+    // Draw song title
+    ctx.fillStyle = 'white';
+    ctx.font = '32px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(song.title, boxX + 20, boxY + 45);
+
+    // Draw artist name
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.font = '20px Arial';
+    ctx.fillText(song.artist, boxX + 20, boxY + 75);
+  });
+};
+
+
 const drawGameHUD = () => {
-  // Draw progress bar
   if (audioElement.value && audioElement.value.duration) {
     const progress = audioElement.value.currentTime / audioElement.value.duration;
     const progressBarWidth = progress * gameCanvas.value.width;

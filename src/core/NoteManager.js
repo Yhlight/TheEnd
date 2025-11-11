@@ -21,7 +21,20 @@ export class NoteManager {
     this.nextNoteIndex = 0;
   }
 
+  loadChart(newChart) {
+    this.chart = newChart;
+    // Reset all state related to the previous chart
+    this.notes = [];
+    this.activeHolds.clear();
+    this.activeDragNote = null;
+    this.nextNoteIndex = 0;
+    console.log("New chart loaded.");
+  }
+
   update(gameTime) {
+    // If there's no chart loaded, don't do anything
+    if (!this.chart) return;
+
     const judgementLineY = this.judgementLine.y;
     while (
       this.nextNoteIndex < this.chart.notes.length &&
