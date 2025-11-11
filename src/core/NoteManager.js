@@ -7,11 +7,12 @@ import { DragNote } from './DragNote.js';
 const BASE_SCROLL_TIME = 3000;
 
 export class NoteManager {
-  constructor(canvas, chart, scoreManager, judgementLine, noteSpeed = 1) {
+  constructor(canvas, chart, scoreManager, judgementLine, audioManager, noteSpeed = 1) {
     this.canvas = canvas;
     this.chart = chart;
     this.scoreManager = scoreManager;
     this.judgementLine = judgementLine;
+    this.audioManager = audioManager;
     this.noteSpeed = noteSpeed;
     this.scrollTime = BASE_SCROLL_TIME / this.noteSpeed;
 
@@ -64,9 +65,11 @@ export class NoteManager {
         if (note.type === 'hold' || note.type === 'drag') {
             this.scoreManager.onMiss();
             note.markAsMissed();
+            this.audioManager.playMissSound();
         } else {
             this.scoreManager.onMiss();
             note.markAsMissed();
+            this.audioManager.playMissSound();
         }
       }
     }

@@ -23,7 +23,31 @@ const audioElement = ref(null);
 const gameState = ref('title');
 const settings = reactive({
   noteSpeed: 3.0,
+  bgmVolume: 0.5,
+  sfxVolume: 0.8,
+  bgBrightness: 1.0,
 });
+
+const saveSettings = () => {
+  try {
+    localStorage.setItem('theEndSettings', JSON.stringify(settings));
+  } catch (e) {
+    console.error("Failed to save settings:", e);
+  }
+};
+
+const loadSettings = () => {
+  try {
+    const saved = localStorage.getItem('theEndSettings');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Assign to settings, keeping reactivity
+      Object.assign(settings, parsed);
+    }
+  } catch (e) {
+    console.error("Failed to load settings:", e);
+  }
+};
 
 let ctx = null;
 let judgementLine = null;
@@ -77,9 +101,9 @@ const initializeGame = () => {
 
   judgementLine = new JudgementLine(gameCanvas.value);
   scoreManager = new ScoreManager();
-  noteManager = new NoteManager(gameCanvas.value, null, scoreManager, judgementLine, settings.noteSpeed);
+  audioManager = new AudioManager(audioElement.value);
+  noteManager = new NoteManager(gameCanvas.value, null, scoreManager, judgementLine, audioManager, settings.noteSpeed);
   effectManager = new EffectManager();
-  audioManager = new AudioManager();
   dynamicBackground = new DynamicBackground(gameCanvas.value);
 
   initializeTitleScreen(); // Initialize crystals first time
@@ -91,21 +115,22 @@ const initializeGame = () => {
   gameCanvas.value.addEventListener('mousemove', handleMove);
   gameCanvas.value.addEventListener('touchmove', handleMove);
 
+  loadSettings();
+  // Apply loaded settings
+  audioManager.setMusicVolume(settings.bgmVolume);
+  audioManager.setSfxVolume(settings.sfxVolume);
+  dynamicBackground.setBrightness(settings.bgBrightness);
+
   console.log('Game initialized.');
   gameLoop();
 };
 
 const startGame = (chart) => {
   noteManager.loadChart(chart);
-  if (audioElement.value) {
-    audioElement.value.currentTime = 0;
-    audioElement.value.play().then(() => {
-      gameState.value = 'playing';
-    }).catch(error => {
-      console.error("Audio playback failed:", error);
-      gameState.value = 'playing';
-    });
-  }
+  audioManager.resetMusic();
+  audioManager.playMusic();
+  // We change state immediately, audioManager will handle playback errors gracefully
+  gameState.value = 'playing';
 };
 
 onMounted(initializeGame);
@@ -115,9 +140,11 @@ const pauseButton = { x: 20, y: 20, width: 40, height: 40 };
 // This object will be populated with coordinates dynamically in the draw function
 const settingsMenu = {
     buttons: {},
-    noteSpeed: {
-      minusButton: {},
-      plusButton: {}
+    controls: {
+        noteSpeed: { minusButton: {}, plusButton: {} },
+        bgmVolume: { minusButton: {}, plusButton: {} },
+        sfxVolume: { minusButton: {}, plusButton: {} },
+        bgBrightness: { minusButton: {}, plusButton: {} },
     }
 };
 
@@ -146,7 +173,7 @@ const handlePress = (event) => {
       // Check for pause button press first
       if (x >= pauseButton.x && x <= pauseButton.x + pauseButton.width && y >= pauseButton.y && y <= pauseButton.y + pauseButton.height) {
         gameState.value = 'paused';
-        audioElement.value.pause();
+        audioManager.pauseMusic();
         return;
       }
 
@@ -174,7 +201,7 @@ const handlePress = (event) => {
               switch(key) {
                   case 'resume':
                       gameState.value = 'playing';
-                      if(audioElement.value) audioElement.value.play();
+                      audioManager.playMusic();
                       return;
                   case 'restart':
                       scoreManager.reset();
@@ -183,28 +210,68 @@ const handlePress = (event) => {
                   case 'exit':
                       gameState.value = 'songSelect';
                       scoreManager.reset();
-                      if(audioElement.value) {
-                        audioElement.value.pause();
-                        audioElement.value.currentTime = 0;
-                      }
+                      audioManager.resetMusic();
                       return;
               }
           }
       }
 
-      // Check note speed buttons
-      const speedControls = settingsMenu.noteSpeed;
-      const minusBtn = speedControls.minusButton;
-      if (minusBtn.x && x >= minusBtn.x && x <= minusBtn.x + minusBtn.width && y >= minusBtn.y && y <= minusBtn.y + minusBtn.height) {
-          settings.noteSpeed = Math.max(0.5, parseFloat((settings.noteSpeed - 0.5).toFixed(1)));
-          if (noteManager) noteManager.setNoteSpeed(settings.noteSpeed);
+      // Check all controls
+      for (const key in settingsMenu.controls) {
+        const control = settingsMenu.controls[key];
+        const minusBtn = control.minusButton;
+        const plusBtn = control.plusButton;
+
+        let valueChanged = false;
+
+        if (minusBtn.x && x >= minusBtn.x && x <= minusBtn.x + minusBtn.width && y >= minusBtn.y && y <= minusBtn.y + minusBtn.height) {
+          switch(key) {
+            case 'noteSpeed':
+              settings.noteSpeed = Math.max(0.5, parseFloat((settings.noteSpeed - 0.5).toFixed(1)));
+              if (noteManager) noteManager.setNoteSpeed(settings.noteSpeed);
+              break;
+            case 'bgmVolume':
+              settings.bgmVolume = Math.max(0, parseFloat((settings.bgmVolume - 0.1).toFixed(1)));
+              audioManager.setMusicVolume(settings.bgmVolume);
+              break;
+            case 'sfxVolume':
+              settings.sfxVolume = Math.max(0, parseFloat((settings.sfxVolume - 0.1).toFixed(1)));
+              audioManager.setSfxVolume(settings.sfxVolume);
+              break;
+            case 'bgBrightness':
+              settings.bgBrightness = Math.max(0, parseFloat((settings.bgBrightness - 0.1).toFixed(1)));
+              dynamicBackground.setBrightness(settings.bgBrightness);
+              break;
+          }
+          valueChanged = true;
+        }
+
+        if (plusBtn.x && x >= plusBtn.x && x <= plusBtn.x + plusBtn.width && y >= plusBtn.y && y <= plusBtn.y + plusBtn.height) {
+          switch(key) {
+            case 'noteSpeed':
+              settings.noteSpeed = Math.min(10, parseFloat((settings.noteSpeed + 0.5).toFixed(1)));
+              if (noteManager) noteManager.setNoteSpeed(settings.noteSpeed);
+              break;
+            case 'bgmVolume':
+              settings.bgmVolume = Math.min(1, parseFloat((settings.bgmVolume + 0.1).toFixed(1)));
+              audioManager.setMusicVolume(settings.bgmVolume);
+              break;
+            case 'sfxVolume':
+              settings.sfxVolume = Math.min(1, parseFloat((settings.sfxVolume + 0.1).toFixed(1)));
+              audioManager.setSfxVolume(settings.sfxVolume);
+              break;
+            case 'bgBrightness':
+              settings.bgBrightness = Math.min(1, parseFloat((settings.bgBrightness + 0.1).toFixed(1)));
+              dynamicBackground.setBrightness(settings.bgBrightness);
+              break;
+          }
+          valueChanged = true;
+        }
+
+        if (valueChanged) {
+          saveSettings();
           return;
-      }
-      const plusBtn = speedControls.plusButton;
-      if (plusBtn.x && x >= plusBtn.x && x <= plusBtn.x + plusBtn.width && y >= plusBtn.y && y <= plusBtn.y + plusBtn.height) {
-          settings.noteSpeed = Math.min(10, parseFloat((settings.noteSpeed + 0.5).toFixed(1)));
-          if (noteManager) noteManager.setNoteSpeed(settings.noteSpeed);
-          return;
+        }
       }
       break;
     case 'results':
@@ -262,6 +329,7 @@ const update = () => {
       if (!audioElement.value) return;
       if (audioElement.value.ended) {
         gameState.value = 'results';
+        audioManager.pauseMusic(); // Stop music when the song ends
         break;
       }
       const gameTime = audioElement.value.currentTime * 1000;
@@ -277,7 +345,7 @@ const update = () => {
 
 const draw = () => {
   if (!ctx || !gameCanvas.value) return;
-  ctx.clearRect(0, 0, gameCanvas.value.width, gameCanvas.value.height);
+  // ctx.clearRect is no longer needed as dynamicBackground.draw handles the entire background now
   dynamicBackground.draw(ctx);
 
   switch (gameState.value) {
@@ -413,56 +481,74 @@ const drawSettingsMenu = () => {
     ctx.textAlign = 'center';
     ctx.shadowColor = 'rgba(0, 255, 255, 0.7)';
     ctx.shadowBlur = 15;
-    ctx.fillText("Settings", centerX, centerY - 220);
+    ctx.fillText("Settings", centerX, centerY - 280);
     ctx.shadowBlur = 0;
 
-    // --- Note Speed Control ---
-    const speedY = centerY - 120;
-    ctx.font = '30px Arial';
-    ctx.fillText("Note Speed", centerX, speedY);
+    // --- Controls ---
+    const controlsYstart = centerY - 180;
+    const controlGap = 90;
+    const btnSize = 40;
 
-    // Display speed value
-    ctx.font = 'bold 40px Arial';
-    ctx.fillText(settings.noteSpeed.toFixed(1), centerX, speedY + 50);
+    const controlData = [
+        { key: 'noteSpeed', label: 'Note Speed', value: settings.noteSpeed.toFixed(1) },
+        { key: 'bgmVolume', label: 'BGM Volume', value: settings.bgmVolume.toFixed(1) },
+        { key: 'sfxVolume', label: 'SFX Volume', value: settings.sfxVolume.toFixed(1) },
+        { key: 'bgBrightness', label: 'BG Brightness', value: settings.bgBrightness.toFixed(1) },
+    ];
 
-    // Draw '+' and '-' buttons and store their positions
-    const btnSize = 50;
-    const minusBtnData = { x: centerX - 120, y: speedY + 20, width: btnSize, height: btnSize };
-    const plusBtnData = { x: centerX + 70, y: speedY + 20, width: btnSize, height: btnSize };
-    settingsMenu.noteSpeed.minusButton = minusBtnData;
-    settingsMenu.noteSpeed.plusButton = plusBtnData;
+    controlData.forEach((control, index) => {
+        const controlY = controlsYstart + index * controlGap;
 
-    ctx.strokeStyle = 'white';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(minusBtnData.x, minusBtnData.y, minusBtnData.width, minusBtnData.height);
-    ctx.strokeRect(plusBtnData.x, plusBtnData.y, plusBtnData.width, plusBtnData.height);
+        // Label
+        ctx.fillStyle = 'white';
+        ctx.font = '24px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(control.label, centerX, controlY);
 
-    ctx.font = 'bold 40px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText("-", minusBtnData.x + btnSize / 2, minusBtnData.y + btnSize / 2);
-    ctx.fillText("+", plusBtnData.x + btnSize / 2, plusBtnData.y + btnSize / 2);
-    ctx.textBaseline = 'alphabetic'; // Reset for other text elements
+        // Value
+        ctx.font = 'bold 32px Arial';
+        ctx.fillText(control.value, centerX, controlY + 40);
+
+        // Buttons
+        const minusBtnData = { x: centerX - 120, y: controlY + 10, width: btnSize, height: btnSize };
+        const plusBtnData = { x: centerX + 80, y: controlY + 10, width: btnSize, height: btnSize };
+
+        settingsMenu.controls[control.key] = {
+            minusButton: minusBtnData,
+            plusButton: plusBtnData
+        };
+
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(minusBtnData.x, minusBtnData.y, minusBtnData.width, minusBtnData.height);
+        ctx.strokeRect(plusBtnData.x, plusBtnData.y, plusBtnData.width, plusBtnData.height);
+
+        ctx.font = 'bold 30px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText("-", minusBtnData.x + btnSize / 2, minusBtnData.y + btnSize / 2);
+        ctx.fillText("+", plusBtnData.x + btnSize / 2, plusBtnData.y + btnSize / 2);
+        ctx.textBaseline = 'alphabetic';
+    });
+
 
     // --- Action Buttons ---
     const buttonWidth = 250;
     const buttonHeight = 60;
-    const buttonGap = 20;
+    const actionButtonGap = 20;
     const buttons = [
         { id: 'resume', text: 'Resume' },
         { id: 'restart', text: 'Restart' },
         { id: 'exit', text: 'Back to Menu' }
     ];
-    let startY = centerY + 40; // Adjust starting Y position
+    let startY = centerY + 180;
 
     buttons.forEach((btnInfo, index) => {
-        const btnY = startY + index * (buttonHeight + buttonGap);
+        const btnY = startY + index * (buttonHeight + actionButtonGap);
         const btnX = centerX - buttonWidth / 2;
 
-        // Store calculated position for click detection
         settingsMenu.buttons[btnInfo.id] = { x: btnX, y: btnY, width: buttonWidth, height: buttonHeight };
 
-        // Draw button
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
         ctx.lineWidth = 3;
         ctx.strokeRect(btnX, btnY, buttonWidth, buttonHeight);

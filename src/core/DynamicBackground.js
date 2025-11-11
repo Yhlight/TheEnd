@@ -72,8 +72,8 @@ class MovingLine extends BackgroundElement {
          return false;
     }
 
-    draw(ctx) {
-        ctx.fillStyle = `rgba(100, 100, 100, 0.5)`;
+    draw(ctx, brightness) {
+        ctx.fillStyle = `rgba(100, 100, 100, ${0.5 * brightness})`;
         if (this.isHorizontal) {
             ctx.fillRect(this.x - this.length / 2, this.y, this.length, this.thickness);
         } else {
@@ -93,9 +93,9 @@ class GridLine extends BackgroundElement {
         this.fadeOutSpeed = 0.08; // Faster fade out
     }
 
-    draw(ctx) {
+    draw(ctx, brightness) {
         // Use a brighter color for the effect
-        ctx.fillStyle = `rgba(200, 200, 200, ${this.life})`;
+        ctx.fillStyle = `rgba(200, 200, 200, ${this.life * brightness})`;
         if (this.isHorizontal) {
             ctx.fillRect(0, this.position, this.canvas.width, this.thickness);
         } else {
@@ -110,6 +110,11 @@ export class DynamicBackground {
         this.canvas = canvas;
         this.elements = [];
         this.maxMovingLines = 30;
+        this.brightness = 1.0;
+    }
+
+    setBrightness(newBrightness) {
+        this.brightness = Math.max(0, Math.min(1, newBrightness));
     }
 
     // Call this when a note is hit to create a visual effect
@@ -144,8 +149,13 @@ export class DynamicBackground {
     }
 
     draw(ctx) {
+        // Set a base background color that is also affected by brightness
+        const baseGray = 26; // Corresponds to #1a1a1a
+        ctx.fillStyle = `rgba(${baseGray * this.brightness}, ${baseGray * this.brightness}, ${baseGray * this.brightness}, 1)`;
+        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
         for (const element of this.elements) {
-            element.draw(ctx);
+            element.draw(ctx, this.brightness);
         }
     }
 }
