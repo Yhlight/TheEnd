@@ -36,6 +36,18 @@ export const songLibrary = [
         { time: 1500, x: 0.5, type: 'tap' },
         { time: 2000, x: 0.1, type: 'tap' },
         { time: 2250, x: 0.9, type: 'tap' },
+        {
+          time: 3000,
+          duration: 2000,
+          type: 'drag',
+          path: [
+            [0, 0.1],      // Starts at the left
+            [500, 0.3],    // Moves right
+            [1000, 0.5],   // Moves to center
+            [1500, 0.7],   // Continues right
+            [2000, 0.9]    // Ends at the right
+          ]
+        },
       ],
       lineEvents: [
         { time: 1000, duration: 200, value: { x: -200 }, easing: 'easeInQuad' },

@@ -56,7 +56,6 @@ const initializeGame = () => {
   audioManager = new AudioManager();
   dynamicBackground = new DynamicBackground(gameCanvas.value);
 
-  // --- New Input Event Listeners ---
   gameCanvas.value.addEventListener('mousedown', handlePress);
   gameCanvas.value.addEventListener('touchstart', handlePress);
   gameCanvas.value.addEventListener('mouseup', handleRelease);
@@ -83,8 +82,6 @@ const startGame = (chart) => {
 
 onMounted(initializeGame);
 
-// --- New Input Handler Functions ---
-
 const handlePress = (event) => {
   event.preventDefault();
   const rect = gameCanvas.value.getBoundingClientRect();
@@ -107,23 +104,29 @@ const handlePress = (event) => {
       break;
     case 'playing':
       if (noteManager && effectManager && scoreManager && audioManager) {
-        // Try to hit a tap note first
+        // Priority: Drag > Hold > Tap
+        const startedDragNote = noteManager.checkDragStart();
+        if (startedDragNote) {
+          judgementLine.flash(startedDragNote.color);
+          audioManager.playHitSound();
+          return;
+        }
+
+        const startedHoldNote = noteManager.checkHoldStart();
+        if (startedHoldNote) {
+          judgementLine.flash(startedHoldNote.color);
+          audioManager.playHitSound();
+          return;
+        }
+
         const hitTapNote = noteManager.checkTapHit();
         if (hitTapNote) {
           scoreManager.onHit();
           effectManager.createExplosion(hitTapNote.x, hitTapNote.y, hitTapNote.color);
           audioManager.playHitSound();
           judgementLine.flash(hitTapNote.color);
-          return; // Early exit to prevent trying to also start a hold
-        }
-
-        // If no tap note was hit, try to start a hold note
-        const startedHoldNote = noteManager.checkHoldStart();
-        if (startedHoldNote) {
-           // Maybe add a visual/audio cue for hold start later
         } else {
-          // If nothing was hit, it's a miss (optional, can be annoying)
-          // scoreManager.onMiss();
+          // scoreManager.onMiss(); // Miss on empty space is optional
         }
       }
       break;
@@ -138,13 +141,16 @@ const handleRelease = (event) => {
   event.preventDefault();
   if (gameState.value === 'playing') {
     noteManager.checkHoldEnd();
+    noteManager.checkDragEnd();
   }
 };
 
 const handleMove = (event) => {
   event.preventDefault();
   if (gameState.value === 'playing') {
-    // Logic for drag notes will go here in the future
+    const rect = gameCanvas.value.getBoundingClientRect();
+    const x = (event.clientX ?? event.touches[0].clientX) - rect.left;
+    noteManager.checkDragUpdate(x);
   }
 };
 

@@ -1,80 +1,85 @@
 // src/core/DragNote.js
 import { BaseNote } from './BaseNote.js';
 
-const lerp = (start, end, progress) => start + (end - start) * progress;
-
 export class DragNote extends BaseNote {
   constructor(canvas, x, judgementLineY, scrollTime, noteData) {
-    const initialX = noteData.path[0][1];
-    super(canvas, initialX * canvas.width, judgementLineY, scrollTime, noteData);
-
+    super(canvas, x, judgementLineY, scrollTime, noteData);
     this.path = noteData.path;
-    this.duration = this.path[this.path.length - 1][0];
-    this.color = '#00FFFF'; // Cyan
+    this.duration = noteData.duration;
     this.isBeingHeld = false;
-    this.spawnY = this.y;
+    this.color = '#00FFFF'; // Cyan color for drag notes
   }
 
   update(gameTime) {
-    super.update(); // Updates this.y
+    super.update(gameTime);
 
-    const noteTime = gameTime - this.time;
-    if (noteTime < 0) return;
+    // --- Path-based movement ---
+    const timeInNote = gameTime - this.time;
+    if (timeInNote < 0) return;
 
     let startPoint = this.path[0];
-    let endPoint = this.path[this.path.length - 1];
-    for (let i = 0; i < this.path.length - 1; i++) {
-      if (noteTime >= this.path[i][0] && noteTime <= this.path[i+1][0]) {
-        startPoint = this.path[i];
-        endPoint = this.path[i+1];
+    let endPoint = null;
+    for (let i = 1; i < this.path.length; i++) {
+      if (this.path[i][0] >= timeInNote) {
+        endPoint = this.path[i];
         break;
       }
+      startPoint = this.path[i];
     }
 
-    const segmentDuration = endPoint[0] - startPoint[0];
-    const timeIntoSegment = noteTime - startPoint[0];
-    const progress = segmentDuration > 0 ? timeIntoSegment / segmentDuration : 1;
-
-    const normalizedX = lerp(startPoint[1], endPoint[1], progress);
-    this.x = normalizedX * this.canvas.width;
+    if (!endPoint) {
+      this.noteData.x = this.path[this.path.length - 1][1];
+    } else {
+      const [startTime, startX] = startPoint;
+      const [endTime, endX] = endPoint;
+      // Handle division by zero if startTime and endTime are the same
+      const timeRatio = (endTime - startTime) === 0 ? 1 : (timeInNote - startTime) / (endTime - startTime);
+      this.noteData.x = startX + (endX - startX) * timeRatio;
+    }
   }
 
   draw(ctx, judgementLineX) {
-    if (this.fadeTimer > 0 && this.isMissed) {
-      ctx.globalAlpha = this.fadeTimer / this.fadeDuration;
-    }
+    const renderX = this.x;
+    const timeToFall = this.scrollTime;
+    const pixelsPerMs = (this.canvas.height * 0.8) / timeToFall;
 
+    // --- Draw the trajectory line ---
     ctx.save();
-    const renderX = this.x - judgementLineX;
-
-    const fallProgress = this.y / this.spawnY;
-
-    ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
-    ctx.lineWidth = 10;
+    ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)';
+    ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.moveTo(renderX, this.y);
 
-    for (const point of this.path) {
-        const pointX = (point[1] * this.canvas.width) - judgementLineX;
-        const pointY = this.y + (point[0] / this.duration) * (0 - this.y) * fallProgress;
-        ctx.lineTo(pointX, pointY);
+    // Calculate the screen position for the first path point
+    const firstPathTime = this.time + this.path[0][0];
+    const firstY = this.y + (this.time - firstPathTime) * pixelsPerMs;
+    const firstX = this.path[0][1] * this.canvas.width;
+    ctx.moveTo(firstX - judgementLineX, firstY);
+
+    // Draw lines to subsequent path points
+    for (let i = 1; i < this.path.length; i++) {
+      const pathTime = this.time + this.path[i][0];
+      const pathY = this.y + (this.time - pathTime) * pixelsPerMs;
+      const pathX = this.path[i][1] * this.canvas.width;
+      ctx.lineTo(pathX - judgementLineX, pathY);
     }
     ctx.stroke();
+    ctx.restore();
 
+
+    // --- Draw the diamond-shaped note head ---
+    ctx.save();
     ctx.fillStyle = this.color;
     ctx.shadowColor = this.color;
     ctx.shadowBlur = 15;
 
     ctx.beginPath();
-    ctx.moveTo(renderX, this.y - this.height / 2 - 5);
-    ctx.lineTo(renderX + this.width / 2, this.y);
-    ctx.lineTo(renderX, this.y + this.height / 2 + 5);
-    ctx.lineTo(renderX - this.width / 2, this.y);
+    ctx.moveTo(renderX - judgementLineX, this.y - this.height / 2); // Top point
+    ctx.lineTo(renderX - judgementLineX + this.width / 2, this.y); // Right point
+    ctx.lineTo(renderX - judgementLineX, this.y + this.height / 2); // Bottom point
+    ctx.lineTo(renderX - judgementLineX - this.width / 2, this.y); // Left point
     ctx.closePath();
     ctx.fill();
 
-    ctx.shadowBlur = 0;
     ctx.restore();
-    ctx.globalAlpha = 1.0;
   }
 }

@@ -17,6 +17,7 @@ export class NoteManager {
 
     this.notes = [];
     this.activeHolds = new Set();
+    this.activeDragNote = null; // To track the currently held drag note
     this.nextNoteIndex = 0;
   }
 
@@ -24,6 +25,7 @@ export class NoteManager {
     this.chart = newChart;
     this.notes = [];
     this.activeHolds.clear();
+    this.activeDragNote = null; // Reset active drag note
     this.nextNoteIndex = 0;
     console.log("New chart loaded.");
   }
@@ -53,12 +55,11 @@ export class NoteManager {
     for (const note of this.notes) {
       note.update(gameTime);
       const missThreshold = this.judgementLine.y + 100;
-      // Miss condition for non-held notes
       if (!note.isMissed && !note.isBeingHeld && note.y > missThreshold) {
-         if (note.type === 'hold') { // Special case for missing the start of a hold
+        if (note.type === 'hold' || note.type === 'drag') {
             this.scoreManager.onMiss();
             note.markAsMissed();
-        } else if (note.type !== 'drag') {
+        } else {
             this.scoreManager.onMiss();
             note.markAsMissed();
         }
@@ -69,15 +70,23 @@ export class NoteManager {
     this.activeHolds.forEach(holdNote => {
       const endTime = holdNote.time + holdNote.duration;
       if (gameTime >= endTime) {
-        // Hold completed successfully
-        this.scoreManager.onHit(); // Final hit for completing the hold
-        holdNote.isAlive = () => false; // Mark for removal
+        this.scoreManager.onHit();
+        holdNote.isAlive = () => false;
         this.activeHolds.delete(holdNote);
       } else {
-        // Give continuous score/combo for holding
         this.scoreManager.increaseCombo(0.1);
       }
     });
+
+    // Update active drag note for successful completion
+    if (this.activeDragNote) {
+      const endTime = this.activeDragNote.time + this.activeDragNote.duration;
+      if (gameTime >= endTime) {
+        this.scoreManager.onHit(); // Final hit for completing the drag
+        this.activeDragNote.isAlive = () => false;
+        this.activeDragNote = null;
+      }
+    }
 
     this.notes = this.notes.filter(note => note.isAlive());
   }
@@ -136,13 +145,63 @@ export class NoteManager {
 
   checkHoldEnd() {
     if (this.activeHolds.size > 0) {
-       // When a pointer is released, we check all active holds.
-       // This simple model assumes one finger, so all holds are "released".
        this.activeHolds.forEach(holdNote => {
          this.scoreManager.onMiss();
          holdNote.markAsMissed();
        });
        this.activeHolds.clear();
+    }
+  }
+
+  checkDragStart() {
+    if (this.activeDragNote) return null; // Can't start a new drag if one is active
+
+    const hitWindow = 75;
+    let dragNoteStarted = null;
+    let closestDrag = null;
+    let minDistance = Infinity;
+
+    for (const note of this.notes) {
+      if (note.isMissed || note.type !== 'drag') continue;
+      // For drag notes, we only care about the y-distance for starting
+      const distY = Math.abs(note.y - this.judgementLine.y);
+      if (distY < minDistance) {
+          minDistance = distY;
+          closestDrag = note;
+      }
+    }
+
+    if (closestDrag && minDistance < hitWindow) {
+      dragNoteStarted = closestDrag;
+      dragNoteStarted.isBeingHeld = true;
+      this.activeDragNote = dragNoteStarted;
+      this.scoreManager.onHit(); // Score for starting the drag
+    }
+    return dragNoteStarted;
+  }
+
+  checkDragUpdate(pointerX) {
+    if (!this.activeDragNote) return;
+
+    const hitBoxWidth = this.activeDragNote.width * 2; // A generous hitbox
+    const noteCenterX = this.activeDragNote.x;
+
+    if (Math.abs(pointerX - noteCenterX) > hitBoxWidth / 2) {
+      this.scoreManager.onMiss();
+      this.activeDragNote.markAsMissed();
+      this.activeDragNote = null;
+    } else {
+      // Give continuous score/combo for dragging
+      this.scoreManager.increaseCombo(0.2);
+    }
+  }
+
+  checkDragEnd() {
+    if (this.activeDragNote) {
+      // Player released finger before the note ended
+      this.scoreManager.onMiss();
+      this.activeDragNote.markAsMissed();
+      this.activeDragNote = null;
     }
   }
 }
