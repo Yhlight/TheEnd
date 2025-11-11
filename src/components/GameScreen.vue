@@ -8,7 +8,21 @@
   >
     <div class="grid-background"></div>
     <progress-bar :song-time="songTime" :song-duration="songDuration" v-if="isPlaying" />
-    <HUD :score="score" :combo="combo" v-if="isPlaying" />
+    <HUD :score="score" :combo="combo" v-if="isPlaying" @pause="togglePause" />
+
+    <div v-if="isPaused" class="pause-overlay">
+      <div class="pause-menu" v-if="!showSettings">
+        <h2>Paused</h2>
+        <button @click.stop="togglePause">Resume</button>
+        <button @click.stop="showSettings = true">Settings</button>
+      </div>
+      <settings-menu
+        v-if="showSettings"
+        @close="showSettings = false"
+        @volumeChange="handleVolumeChange"
+      />
+    </div>
+
     <div v-if="!isPlaying" class="play-button-container">
       <button @click.stop="startGame" :disabled="!chartLoaded">
         {{ chartLoaded ? 'Play' : 'Loading...' }}
@@ -44,13 +58,14 @@ import JudgmentLine from './JudgmentLine.vue';
 import HitEffect from './HitEffect.vue';
 import HUD from './HUD.vue';
 import ProgressBar from './ProgressBar.vue';
+import SettingsMenu from './SettingsMenu.vue';
 
 const TIMING_WINDOWS = { perfect: 50, good: 100, miss: 200 };
 let effectIdCounter = 0;
 
 export default {
   name: 'GameScreen',
-  components: { GeometricNote, JudgmentLine, HitEffect, HUD, ProgressBar },
+  components: { GeometricNote, JudgmentLine, HitEffect, HUD, ProgressBar, SettingsMenu },
   data() {
     return {
       chart: null,
@@ -58,6 +73,8 @@ export default {
       activeEffects: [],
       activeHolds: {},
       isDragging: false,
+      isPaused: false,
+      showSettings: false,
       judgmentLinePosition: 85,
       judgmentLineRotation: 0,
       isPlaying: false,
@@ -196,6 +213,25 @@ export default {
         }
       });
     },
+    togglePause() {
+      if (!this.isPlaying) return;
+      this.isPaused = !this.isPaused;
+      if (this.isPaused) {
+        this.$refs.audioPlayer.pause();
+      } else {
+        this.$refs.audioPlayer.play();
+        requestAnimationFrame(this.gameLoop);
+      }
+    },
+    handleVolumeChange(volume) {
+      const newVolume = volume / 100;
+      if (this.$refs.audioPlayer) {
+        this.$refs.audioPlayer.volume = newVolume;
+      }
+      if (this.$refs.hitSfxPlayer) {
+        this.$refs.hitSfxPlayer.volume = newVolume;
+      }
+    },
     playHitSound() {
       if (this.$refs.hitSfxPlayer) {
         this.$refs.hitSfxPlayer.currentTime = 0;
@@ -251,7 +287,7 @@ export default {
       }
     },
     gameLoop() {
-      if (!this.isPlaying) return;
+      if (!this.isPlaying || this.isPaused) return;
 
       this.songTime = this.$refs.audioPlayer.currentTime * 1000;
 
@@ -312,5 +348,66 @@ export default {
 </script>
 
 <style scoped>
-/* Unchanged */
+/* Most styles are unchanged */
+.game-screen {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+.grid-background {
+  /* Style for the background */
+}
+.play-button-container {
+  /* Style for the play button */
+}
+.notes-container {
+  /* Style for the notes container */
+}
+
+.pause-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+  color: white;
+}
+
+.pause-menu {
+  text-align: center;
+  padding: 40px;
+  background: rgba(20, 20, 20, 0.9);
+  border: 2px solid #fff;
+  border-radius: 10px;
+  box-shadow: 0 0 20px #fff, 0 0 40px #ff00ff;
+}
+
+.pause-menu button {
+  margin: 10px;
+  padding: 10px 20px;
+  font-size: 18px;
+  background: rgba(0,0,0,0.4);
+  color: white;
+  border: 2px solid white;
+  border-radius: 5px;
+  cursor: pointer;
+  box-shadow: 0 0 10px #fff;
+  transition: box-shadow 0.2s, background-color 0.2s;
+}
+
+.pause-menu button:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 15px #fff, 0 0 25px #00ffff;
+}
 </style>
