@@ -1,36 +1,6 @@
 // src/core/DynamicBackground.js
 
-// A base class for background elements
-class BackgroundElement {
-    constructor(canvas) {
-        this.canvas = canvas;
-        this.life = 0; // Start at 0 for fade-in
-        this.maxLife = 1;
-        this.fadeInSpeed = 0.05;
-        this.fadeOutSpeed = 0.01;
-        this.isFadingIn = true;
-    }
-
-    update() {
-        if (this.isFadingIn) {
-            this.life += this.fadeInSpeed;
-            if (this.life >= this.maxLife) {
-                this.life = this.maxLife;
-                this.isFadingIn = false;
-            }
-        } else {
-            this.life -= this.fadeOutSpeed;
-        }
-    }
-
-    isDead() {
-        return this.life <= 0;
-    }
-
-    draw(ctx) {
-        // To be implemented by subclasses
-    }
-}
+import { BackgroundElement } from './BackgroundElement.js';
 
 // A moving line element that drifts across the screen
 class MovingLine extends BackgroundElement {
@@ -105,11 +75,17 @@ class GridLine extends BackgroundElement {
 }
 
 
+// src/core/FloatingCrystal.js
+
+import { FloatingCrystal } from './FloatingCrystal.js';
+
 export class DynamicBackground {
     constructor(canvas) {
         this.canvas = canvas;
         this.elements = [];
         this.maxMovingLines = 30;
+        this.crystals = [];
+        this.maxCrystals = 20;
         this.brightness = 1.0;
     }
 
@@ -139,13 +115,22 @@ export class DynamicBackground {
              this.elements.push(new MovingLine(this.canvas));
         }
 
+        // Add new crystals if needed
+        if (this.crystals.length < this.maxCrystals && Math.random() > 0.8) {
+            this.crystals.push(new FloatingCrystal(this.canvas));
+        }
+
         // Update all elements
         for (const element of this.elements) {
             element.update();
         }
+        for (const crystal of this.crystals) {
+            crystal.update();
+        }
 
         // Remove dead elements
         this.elements = this.elements.filter(element => !element.isDead());
+        this.crystals = this.crystals.filter(crystal => !crystal.isDead());
     }
 
     draw(ctx) {
@@ -156,6 +141,9 @@ export class DynamicBackground {
 
         for (const element of this.elements) {
             element.draw(ctx, this.brightness);
+        }
+        for (const crystal of this.crystals) {
+            crystal.draw(ctx, this.brightness);
         }
     }
 }
