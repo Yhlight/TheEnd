@@ -69,6 +69,32 @@ export class ScoreManager {
     return this.maxCombo;
   }
 
+  getJudgementCounts() {
+    return this.judgements;
+  }
+
+  getAccuracy() {
+    const totalNotes = Object.values(this.judgements).reduce((a, b) => a + b, 0);
+    if (totalNotes === 0) {
+      return 100;
+    }
+
+    // Perfects count as 100%, Goods as 50%
+    const weightedScore = this.judgements.Perfect * 1.0 + this.judgements.Good * 0.5;
+
+    // Bads and Misses don't contribute to the numerator, but do to the denominator.
+    // However, hold/drag ticks might add combo but don't have a judgement.
+    // Let's base accuracy on judgements only.
+    const totalJudgements = this.judgements.Perfect + this.judgements.Good + this.judgements.Bad + this.judgements.Miss;
+
+    if (totalJudgements === 0) {
+      return 100;
+    }
+
+    const accuracy = (weightedScore / totalJudgements) * 100;
+    return accuracy;
+  }
+
   reset() {
     this.score = 0;
     this.combo = 0;
