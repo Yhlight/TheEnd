@@ -9,7 +9,6 @@
 import { ref, onMounted } from 'vue';
 import { JudgementLine } from '../core/JudgementLine.js';
 import { NoteManager } from '../core/NoteManager.js';
-// Import the entire song library instead of the single test chart
 import { songLibrary } from '../core/ChartData.js';
 import { EffectManager } from '../core/EffectManager.js';
 import { ScoreManager } from '../core/ScoreManager.js';
@@ -54,7 +53,6 @@ const initializeGame = () => {
 
   judgementLine = new JudgementLine(gameCanvas.value);
   scoreManager = new ScoreManager();
-  // Initialize NoteManager without a chart initially. It will be loaded on song selection.
   noteManager = new NoteManager(gameCanvas.value, null, scoreManager, judgementLine);
   effectManager = new EffectManager();
   audioManager = new AudioManager();
@@ -68,7 +66,7 @@ const initializeGame = () => {
 };
 
 const startGame = (chart) => {
-  noteManager.loadChart(chart); // Load the selected chart
+  noteManager.loadChart(chart);
   if (audioElement.value) {
     audioElement.value.currentTime = 0;
     audioElement.value.play().then(() => {
@@ -84,8 +82,6 @@ onMounted(initializeGame);
 
 const handleInput = (event) => {
   event.preventDefault();
-
-  // Unified input coordinate handling for mouse and touch events
   const rect = gameCanvas.value.getBoundingClientRect();
   const x = (event.clientX ?? event.touches[0].clientX) - rect.left;
   const y = (event.clientY ?? event.touches[0].clientY) - rect.top;
@@ -95,14 +91,11 @@ const handleInput = (event) => {
       gameState.value = 'songSelect';
       break;
     case 'songSelect':
-      // Check if the click is within any of the song boxes
       const centerX = gameCanvas.value.width / 2;
       songLibrary.forEach((song, index) => {
         const boxX = centerX - songBoxWidth / 2;
         const boxY = 150 + index * (songBoxHeight + songBoxGap);
-
         if (x >= boxX && x <= boxX + songBoxWidth && y >= boxY && y <= boxY + songBoxHeight) {
-          // If a song box is clicked, start the game with that song's chart
           startGame(song.chart);
         }
       });
@@ -120,12 +113,15 @@ const handleInput = (event) => {
         }
       }
       break;
+    case 'results':
+      scoreManager.reset();
+      gameState.value = 'songSelect';
+      break;
   }
 };
 
 const update = () => {
   dynamicBackground.update();
-
   switch (gameState.value) {
     case 'title':
       if (titleTextFadeIn) {
@@ -138,6 +134,10 @@ const update = () => {
       break;
     case 'playing':
       if (!audioElement.value) return;
+      if (audioElement.value.ended) {
+        gameState.value = 'results';
+        break;
+      }
       const gameTime = audioElement.value.currentTime * 1000;
       judgementLine.update();
       noteManager.update(gameTime);
@@ -156,18 +156,50 @@ const draw = () => {
       drawTitleScreen();
       break;
     case 'songSelect':
-      drawSongSelectScreen(); // Call the new drawing function
+      drawSongSelectScreen();
       break;
     case 'playing':
       drawGameHUD();
       break;
+    case 'results':
+      drawResultsScreen();
+      break;
   }
+};
+
+const drawResultsScreen = () => {
+  const centerX = gameCanvas.value.width / 2;
+  const centerY = gameCanvas.value.height / 2;
+  ctx.fillStyle = 'white';
+  ctx.font = 'bold 80px Arial';
+  ctx.textAlign = 'center';
+  ctx.shadowColor = 'rgba(0, 255, 255, 0.7)';
+  ctx.shadowBlur = 15;
+  ctx.fillText("Results", centerX, centerY - 200);
+  ctx.font = '30px Arial';
+  ctx.fillText("Final Score", centerX, centerY - 100);
+  const score = scoreManager.getScore();
+  const scoreDigitSize = 6;
+  const scoreWidth = 7 * (3 * scoreDigitSize + scoreDigitSize);
+  drawStylizedNumber(score, centerX - scoreWidth / 2, centerY - 80, scoreDigitSize, 'white');
+  ctx.font = '30px Arial';
+  ctx.fillText("Max Combo", centerX, centerY + 50);
+  const maxCombo = scoreManager.getMaxCombo();
+  const comboDigitSize = 6;
+  const comboStr = String(maxCombo);
+  const comboWidth = comboStr.length * (3 * comboDigitSize + comboDigitSize);
+  drawStylizedNumber(maxCombo, centerX - comboWidth / 2, centerY + 70, comboDigitSize, 'white');
+  ctx.save();
+  ctx.font = '30px Arial';
+  ctx.fillStyle = `rgba(255, 255, 255, ${titleTextAlpha.value})`;
+  ctx.textAlign = 'center';
+  ctx.fillText("Click to Continue", centerX, centerY + 200);
+  ctx.restore();
 };
 
 const drawTitleScreen = () => {
   const centerX = gameCanvas.value.width / 2;
   const centerY = gameCanvas.value.height / 2;
-
   ctx.save();
   ctx.font = 'bold 120px Arial';
   ctx.fillStyle = 'white';
@@ -176,7 +208,6 @@ const drawTitleScreen = () => {
   ctx.shadowBlur = 20;
   ctx.fillText("TheEnd", centerX, centerY - 50);
   ctx.restore();
-
   ctx.save();
   ctx.font = '30px Arial';
   ctx.fillStyle = `rgba(255, 255, 255, ${titleTextAlpha.value})`;
@@ -187,36 +218,25 @@ const drawTitleScreen = () => {
 
 const drawSongSelectScreen = () => {
   const centerX = gameCanvas.value.width / 2;
-
-  // Draw the title
   ctx.fillStyle = 'white';
   ctx.font = '48px Arial';
   ctx.textAlign = 'center';
   ctx.fillText("Select a Song", centerX, 80);
-
-  // Draw the song list
   songLibrary.forEach((song, index) => {
     const boxX = centerX - songBoxWidth / 2;
     const boxY = 150 + index * (songBoxHeight + songBoxGap);
-
-    // Draw the container box
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
     ctx.lineWidth = 2;
     ctx.strokeRect(boxX, boxY, songBoxWidth, songBoxHeight);
-
-    // Draw song title
     ctx.fillStyle = 'white';
     ctx.font = '32px Arial';
     ctx.textAlign = 'left';
     ctx.fillText(song.title, boxX + 20, boxY + 45);
-
-    // Draw artist name
     ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
     ctx.font = '20px Arial';
     ctx.fillText(song.artist, boxX + 20, boxY + 75);
   });
 };
-
 
 const drawGameHUD = () => {
   if (audioElement.value && audioElement.value.duration) {
@@ -225,24 +245,61 @@ const drawGameHUD = () => {
     ctx.fillStyle = 'rgba(0, 255, 255, 0.5)';
     ctx.fillRect(0, 0, progressBarWidth, 5);
   }
-
   judgementLine.draw();
   noteManager.draw();
   effectManager.draw(ctx);
-
   if (scoreManager) {
-    ctx.fillStyle = 'white';
-    ctx.font = '24px Arial';
-    ctx.textAlign = 'right';
-    ctx.fillText(`Score: ${scoreManager.getScore()}`, gameCanvas.value.width - 20, 40);
-
-    if (scoreManager.getCombo() > 1) {
-      ctx.font = '32px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(`${scoreManager.getCombo()}`, gameCanvas.value.width / 2, gameCanvas.value.height / 2);
+    const score = scoreManager.getScore();
+    const scoreDigitSize = 4;
+    const scoreWidth = 7 * (3 * scoreDigitSize + scoreDigitSize);
+    drawStylizedNumber(score, gameCanvas.value.width - scoreWidth - 20, 20, scoreDigitSize, 'white');
+    const combo = scoreManager.getCombo();
+    if (combo > 1) {
+      const comboStr = String(combo);
+      const comboDigitSize = 8;
+      const comboWidth = comboStr.length * (3 * comboDigitSize + comboDigitSize);
+      const comboX = (gameCanvas.value.width - comboWidth) / 2;
+      const comboY = (gameCanvas.value.height - (5 * comboDigitSize)) / 2;
+      drawStylizedNumber(combo, comboX, comboY, comboDigitSize, 'rgba(0, 255, 255, 0.8)');
     }
   }
-}
+};
+
+const NUMBER_TEMPLATES = {
+  '0': [[1,1,1],[1,0,1],[1,0,1],[1,0,1],[1,1,1]],
+  '1': [[0,1,0],[1,1,0],[0,1,0],[0,1,0],[1,1,1]],
+  '2': [[1,1,1],[0,0,1],[1,1,1],[1,0,0],[1,1,1]],
+  '3': [[1,1,1],[0,0,1],[1,1,1],[0,0,1],[1,1,1]],
+  '4': [[1,0,1],[1,0,1],[1,1,1],[0,0,1],[0,0,1]],
+  '5': [[1,1,1],[1,0,0],[1,1,1],[0,0,1],[1,1,1]],
+  '6': [[1,1,1],[1,0,0],[1,1,1],[1,0,1],[1,1,1]],
+  '7': [[1,1,1],[0,0,1],[0,1,0],[0,1,0],[0,1,0]],
+  '8': [[1,1,1],[1,0,1],[1,1,1],[1,0,1],[1,1,1]],
+  '9': [[1,1,1],[1,0,1],[1,1,1],[0,0,1],[1,1,1]],
+};
+
+const drawStylizedNumber = (number, x, y, size, color) => {
+  const numberStr = String(number).padStart(7, '0');
+  const digitWidth = 3 * size;
+  const digitSpacing = size;
+  let currentX = x;
+  ctx.fillStyle = color;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = size * 1.5;
+  for (const digit of numberStr) {
+    const template = NUMBER_TEMPLATES[digit];
+    if (template) {
+      for (let row = 0; row < template.length; row++) {
+        for (let col = 0; col < template[row].length; col++) {
+          if (template[row][col] === 1) {
+            ctx.fillRect(currentX + col * size, y + row * size, size, size);
+          }
+        }
+      }
+    }
+    currentX += digitWidth + digitSpacing;
+  }
+};
 
 const gameLoop = () => {
   update();

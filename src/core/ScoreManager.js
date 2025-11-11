@@ -33,4 +33,14 @@ export class ScoreManager {
   getCombo() {
     return this.combo;
   }
+
+  getMaxCombo() {
+    return this.maxCombo;
+  }
+
+  reset() {
+    this.score = 0;
+    this.combo = 0;
+    this.maxCombo = 0;
+  }
 }
