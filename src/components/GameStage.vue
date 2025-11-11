@@ -58,6 +58,10 @@ let dynamicBackground = null;
 const songSelectState = reactive({
   selectedIndex: 0,
   cards: [],
+  targetScrollX: 0,
+  currentScrollX: 0,
+  isDragging: false,
+  dragStartX: 0,
 });
 
 const settings = reactive({
@@ -68,9 +72,10 @@ const settings = reactive({
     offset: 0, // In milliseconds
 });
 
-const CARD_WIDTH = 400;
-const CARD_HEIGHT = 100;
-const CARD_MARGIN = 20;
+const CARD_WIDTH = 350;
+const CARD_HEIGHT = 200;
+const CARD_MARGIN = 40;
+const SELECTED_CARD_SCALE = 1.2;
 
 const initializeGame = () => {
   if (!gameCanvas.value) return;
@@ -154,10 +159,18 @@ const retryCurrentSong = () => {
 };
 
 const calculateCardPositions = () => {
+    const totalWidth = songLibrary.length * (CARD_WIDTH + CARD_MARGIN) - CARD_MARGIN;
+    const startX = (gameCanvas.value.width - totalWidth) / 2;
+    const y = (gameCanvas.value.height - CARD_HEIGHT) / 2;
+
     songSelectState.cards = songLibrary.map((song, index) => {
-        const x = (gameCanvas.value.width - CARD_WIDTH) / 2;
-        const y = (gameCanvas.value.height / 2) - (songLibrary.length * (CARD_HEIGHT + CARD_MARGIN) / 2) + (index * (CARD_HEIGHT + CARD_MARGIN));
-        return { song, x, y, width: CARD_WIDTH, height: CARD_HEIGHT };
+        return {
+            song,
+            x: startX + index * (CARD_WIDTH + CARD_MARGIN),
+            y: y,
+            width: CARD_WIDTH,
+            height: CARD_HEIGHT
+        };
     });
 };
 
@@ -228,6 +241,34 @@ const updateTitle = () => {
 
 const updateSongSelect = () => {
     dynamicBackground.update();
+
+    // Smooth scroll interpolation
+    const lerpFactor = 0.1;
+    songSelectState.currentScrollX += (songSelectState.targetScrollX - songSelectState.currentScrollX) * lerpFactor;
+
+    // Determine selected index based on scroll position
+    const centerScreenX = gameCanvas.value.width / 2;
+    let closestCardIndex = 0;
+    let minDistance = Infinity;
+
+    songSelectState.cards.forEach((card, index) => {
+        const cardCenterX = card.x - songSelectState.currentScrollX;
+        const distance = Math.abs(centerScreenX - cardCenterX);
+        if (distance < minDistance) {
+            minDistance = distance;
+            closestCardIndex = index;
+        }
+    });
+    songSelectState.selectedIndex = closestCardIndex;
+
+    // Snap to the selected card if not dragging
+    if (!songSelectState.isDragging) {
+        const selectedCard = songSelectState.cards[songSelectState.selectedIndex];
+        if (selectedCard) {
+            const targetX = selectedCard.x - centerScreenX;
+            songSelectState.targetScrollX = targetX;
+        }
+    }
 };
 
 const updatePlaying = () => {
@@ -263,25 +304,49 @@ const drawTitle = () => {
 
 const drawSongSelect = () => {
     dynamicBackground.draw(ctx);
+    const centerScreenX = gameCanvas.value.width / 2;
+
     songSelectState.cards.forEach((card, index) => {
+        const cardRenderX = card.x - songSelectState.currentScrollX - card.width / 2;
+
+        let scale = 1.0;
+        if (index === songSelectState.selectedIndex) {
+            scale = SELECTED_CARD_SCALE;
+        }
+
+        const scaledWidth = card.width * scale;
+        const scaledHeight = card.height * scale;
+        const renderX = cardRenderX + (card.width - scaledWidth) / 2;
+        const renderY = card.y + (card.height - scaledHeight) / 2;
+
+        ctx.save();
+        ctx.translate(renderX + scaledWidth / 2, renderY + scaledHeight / 2);
+        ctx.translate(-(renderX + scaledWidth / 2), -(renderY + scaledHeight / 2));
+
         if (index === songSelectState.selectedIndex) {
             ctx.fillStyle = 'rgba(0, 255, 255, 0.7)';
             ctx.strokeStyle = 'cyan';
             ctx.lineWidth = 4;
+            ctx.shadowColor = 'cyan';
+            ctx.shadowBlur = 20;
         } else {
             ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
             ctx.strokeStyle = 'white';
             ctx.lineWidth = 2;
+            ctx.shadowBlur = 0;
         }
-        ctx.fillRect(card.x, card.y, card.width, card.height);
-        ctx.strokeRect(card.x, card.y, card.width, card.height);
+
+        ctx.fillRect(renderX, renderY, scaledWidth, scaledHeight);
+        ctx.strokeRect(renderX, renderY, scaledWidth, scaledHeight);
 
         ctx.fillStyle = 'white';
-        ctx.font = '32px sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText(card.song.title, card.x + 20, card.y + 45);
-        ctx.font = '20px sans-serif';
-        ctx.fillText(card.song.artist, card.x + 20, card.y + 75);
+        ctx.font = `${32 * scale}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText(card.song.title, renderX + scaledWidth / 2, renderY + scaledHeight / 2);
+        ctx.font = `${20 * scale}px sans-serif`;
+        ctx.fillText(card.song.artist, renderX + scaledWidth / 2, renderY + scaledHeight / 2 + 30 * scale);
+
+        ctx.restore();
     });
 };
 
@@ -433,16 +498,22 @@ const handlePress = (event) => {
       gameState.current = 'songSelect';
       break;
     case 'songSelect':
-      songSelectState.cards.forEach((card, index) => {
-        if (x > card.x && x < card.x + card.width && y > card.y && y < card.y + card.height) {
-          songSelectState.selectedIndex = index;
-          const selectedSong = songLibrary[index];
-          noteManager.loadChart(selectedSong.chart);
-          audioElement.value.play().catch(e => console.error("Audio error:", e));
-          gameState.current = 'playing';
-          gameStartTime = null; // Reset fallback timer
+      if (Math.abs(y - gameCanvas.value.height / 2) < CARD_HEIGHT * SELECTED_CARD_SCALE) {
+        // Check if the click is on the selected card to start the game
+        const selectedCard = songSelectState.cards[songSelectState.selectedIndex];
+        const cardRenderX = selectedCard.x - songSelectState.currentScrollX - selectedCard.width / 2;
+        if (x > cardRenderX && x < cardRenderX + selectedCard.width) {
+            const selectedSong = songLibrary[songSelectState.selectedIndex];
+            noteManager.loadChart(selectedSong.chart);
+            audioElement.value.play().catch(e => console.error("Audio error:", e));
+            gameState.current = 'playing';
+            gameStartTime = null; // Reset fallback timer
+        } else {
+            // Otherwise, start dragging
+            songSelectState.isDragging = true;
+            songSelectState.dragStartX = x - songSelectState.currentScrollX;
         }
-      });
+      }
       break;
     case 'playing':
       const pb = uiElements.pauseButton;
@@ -522,7 +593,9 @@ const handleMove = (event) => {
     const rect = gameCanvas.value.getBoundingClientRect();
     const x = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
 
-    if (gameState.current === 'settings' && activeSlider) {
+    if (gameState.current === 'songSelect' && songSelectState.isDragging) {
+        songSelectState.targetScrollX = x - songSelectState.dragStartX;
+    } else if (gameState.current === 'settings' && activeSlider) {
         updateSlider(x);
     } else if (gameState.current === 'playing' && noteManager) {
         const relativeX = x - judgementLine.x;
@@ -543,6 +616,8 @@ const handleRelease = (event) => {
   if (gameState.current === 'playing' && noteManager) {
     noteManager.checkHoldEnd();
     noteManager.checkDragEnd();
+  } else if (gameState.current === 'songSelect') {
+    songSelectState.isDragging = false;
   }
   if (activeSlider) {
       activeSlider = null;

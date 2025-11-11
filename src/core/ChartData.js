@@ -36,7 +36,30 @@ export const songLibrary = [
         { time: 2000, duration: 500, value: { y: -150, rotation: 15 }, easing: 'easeOutQuad' },
         { time: 3000, duration: 500, value: { y: 150, rotation: -15 }, easing: 'easeOutQuad' },
         { time: 4000, duration: 1000, value: { y: 0, rotation: 0 }, easing: 'easeInOutQuad' },
+
+        // New events for x and alpha
+        { time: 6000, duration: 500, value: { x: -200, alpha: 0.5 }, easing: 'easeInOutSine' },
+        { time: 7000, duration: 500, value: { x: 200 }, easing: 'easeInOutSine' },
+        { time: 8000, duration: 1000, value: { x: 0, alpha: 1.0 }, easing: 'easeOutBounce' }
       ]
     }
+  },
+  {
+    id: 2,
+    title: "Starlight",
+    artist: "Synth Weaver",
+    chart: { /* Placeholder chart */ notes: [], lineEvents: [] }
+  },
+  {
+    id: 3,
+    title: "Echoes",
+    artist: "Ghost Note",
+    chart: { /* Placeholder chart */ notes: [], lineEvents: [] }
+  },
+    {
+    id: 4,
+    title: "Mirage",
+    artist: "Pixel Pulse",
+    chart: { /* Placeholder chart */ notes: [], lineEvents: [] }
   }
 ];

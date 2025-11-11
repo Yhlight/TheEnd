@@ -34,6 +34,12 @@ export class NoteManager {
     this.activeHolds.clear();
     this.activeDragNote = null;
     this.nextNoteIndex = 0;
+
+    if (newChart && newChart.lineEvents) {
+      this.judgementLine.loadEvents(newChart.lineEvents);
+    } else {
+      this.judgementLine.loadEvents([]); // Clear events if the new chart has none
+    }
   }
 
   update(gameTime) {
