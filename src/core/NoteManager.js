@@ -7,12 +7,13 @@ import { DragNote } from './DragNote.js';
 const BASE_SCROLL_TIME = 3000;
 
 export class NoteManager {
-  constructor(canvas, chart, scoreManager, judgementLine, audioManager, noteSpeed = 1) {
+  constructor(canvas, chart, scoreManager, judgementLine, audioManager, effectManager, noteSpeed = 1) {
     this.canvas = canvas;
     this.chart = chart;
     this.scoreManager = scoreManager;
     this.judgementLine = judgementLine;
     this.audioManager = audioManager;
+    this.effectManager = effectManager;
     this.noteSpeed = noteSpeed;
     this.scrollTime = BASE_SCROLL_TIME / this.noteSpeed;
 
@@ -62,15 +63,14 @@ export class NoteManager {
       note.update(gameTime);
       const missThreshold = this.judgementLine.y + 100;
       if (!note.isMissed && !note.isBeingHeld && note.y > missThreshold) {
-        if (note.type === 'hold' || note.type === 'drag') {
-            this.scoreManager.onMiss();
-            note.markAsMissed();
-            this.audioManager.playMissSound();
-        } else {
-            this.scoreManager.onMiss();
-            note.markAsMissed();
-            this.audioManager.playMissSound();
-        }
+          this.scoreManager.onMiss();
+          note.markAsMissed();
+          this.audioManager.playMissSound();
+
+          // Use a generic position for the miss text, as the note might be far off-screen
+          const missX = this.canvas.width / 2;
+          const missY = this.judgementLine.y - 50;
+          this.effectManager.createJudgementText(missX, missY, 'Miss', '#FF8080'); // A reddish color for miss
       }
     }
 
@@ -78,11 +78,14 @@ export class NoteManager {
     this.activeHolds.forEach(holdNote => {
       const endTime = holdNote.time + holdNote.duration;
       if (gameTime >= endTime) {
-        this.scoreManager.onHit();
+        // Award a final 'Perfect' for completing the hold
+        this.scoreManager.onHit('Perfect');
         holdNote.isAlive = () => false;
         this.activeHolds.delete(holdNote);
       } else {
-        this.scoreManager.increaseCombo(0.1);
+        // Award a small amount of score/combo for holding
+        this.scoreManager.increaseCombo(0.2);
+        this.scoreManager.score += 2;
       }
     });
 
@@ -90,7 +93,7 @@ export class NoteManager {
     if (this.activeDragNote) {
       const endTime = this.activeDragNote.time + this.activeDragNote.duration;
       if (gameTime >= endTime) {
-        this.scoreManager.onHit(); // Final hit for completing the drag
+        this.scoreManager.onHit('Perfect'); // Final hit for completing the drag
         this.activeDragNote.isAlive = () => false;
         this.activeDragNote = null;
       }
@@ -105,50 +108,68 @@ export class NoteManager {
     }
   }
 
-  checkTapHit() {
-    const hitWindow = 75;
-    let hitNote = null;
-    let closestHittable = null;
-    let minDistance = Infinity;
+  // Define judgement windows in milliseconds
+  static judgementWindows = {
+    Perfect: 40,
+    Good: 80,
+    Bad: 120,
+  };
 
+  checkTapHit(gameTime) {
+    let closestNote = null;
+    let minTimeDiff = Infinity;
+
+    // Find the closest tappable note in time
     for (const note of this.notes) {
       if (note.isMissed || (note.type !== 'tap' && note.type !== 'flick')) continue;
-      const dist = Math.abs(note.y - this.judgementLine.y);
-      if (dist < minDistance) {
-        minDistance = dist;
-        closestHittable = note;
+
+      const timeDiff = Math.abs(gameTime - note.time);
+      if (timeDiff < minTimeDiff) {
+        minTimeDiff = timeDiff;
+        closestNote = note;
       }
     }
 
-    if (closestHittable && minDistance < hitWindow) {
-      hitNote = closestHittable;
-      this.notes = this.notes.filter(note => note !== hitNote);
+    if (closestNote && minTimeDiff <= NoteManager.judgementWindows.Bad) {
+      // Determine the judgement
+      let judgement = 'Bad';
+      if (minTimeDiff <= NoteManager.judgementWindows.Good) judgement = 'Good';
+      if (minTimeDiff <= NoteManager.judgementWindows.Perfect) judgement = 'Perfect';
+
+      // Remove the note from the active list
+      this.notes = this.notes.filter(note => note !== closestNote);
+
+      return { note: closestNote, judgement };
     }
-    return hitNote;
+
+    return null;
   }
 
-  checkHoldStart() {
-    const hitWindow = 75;
-    let holdNoteStarted = null;
-    let closestHold = null;
-    let minDistance = Infinity;
+  checkHoldStart(gameTime) {
+    let closestNote = null;
+    let minTimeDiff = Infinity;
 
     for (const note of this.notes) {
-      if (note.isMissed || note.type !== 'hold') continue;
-      const dist = Math.abs(note.y - this.judgementLine.y);
-      if (dist < minDistance) {
-        minDistance = dist;
-        closestHold = note;
-      }
+        if (note.isMissed || note.type !== 'hold') continue;
+        const timeDiff = Math.abs(gameTime - note.time);
+        if (timeDiff < minTimeDiff) {
+            minTimeDiff = timeDiff;
+            closestNote = note;
+        }
     }
 
-    if (closestHold && minDistance < hitWindow) {
-      holdNoteStarted = closestHold;
-      holdNoteStarted.isBeingHeld = true;
-      this.activeHolds.add(holdNoteStarted);
-      this.scoreManager.onHit(); // Score for starting the hold
+    if (closestNote && minTimeDiff <= NoteManager.judgementWindows.Bad) {
+        let judgement = 'Bad';
+        if (minTimeDiff <= NoteManager.judgementWindows.Good) judgement = 'Good';
+        if (minTimeDiff <= NoteManager.judgementWindows.Perfect) judgement = 'Perfect';
+
+        closestNote.isBeingHeld = true;
+        this.activeHolds.add(closestNote);
+
+        return { note: closestNote, judgement };
     }
-    return holdNoteStarted;
+
+    return null;
   }
 
   checkHoldEnd() {
@@ -161,31 +182,33 @@ export class NoteManager {
     }
   }
 
-  checkDragStart() {
+  checkDragStart(gameTime) {
     if (this.activeDragNote) return null; // Can't start a new drag if one is active
 
-    const hitWindow = 75;
-    let dragNoteStarted = null;
-    let closestDrag = null;
-    let minDistance = Infinity;
+    let closestNote = null;
+    let minTimeDiff = Infinity;
 
     for (const note of this.notes) {
-      if (note.isMissed || note.type !== 'drag') continue;
-      // For drag notes, we only care about the y-distance for starting
-      const distY = Math.abs(note.y - this.judgementLine.y);
-      if (distY < minDistance) {
-          minDistance = distY;
-          closestDrag = note;
-      }
+        if (note.isMissed || note.type !== 'drag') continue;
+        const timeDiff = Math.abs(gameTime - note.time);
+        if (timeDiff < minTimeDiff) {
+            minTimeDiff = timeDiff;
+            closestNote = note;
+        }
     }
 
-    if (closestDrag && minDistance < hitWindow) {
-      dragNoteStarted = closestDrag;
-      dragNoteStarted.isBeingHeld = true;
-      this.activeDragNote = dragNoteStarted;
-      this.scoreManager.onHit(); // Score for starting the drag
+    if (closestNote && minTimeDiff <= NoteManager.judgementWindows.Bad) {
+        let judgement = 'Bad';
+        if (minTimeDiff <= NoteManager.judgementWindows.Good) judgement = 'Good';
+        if (minTimeDiff <= NoteManager.judgementWindows.Perfect) judgement = 'Perfect';
+
+        closestNote.isBeingHeld = true;
+        this.activeDragNote = closestNote;
+
+        return { note: closestNote, judgement };
     }
-    return dragNoteStarted;
+
+    return null;
   }
 
   checkDragUpdate(pointerX) {
