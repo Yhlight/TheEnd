@@ -17,31 +17,28 @@ export class NoteManager {
 
     this.notes = [];
     this.activeHolds = new Set();
-    this.activeDragNote = null;
     this.nextNoteIndex = 0;
   }
 
   loadChart(newChart) {
     this.chart = newChart;
-    // Reset all state related to the previous chart
     this.notes = [];
     this.activeHolds.clear();
-    this.activeDragNote = null;
     this.nextNoteIndex = 0;
     console.log("New chart loaded.");
   }
 
   update(gameTime) {
-    // If there's no chart loaded, don't do anything
     if (!this.chart) return;
 
-    const judgementLineY = this.judgementLine.y;
+    // Spawn new notes
     while (
       this.nextNoteIndex < this.chart.notes.length &&
       gameTime >= (this.chart.notes[this.nextNoteIndex].time - this.scrollTime)
     ) {
       const noteData = this.chart.notes[this.nextNoteIndex];
       let newNote = null;
+      const judgementLineY = this.judgementLine.y;
       switch (noteData.type) {
         case 'hold': newNote = new HoldNote(this.canvas, 0, judgementLineY, this.scrollTime, noteData); break;
         case 'flick': newNote = new FlickNote(this.canvas, 0, judgementLineY, this.scrollTime, noteData); break;
@@ -52,23 +49,36 @@ export class NoteManager {
       this.nextNoteIndex++;
     }
 
+    // Update all notes and handle misses
     for (const note of this.notes) {
       note.update(gameTime);
-      const missThreshold = note.y > 100;
-      if (!note.isMissed && missThreshold && note.type !== 'drag') {
-        this.scoreManager.onMiss();
-        note.markAsMissed();
-      }
-      const dragEndTime = note.time + note.duration;
-      if (note.type === 'drag' && !note.isBeingHeld && gameTime > note.time + 100) {
-        if (!note.isMissed) { this.scoreManager.onMiss(); note.markAsMissed(); }
-      }
-      if (note.type === 'drag' && note.isBeingHeld && gameTime >= dragEndTime) {
-        this.scoreManager.onHit();
-        this.activeDragNote = null;
-        this.notes = this.notes.filter(n => n !== note);
+      const missThreshold = this.judgementLine.y + 100;
+      // Miss condition for non-held notes
+      if (!note.isMissed && !note.isBeingHeld && note.y > missThreshold) {
+         if (note.type === 'hold') { // Special case for missing the start of a hold
+            this.scoreManager.onMiss();
+            note.markAsMissed();
+        } else if (note.type !== 'drag') {
+            this.scoreManager.onMiss();
+            note.markAsMissed();
+        }
       }
     }
+
+    // Update active holds
+    this.activeHolds.forEach(holdNote => {
+      const endTime = holdNote.time + holdNote.duration;
+      if (gameTime >= endTime) {
+        // Hold completed successfully
+        this.scoreManager.onHit(); // Final hit for completing the hold
+        holdNote.isAlive = () => false; // Mark for removal
+        this.activeHolds.delete(holdNote);
+      } else {
+        // Give continuous score/combo for holding
+        this.scoreManager.increaseCombo(0.1);
+      }
+    });
+
     this.notes = this.notes.filter(note => note.isAlive());
   }
 
@@ -83,14 +93,16 @@ export class NoteManager {
     let hitNote = null;
     let closestHittable = null;
     let minDistance = Infinity;
+
     for (const note of this.notes) {
       if (note.isMissed || (note.type !== 'tap' && note.type !== 'flick')) continue;
-      const dist = Math.abs(note.y);
+      const dist = Math.abs(note.y - this.judgementLine.y);
       if (dist < minDistance) {
         minDistance = dist;
         closestHittable = note;
       }
     }
+
     if (closestHittable && minDistance < hitWindow) {
       hitNote = closestHittable;
       this.notes = this.notes.filter(note => note !== hitNote);
@@ -103,76 +115,34 @@ export class NoteManager {
     let holdNoteStarted = null;
     let closestHold = null;
     let minDistance = Infinity;
+
     for (const note of this.notes) {
       if (note.isMissed || note.type !== 'hold') continue;
-      const dist = Math.abs(note.y);
+      const dist = Math.abs(note.y - this.judgementLine.y);
       if (dist < minDistance) {
         minDistance = dist;
         closestHold = note;
       }
     }
+
     if (closestHold && minDistance < hitWindow) {
       holdNoteStarted = closestHold;
       holdNoteStarted.isBeingHeld = true;
       this.activeHolds.add(holdNoteStarted);
-      this.scoreManager.increaseCombo();
+      this.scoreManager.onHit(); // Score for starting the hold
     }
     return holdNoteStarted;
   }
 
   checkHoldEnd() {
     if (this.activeHolds.size > 0) {
-      const holdNoteToEnd = this.activeHolds.values().next().value;
-      this.activeHolds.delete(holdNoteToEnd);
-    }
-  }
-
-  checkDragStart() {
-    const hitWindow = 75;
-    let dragNoteStarted = null;
-    for (const note of this.notes) {
-      if (note.isMissed || note.type !== 'drag') continue;
-      const distY = Math.abs(note.y);
-      if (distY < hitWindow) {
-        dragNoteStarted = note;
-        break;
-      }
-    }
-    if (dragNoteStarted) {
-      dragNoteStarted.isBeingHeld = true;
-      this.activeDragNote = dragNoteStarted;
-      this.scoreManager.increaseCombo();
-    }
-    return dragNoteStarted;
-  }
-
-  checkDragUpdate(pointerX, pointerY) {
-    if (!this.activeDragNote || this.activeDragNote.isMissed) return;
-    const hitBoxWidth = this.activeDragNote.width * 1.5;
-    const dist = Math.abs(pointerX - this.activeDragNote.x);
-    if (dist > hitBoxWidth / 2) {
-      this.scoreManager.onMiss();
-      this.activeDragNote.markAsMissed();
-      this.activeDragNote = null;
-    } else {
-      this.scoreManager.increaseCombo(0.1);
-    }
-  }
-
-  checkDragEnd() {
-    if (this.activeDragNote) {
-      this.scoreManager.onMiss();
-      this.activeDragNote.markAsMissed();
-      this.activeDragNote = null;
-    }
-  }
-
-  updateNoteSpeed(newSpeed) {
-    this.noteSpeed = newSpeed;
-    this.scrollTime = BASE_SCROLL_TIME / this.noteSpeed;
-    const referenceY = this.judgementLine.y;
-    for (const note of this.notes) {
-      note.recalculateSpeed(this.scrollTime, referenceY);
+       // When a pointer is released, we check all active holds.
+       // This simple model assumes one finger, so all holds are "released".
+       this.activeHolds.forEach(holdNote => {
+         this.scoreManager.onMiss();
+         holdNote.markAsMissed();
+       });
+       this.activeHolds.clear();
     }
   }
 }

@@ -11,11 +11,11 @@ export const songLibrary = [
     artist: "A.I. Voice",
     chart: {
       notes: [
-        { time: 1000, x: 0.2, type: 'tap' },
+        { time: 1000, x: 0.2, type: 'hold', duration: 1000 }, // Hold note for 1 second
         { time: 1500, x: 0.8, type: 'tap' },
         { time: 2000, x: 0.5, type: 'flick' },
         { time: 2750, x: 0.3, type: 'tap' },
-        { time: 3000, x: 0.7, type: 'tap' },
+        { time: 3000, x: 0.7, type: 'hold', duration: 500 }, // Hold note for 0.5 seconds
       ],
       lineEvents: [
         { time: 2000, duration: 500, value: { rotation: 15, y: -100 }, easing: 'easeOutQuad' },

@@ -20,7 +20,7 @@ const gameCanvas = ref(null);
 const audioElement = ref(null);
 
 // Game State Management
-const gameState = ref('title'); // 'title', 'songSelect', 'playing', 'results'
+const gameState = ref('title');
 
 let ctx = null;
 let judgementLine = null;
@@ -30,11 +30,9 @@ let scoreManager = null;
 let audioManager = null;
 let dynamicBackground = null;
 
-// Animation state for the title screen
 let titleTextAlpha = ref(0);
 let titleTextFadeIn = true;
 
-// --- Song Selection UI Constants ---
 const songBoxWidth = 400;
 const songBoxHeight = 100;
 const songBoxGap = 20;
@@ -58,8 +56,13 @@ const initializeGame = () => {
   audioManager = new AudioManager();
   dynamicBackground = new DynamicBackground(gameCanvas.value);
 
-  gameCanvas.value.addEventListener('mousedown', handleInput);
-  gameCanvas.value.addEventListener('touchstart', handleInput);
+  // --- New Input Event Listeners ---
+  gameCanvas.value.addEventListener('mousedown', handlePress);
+  gameCanvas.value.addEventListener('touchstart', handlePress);
+  gameCanvas.value.addEventListener('mouseup', handleRelease);
+  gameCanvas.value.addEventListener('touchend', handleRelease);
+  gameCanvas.value.addEventListener('mousemove', handleMove);
+  gameCanvas.value.addEventListener('touchmove', handleMove);
 
   console.log('Game initialized.');
   gameLoop();
@@ -80,7 +83,9 @@ const startGame = (chart) => {
 
 onMounted(initializeGame);
 
-const handleInput = (event) => {
+// --- New Input Handler Functions ---
+
+const handlePress = (event) => {
   event.preventDefault();
   const rect = gameCanvas.value.getBoundingClientRect();
   const x = (event.clientX ?? event.touches[0].clientX) - rect.left;
@@ -102,15 +107,23 @@ const handleInput = (event) => {
       break;
     case 'playing':
       if (noteManager && effectManager && scoreManager && audioManager) {
-        const hitNote = noteManager.checkHit();
-        if (hitNote) {
+        // Try to hit a tap note first
+        const hitTapNote = noteManager.checkTapHit();
+        if (hitTapNote) {
           scoreManager.onHit();
-          effectManager.createExplosion(hitNote.x, hitNote.y, hitNote.color);
+          effectManager.createExplosion(hitTapNote.x, hitTapNote.y, hitTapNote.color);
           audioManager.playHitSound();
-          // Pass the note's color to the flash method to create a colored shockwave
-          judgementLine.flash(hitNote.color);
+          judgementLine.flash(hitTapNote.color);
+          return; // Early exit to prevent trying to also start a hold
+        }
+
+        // If no tap note was hit, try to start a hold note
+        const startedHoldNote = noteManager.checkHoldStart();
+        if (startedHoldNote) {
+           // Maybe add a visual/audio cue for hold start later
         } else {
-          scoreManager.onMiss();
+          // If nothing was hit, it's a miss (optional, can be annoying)
+          // scoreManager.onMiss();
         }
       }
       break;
@@ -120,6 +133,21 @@ const handleInput = (event) => {
       break;
   }
 };
+
+const handleRelease = (event) => {
+  event.preventDefault();
+  if (gameState.value === 'playing') {
+    noteManager.checkHoldEnd();
+  }
+};
+
+const handleMove = (event) => {
+  event.preventDefault();
+  if (gameState.value === 'playing') {
+    // Logic for drag notes will go here in the future
+  }
+};
+
 
 const update = () => {
   dynamicBackground.update();
