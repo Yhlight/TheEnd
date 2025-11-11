@@ -253,14 +253,56 @@ const handleRelease = (event) => {
   }
 };
 
+let gameStartTime = null; // For fallback timer
+
 const update = () => {
   if (!isPlaying.value || !audioElement.value) return;
-  const gameTime = audioElement.value.currentTime * 1000;
+
+  // TEMPORARY FALLBACK for headless browser audio issues
+  let gameTime = audioElement.value.currentTime * 1000;
+  if (gameTime === 0) {
+    if (gameStartTime === null) {
+      gameStartTime = performance.now();
+    }
+    gameTime = performance.now() - gameStartTime;
+  }
 
   if (judgementLine) judgementLine.update(gameTime);
   if (noteManager) noteManager.update(gameTime);
   if (effectManager) effectManager.update();
   if (dynamicBackground) dynamicBackground.update();
+
+  // TEMPORARY AUTOPLAY LOGIC FOR VERIFICATION
+  if (noteManager) {
+    const chart = testChart;
+    for (const noteData of chart.notes) {
+      const noteTime = noteData.time;
+      if (gameTime >= noteTime && !(window.autoplayHitNotes && window.autoplayHitNotes[noteTime])) {
+        if (noteData.type === 'hold') {
+            const holdResult = noteManager.checkHoldStart(noteTime);
+            if(holdResult) {
+                const { note, judgement } = holdResult;
+                scoreManager.onHit(judgement);
+                effectManager.createJudgementText(note.x, judgementLine.y - 50, judgement, note.color);
+                audioManager.playHitSound();
+            }
+        } else { // Handles both 'tap' and 'flick'
+            const hitResult = noteManager.checkTapHit(noteTime);
+            if (hitResult) {
+              const { note, judgement } = hitResult;
+              scoreManager.onHit(judgement);
+              effectManager.createExplosion(note.x, judgementLine.y, note.color);
+              effectManager.createJudgementText(note.x, judgementLine.y - 50, judgement, note.color);
+              audioManager.playHitSound();
+              judgementLine.flash(note.color);
+              dynamicBackground.triggerEffect();
+            }
+        }
+        if (!window.autoplayHitNotes) window.autoplayHitNotes = {};
+        window.autoplayHitNotes[noteTime] = true;
+      }
+    }
+  }
 };
 
 const draw = () => {

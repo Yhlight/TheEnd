@@ -7,19 +7,23 @@
  */
 export const testChart = {
   notes: [
-    // Existing tap notes
+    // A tap note to start
     { time: 1000, x: 0.25, type: 'tap' },
-    { time: 2000, x: 0.75, type: 'tap' },
 
-    // Add a short hold note
-    { time: 3000, x: 0.5, type: 'hold', duration: 500 }, // Starts at 3s, lasts for 0.5s
+    // Introduce a flick note
+    { time: 2000, x: 0.75, type: 'flick' },
 
-    // Add another tap note
-    { time: 4000, x: 0.25, type: 'tap' },
+    // A hold note
+    { time: 3000, x: 0.5, type: 'hold', duration: 500 },
 
-    // Add a longer hold note
-    { time: 5000, x: 0.75, type: 'hold', duration: 1000 }, // Starts at 5s, lasts for 1s
+    // A couple more flicks and taps
+    { time: 4000, x: 0.25, type: 'flick' },
+    { time: 4500, x: 0.75, type: 'tap' },
 
-    { time: 6500, x: 0.5, type: 'tap' },
+    // A longer hold note
+    { time: 5500, x: 0.75, type: 'hold', duration: 1000 },
+
+    // End with a flick
+    { time: 7000, x: 0.5, type: 'flick' },
   ]
 };
