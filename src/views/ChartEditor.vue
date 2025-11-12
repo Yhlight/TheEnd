@@ -2,11 +2,19 @@
   <div class="chart-editor">
     <div class="editor-header">
       <h1>Chart Editor</h1>
-      <button @click="$emit('exit')">Back to Menu</button>
+      <div>
+        <button @click="deleteSelectedNote" :disabled="!selectedNoteId" class="delete-button">Delete Note</button>
+        <button @click="$emit('exit')">Back to Menu</button>
+      </div>
     </div>
     <div class="editor-content">
       <div v-if="localChart" class="timeline-container">
-        <EditorTimeline :chart="localChart" @addNote="addNote" />
+        <EditorTimeline
+          :chart="localChart"
+          :selected-note-id="selectedNoteId"
+          @addNote="addNote"
+          @selectNote="handleSelectNote"
+        />
       </div>
       <div v-else>
         <p>Loading chart data...</p>
@@ -29,10 +37,15 @@ export default {
   data() {
     return {
       localChart: null,
+      selectedNoteId: null,
     };
   },
   mounted() {
     this.loadChart();
+    window.addEventListener('keydown', this.handleKeyDown);
+  },
+  beforeUnmount() {
+    window.removeEventListener('keydown', this.handleKeyDown);
   },
   methods: {
     async loadChart() {
@@ -72,6 +85,28 @@ export default {
       // Optional: Sort notes by time after adding
       this.localChart.notes.sort((a, b) => a.time - b.time);
     },
+    handleSelectNote(noteId) {
+      if (this.selectedNoteId === noteId) {
+        // If the same note is clicked again, deselect it
+        this.selectedNoteId = null;
+      } else {
+        this.selectedNoteId = noteId;
+      }
+    },
+    deleteSelectedNote() {
+      if (!this.selectedNoteId) return;
+
+      const noteIndex = this.localChart.notes.findIndex(note => note.id === this.selectedNoteId);
+      if (noteIndex > -1) {
+        this.localChart.notes.splice(noteIndex, 1);
+        this.selectedNoteId = null; // Deselect after deletion
+      }
+    },
+    handleKeyDown(event) {
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        this.deleteSelectedNote();
+      }
+    },
   },
 };
 </script>
@@ -102,6 +137,19 @@ h1 {
 button {
   padding: 8px 15px;
   /* ... standard button styles */
+}
+
+.delete-button {
+  background-color: #ff3b30;
+  color: white;
+  border: 1px solid #ff3b30;
+  margin-right: 10px;
+}
+
+.delete-button:disabled {
+  background-color: #555;
+  border-color: #555;
+  cursor: not-allowed;
 }
 
 .editor-content {

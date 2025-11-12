@@ -1,0 +1,15 @@
+
+> the-end@0.1.0 dev
+> vite
+
+Port 3000 is in use, trying another one...
+Port 3001 is in use, trying another one...
+Port 3002 is in use, trying another one...
+Port 3003 is in use, trying another one...
+
+  vite v2.9.18 dev server running at:
+
+  > Local: http://localhost:3004/
+  > Network: use `--host` to expose
+
+  ready in 422ms.

@@ -5,8 +5,9 @@
       v-for="note in chart.notes"
       :key="'note-' + note.id"
       class="timeline-item note"
-      :class="note.type"
+      :class="[note.type, { selected: note.id === selectedNoteId }]"
       :style="getItemStyle(note)"
+      @click.stop="selectNote(note.id)"
     >
       {{ note.type }}
     </div>
@@ -28,8 +29,9 @@ export default {
   name: 'EditorTimeline',
   props: {
     chart: { type: Object, required: true },
+    selectedNoteId: { type: [Number, null], default: null },
   },
-  emits: ['addNote'],
+  emits: ['addNote', 'selectNote'],
   data() {
     return {
       pixelsPerSecond: 100, // 100px represents 1 second
@@ -61,17 +63,21 @@ export default {
       }
       return style;
     },
+    selectNote(noteId) {
+      // Emit an event to the parent to update the selection
+      this.$emit('selectNote', noteId);
+    },
     handleClick(event) {
-      // Prevent adding notes if clicking on an existing item
-      if (event.target !== event.currentTarget) {
-        return;
+      // If the click is on the timeline background, deselect any selected note
+      if (event.target === event.currentTarget) {
+        this.$emit('selectNote', null);
+
+        // Also proceed to add a new note
+        const rect = event.currentTarget.getBoundingClientRect();
+        const time = (event.clientY - rect.top) / this.pixelsPerSecond * 1000;
+        const x = (event.clientX - rect.left) / rect.width * 100;
+        this.$emit('addNote', { time, x });
       }
-
-      const rect = event.currentTarget.getBoundingClientRect();
-      const time = (event.clientY - rect.top) / this.pixelsPerSecond * 1000;
-      const x = (event.clientX - rect.left) / rect.width * 100;
-
-      this.$emit('addNote', { time, x });
     },
   },
 };
@@ -102,6 +108,12 @@ export default {
 .note.hold { background-color: rgba(255, 0, 255, 0.3); border-color: #ff00ff; }
 .note.swipe { background-color: rgba(255, 255, 0, 0.3); border-color: #ffff00; }
 .note.catch { background-color: rgba(0, 255, 0, 0.3); border-color: #00ff00; width: 100px; height: 4px; }
+
+.note.selected {
+  border: 2px solid #ff0000;
+  box-shadow: 0 0 10px #ff0000;
+  z-index: 10;
+}
 
 .event {
   width: 95%;
