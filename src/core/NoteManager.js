@@ -239,6 +239,21 @@ export class NoteManager {
     });
   }
 
+  getNoteAt(time) {
+    if (!this.notes) return null;
+    let minTimeDiff = 20; // ms window
+    let closestNote = null;
+
+    for (const note of this.notes) {
+      const timeDiff = Math.abs(note.time - time);
+      if (timeDiff < minTimeDiff) {
+        minTimeDiff = timeDiff;
+        closestNote = note;
+      }
+    }
+    return closestNote;
+  }
+
   deleteNoteAt(time) {
     if (!this.chart) return;
 
@@ -268,6 +283,16 @@ export class NoteManager {
                 default: return new TapNote(this.canvas, 0, judgementLineY, this.scrollTime, nd);
             }
         });
+    }
+  }
+
+  sortNotes() {
+    // Sort both the source data and the instantiated notes
+    if (this.chart && this.chart.notes) {
+        this.chart.notes.sort((a, b) => a.time - b.time);
+    }
+    if (this.notes) {
+        this.notes.sort((a, b) => a.time - b.time);
     }
   }
 }
