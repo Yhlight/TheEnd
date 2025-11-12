@@ -12,7 +12,7 @@ export class TapNote extends BaseNote {
   draw(ctx, judgementLineX) {
     if (!this.isAlive()) return;
 
-    const renderX = judgementLineX + this.x * (this.canvas.width / 2);
+    const renderX = judgementLineX + (this.x - 0.5) * this.canvas.width;
     const scaledWidth = this.width * this.scale;
     const scaledHeight = this.height * this.scale;
 

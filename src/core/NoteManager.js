@@ -119,7 +119,7 @@ export class NoteManager {
       // Only consider notes within the judgement window
       if (timeDiff > NoteManager.judgementWindows.Bad) continue;
 
-      const notePixelX = this.judgementLine.x + note.x * (this.canvas.width / 2);
+      const notePixelX = this.judgementLine.x + (note.x - 0.5) * this.canvas.width;
       const distance = Math.sqrt(Math.pow(clickX - notePixelX, 2) + Math.pow(clickY - note.y, 2));
 
       // Check if the tap is close enough to the note
@@ -151,7 +151,7 @@ export class NoteManager {
         const timeDiff = Math.abs(adjustedTime - note.time);
         if (timeDiff > NoteManager.judgementWindows.Bad) continue;
 
-        const notePixelX = this.judgementLine.x + note.x * (this.canvas.width / 2);
+        const notePixelX = this.judgementLine.x + (note.x - 0.5) * this.canvas.width;
         const distance = Math.sqrt(Math.pow(clickX - notePixelX, 2) + Math.pow(clickY - note.y, 2));
 
         if (distance < 100 && timeDiff < minTimeDiff) {
@@ -181,7 +181,7 @@ export class NoteManager {
         const timeDiff = Math.abs(adjustedTime - note.time);
         if (timeDiff > NoteManager.judgementWindows.Bad) continue;
 
-        const notePixelX = this.judgementLine.x + note.x * (this.canvas.width / 2);
+        const notePixelX = this.judgementLine.x + (note.x - 0.5) * this.canvas.width;
         const distance = Math.sqrt(Math.pow(clickX - notePixelX, 2) + Math.pow(clickY - note.y, 2));
 
         if (distance < 100 && timeDiff < minTimeDiff) {
@@ -224,7 +224,7 @@ export class NoteManager {
         const timeDiff = Math.abs(adjustedTime - note.time);
         if (timeDiff > NoteManager.judgementWindows.Bad) continue;
 
-        const notePixelX = this.judgementLine.x + note.x * (this.canvas.width / 2);
+        const notePixelX = this.judgementLine.x + (note.x - 0.5) * this.canvas.width;
         const distance = Math.sqrt(Math.pow(clickX - notePixelX, 2) + Math.pow(clickY - note.y, 2));
 
         if (distance < 100 && timeDiff < minTimeDiff) {
@@ -247,7 +247,7 @@ export class NoteManager {
   checkDragUpdate(pointerX) {
     if (!this.activeDragNote) return;
 
-    const notePixelX = this.judgementLine.x + this.activeDragNote.x * (this.canvas.width / 2);
+    const notePixelX = this.judgementLine.x + (this.activeDragNote.x - 0.5) * this.canvas.width;
     const hitBoxWidth = this.activeDragNote.width * 2;
 
     if (Math.abs(pointerX - notePixelX) > hitBoxWidth / 2) {
