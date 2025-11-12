@@ -7,8 +7,11 @@
         <select id="note-type-select" v-model="currentNoteType">
           <option value="tap">Tap</option>
           <option value="hold">Hold</option>
+          <option value="swipe">Swipe</option>
+          <option value="catch">Catch</option>
         </select>
         <button @click="addEvent">Add Event</button>
+        <button @click="exportChart" class="export-button">Export Chart</button>
         <button @click="deleteSelectedNote" :disabled="!selectedNoteId" class="delete-button">Delete Note</button>
         <button @click="deleteSelectedEvent" :disabled="selectedEventIndex === null" class="delete-button">Delete Event</button>
         <button @click="$emit('exit')">Back to Menu</button>
@@ -31,8 +34,19 @@
         <p>Loading chart data...</p>
       </div>
     </div>
-    <div v-if="selectedNote || selectedEvent" class="editor-sidebar">
-      <div v-if="selectedNote">
+    <div v-if="localChart" class="editor-sidebar">
+      <div class="sidebar-section">
+        <h3>Chart Metadata</h3>
+        <div class="property">
+          <label for="chart-title">Song Title</label>
+          <input id="chart-title" type="text" v-model="localChart.title">
+        </div>
+        <div class="property">
+          <label for="chart-artist">Artist</label>
+          <input id="chart-artist" type="text" v-model="localChart.artist">
+        </div>
+      </div>
+      <div v-if="selectedNote" class="sidebar-section">
         <h3>Note Properties</h3>
         <div class="property">
           <label for="note-time">Time (ms)</label>
@@ -47,7 +61,7 @@
           <input id="note-duration" type="number" v-model.number="selectedNote.duration">
         </div>
       </div>
-      <div v-if="selectedEvent">
+      <div v-if="selectedEvent" class="sidebar-section">
         <h3>Event Properties</h3>
         <div class="property">
           <label for="event-time">Time (ms)</label>
@@ -202,6 +216,20 @@ export default {
       this.localChart.events.splice(this.selectedEventIndex, 1);
       this.selectedEventIndex = null;
     },
+    exportChart() {
+      if (!this.localChart) return;
+
+      const chartJson = JSON.stringify(this.localChart, null, 2);
+      const blob = new Blob([chartJson], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${this.localChart.title || 'chart'}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    },
     handleKeyDown(event) {
       if (event.key === 'Delete' || event.key === 'Backspace') {
         if (this.selectedNoteId !== null) {
@@ -267,6 +295,12 @@ button {
   /* ... standard button styles */
 }
 
+.export-button {
+  background-color: #34c759;
+  color: white;
+  border: 1px solid #34c759;
+}
+
 .delete-button {
   background-color: #ff3b30;
   color: white;
@@ -299,6 +333,18 @@ button {
   margin-top: 0;
   border-bottom: 1px solid #444;
   padding-bottom: 10px;
+}
+
+.sidebar-section {
+  padding-top: 15px;
+  margin-top: 15px;
+  border-top: 1px solid #444;
+}
+
+.sidebar-section:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
 }
 
 .property {
