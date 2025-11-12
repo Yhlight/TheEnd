@@ -156,9 +156,11 @@ const applySettings = () => {
 const retryCurrentSong = () => {
     scoreManager.reset();
     const selectedSong = songLibrary[songSelectState.selectedIndex];
-    noteManager.loadChart(selectedSong.chart);
-    audioElement.value.currentTime = 0;
-    audioElement.value.play();
+    // Deep copy the chart to ensure a fresh state
+    const chartCopy = JSON.parse(JSON.stringify(selectedSong.chart));
+    noteManager.loadChart(chartCopy);
+    audioManager.resetMusic();
+    audioManager.playMusic();
     gameState.current = 'playing';
 };
 
@@ -562,7 +564,9 @@ const handlePress = (event) => {
         const cardRenderX = selectedCard.x - songSelectState.currentScrollX - selectedCard.width / 2;
         if (x > cardRenderX && x < cardRenderX + selectedCard.width) {
             const selectedSong = songLibrary[songSelectState.selectedIndex];
-            noteManager.loadChart(selectedSong.chart);
+            // Deep copy the chart to ensure a fresh state
+            const chartCopy = JSON.parse(JSON.stringify(selectedSong.chart));
+            noteManager.loadChart(chartCopy);
             audioManager.playMusic();
             gameState.current = 'playing';
             gameStartTime = null;
@@ -580,7 +584,7 @@ const handlePress = (event) => {
         return;
       }
       const gameTime = audioElement.value.currentTime * 1000;
-      const tapResult = noteManager.checkTapHit(gameTime);
+      const tapResult = noteManager.checkTapHit(gameTime, x, y);
       if (tapResult) {
           scoreManager.onHit(tapResult.judgement);
           effectManager.createExplosion(tapResult.note.x, judgementLine.y, tapResult.note.color);
@@ -593,14 +597,14 @@ const handlePress = (event) => {
           }
           return;
       }
-      const holdResult = noteManager.checkHoldStart(gameTime);
+      const holdResult = noteManager.checkHoldStart(gameTime, x, y);
       if (holdResult) {
           scoreManager.onHit(holdResult.judgement);
           effectManager.createJudgementText(holdResult.note.x, judgementLine.y - 50, holdResult.judgement, holdResult.note.color);
           audioManager.playHitSound();
           return;
       }
-      const dragResult = noteManager.checkDragStart(gameTime);
+      const dragResult = noteManager.checkDragStart(gameTime, x, y);
       if (dragResult) {
           scoreManager.onHit(dragResult.judgement);
           effectManager.createJudgementText(dragResult.note.x, judgementLine.y - 50, dragResult.judgement, dragResult.note.color);
@@ -636,11 +640,13 @@ const handlePress = (event) => {
         break;
     }
     case 'results': {
-        const backBtn = uiElements.results.backButton;
-        if (x > backBtn.x && x < backBtn.x + backBtn.width && y > backBtn.y && y < backBtn.y + backBtn.height) {
-            scoreManager.reset();
-            noteManager.loadChart(null);
-            gameState.current = 'songSelect';
+        if (resultsState.animationPhase === 'done') {
+            const backBtn = uiElements.results.backButton;
+            if (x > backBtn.x && x < backBtn.x + backBtn.width && y > backBtn.y && y < backBtn.y + backBtn.height) {
+                scoreManager.reset();
+                noteManager.loadChart(null);
+                gameState.current = 'songSelect';
+            }
         }
         break;
     }
@@ -686,11 +692,14 @@ const updateSlider = (x) => {
 
 const handleRelease = (event) => {
   event.preventDefault();
+  const rect = gameCanvas.value.getBoundingClientRect();
+  const x = (event.changedTouches ? event.changedTouches[0].clientX : event.clientX) - rect.left;
+  const y = (event.changedTouches ? event.changedTouches[0].clientY : event.clientY) - rect.top;
   pointerState.isDown = false;
 
   if (gameState.current === 'playing' && noteManager) {
     const gameTime = audioElement.value.currentTime * 1000;
-    const flickResult = noteManager.checkFlickHit(gameTime, pointerState.velocityY);
+    const flickResult = noteManager.checkFlickHit(gameTime, x, y, pointerState.velocityY);
     if (flickResult) {
         scoreManager.onHit(flickResult.judgement);
         effectManager.createExplosion(flickResult.note.x, judgementLine.y, flickResult.note.color);
