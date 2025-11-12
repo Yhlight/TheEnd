@@ -75,7 +75,7 @@ export default {
       required: true,
     },
   },
-  emits: ['exit'],
+  emits: ['exit', 'songFinished'],
   data() {
     return {
       chart: null,
@@ -94,6 +94,7 @@ export default {
       lookaheadTime: 2000,
       score: 0,
       combo: 0,
+      maxCombo: 0,
       lineFlashing: false,
       viewportHeight: 0,
     };
@@ -139,6 +140,7 @@ export default {
       this.isPlaying = true;
       this.score = 0;
       this.combo = 0;
+      this.maxCombo = 0;
       this.activeHolds = {};
       this.isPaused = false;
       this.showSettings = false;
@@ -187,10 +189,12 @@ export default {
         if (timingError <= TIMING_WINDOWS.perfect) {
           this.score += 100;
           this.combo++;
+          this.maxCombo = Math.max(this.maxCombo, this.combo);
           this.spawnHitEffect(hittableNote, 'perfect');
         } else {
           this.score += 50;
           this.combo++;
+          this.maxCombo = Math.max(this.maxCombo, this.combo);
           this.spawnHitEffect(hittableNote, 'good');
         }
       }
@@ -218,10 +222,12 @@ export default {
             if (timingError <= TIMING_WINDOWS.perfect) {
               this.score += 100;
               this.combo++;
+              this.maxCombo = Math.max(this.maxCombo, this.combo);
               this.spawnHitEffect(note, 'perfect');
             } else {
               this.score += 50;
               this.combo++;
+              this.maxCombo = Math.max(this.maxCombo, this.combo);
               this.spawnHitEffect(note, 'good');
             }
           }
@@ -314,6 +320,7 @@ export default {
           note.judged = true;
           this.score += 200;
           this.combo++;
+          this.maxCombo = Math.max(this.maxCombo, this.combo);
           this.spawnHitEffect(note, 'perfect');
           delete this.activeHolds[pointerId];
         } else {
@@ -342,7 +349,7 @@ export default {
 
       if (this.songTime >= this.songDuration && this.songDuration > 0) {
         this.isPlaying = false;
-        this.$emit('exit');
+        this.$emit('songFinished', { score: this.score, maxCombo: this.maxCombo });
       } else {
         requestAnimationFrame(this.gameLoop);
       }
