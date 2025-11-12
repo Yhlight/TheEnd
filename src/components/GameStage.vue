@@ -672,8 +672,7 @@ const handleMove = (event) => {
     } else if (gameState.current === 'settings' && activeSlider) {
         updateSlider(x);
     } else if (gameState.current === 'playing' && noteManager) {
-        const relativeX = x - judgementLine.x;
-        noteManager.checkDragUpdate(relativeX);
+        noteManager.checkDragUpdate(x);
     }
 };
 

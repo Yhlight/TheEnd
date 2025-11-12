@@ -220,10 +220,11 @@ export class NoteManager {
 
   checkDragUpdate(pointerX) {
     if (!this.activeDragNote) return;
-    const hitBoxWidth = this.activeDragNote.width * 2;
-    const noteCenterX = this.activeDragNote.x;
 
-    if (Math.abs(pointerX - noteCenterX) > hitBoxWidth / 2) {
+    const notePixelX = this.judgementLine.x + this.activeDragNote.x * (this.canvas.width / 2);
+    const hitBoxWidth = this.activeDragNote.width * 2;
+
+    if (Math.abs(pointerX - notePixelX) > hitBoxWidth / 2) {
       this.scoreManager.onMiss();
       this.activeDragNote.markAsMissed();
       this.activeDragNote = null;
