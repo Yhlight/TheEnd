@@ -4,5 +4,11 @@
     "title": "Sample Song",
     "artist": "TheEnd Developer",
     "url": "/charts/sample.json"
+  },
+  {
+    "id": "sample2",
+    "title": "Another Sample",
+    "artist": "TheEnd Developer",
+    "url": "/charts/sample2.json"
   }
 ]

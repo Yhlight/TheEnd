@@ -36,6 +36,7 @@ export default {
         volume: 100,
         noteSpeed: 5,
         backgroundBrightness: 100,
+        audioOffset: 0,
       },
       chartCache: {},
     };

@@ -15,7 +15,7 @@
         <h2>Paused</h2>
         <button @click.stop="togglePause">Resume</button>
         <button @click.stop="showSettings = true">Settings</button>
-        <button @click.stop="$emit('exit')">Exit to Menu</button>
+        <button @click.stop="confirmExit">Exit to Menu</button>
       </div>
       <settings-menu
         v-if="showSettings"
@@ -262,6 +262,11 @@ export default {
     handleSettingsChange(newSettings) {
       this.$emit('settingsChange', newSettings);
     },
+    confirmExit() {
+      if (window.confirm('Are you sure you want to exit? All progress will be lost.')) {
+        this.$emit('exit');
+      }
+    },
     applyVolume(volume) {
       const newVolume = volume / 100;
       if (this.$refs.audioPlayer) {
@@ -328,7 +333,7 @@ export default {
     },
     gameLoop() {
       if (!this.isPlaying || this.isPaused) return;
-      this.songTime = this.$refs.audioPlayer.currentTime * 1000;
+      this.songTime = this.$refs.audioPlayer.currentTime * 1000 + this.settings.audioOffset;
       for (const pointerId in this.activeHolds) {
         const note = this.activeHolds[pointerId];
         const holdEndTime = note.time + note.duration;

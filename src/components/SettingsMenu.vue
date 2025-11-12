@@ -40,6 +40,14 @@
           />
           <span>{{ localSettings.backgroundBrightness }}%</span>
         </div>
+        <div class="setting-item">
+          <label for="audioOffset">Audio Offset</label>
+          <div class="offset-control">
+            <button @click="adjustOffset(-5)">-</button>
+            <span>{{ localSettings.audioOffset }}ms</span>
+            <button @click="adjustOffset(5)">+</button>
+          </div>
+        </div>
       </div>
       <button @click="$emit('close')">Close</button>
     </div>
@@ -64,6 +72,10 @@ export default {
   methods: {
     updateSettings() {
       this.$emit('settingsChange', this.localSettings);
+    },
+    adjustOffset(amount) {
+      this.localSettings.audioOffset += amount;
+      this.updateSettings();
     }
   },
   watch: {
@@ -117,6 +129,23 @@ h2 {
 }
 .setting-item label {
   font-size: 18px;
+}
+.offset-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 60%;
+}
+.offset-control button {
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+  padding: 0;
+}
+.offset-control span {
+  font-weight: bold;
+  min-width: 60px;
+  text-align: center;
 }
 input[type="range"] {
   width: 60%;

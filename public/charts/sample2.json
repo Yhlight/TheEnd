@@ -1,0 +1,16 @@
+{
+  "audioUrl": "/audio/placeholder2.mp3",
+  "notes": [
+    { "id": 1, "type": "tap", "time": 1200, "x": 30 },
+    { "id": 2, "type": "tap", "time": 2200, "x": 70 },
+    { "id": 3, "type": "swipe", "time": 3200, "x": 40 },
+    { "id": 4, "type": "hold", "time": 4200, "x": 60, "duration": 1000 },
+    { "id": 5, "type": "catch", "time": 5500, "x": 50 },
+    { "id": 6, "type": "tap", "time": 6200, "x": 20 }
+  ],
+  "events": [
+    { "time": 0,    "y": 80, "rotation": 5 },
+    { "time": 3000, "y": 80, "rotation": -5 },
+    { "time": 6000, "y": 80, "rotation": 5 }
+  ]
+}
