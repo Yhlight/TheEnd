@@ -4,8 +4,10 @@
     <GameScreen
       v-if="currentView === 'game'"
       :chartUrl="selectedChartUrl"
+      :settings="settings"
       @exit="handleExit"
       @songFinished="handleSongFinished"
+      @settingsChange="updateSettings"
     />
     <ResultsScreen v-if="currentView === 'results'" :results="gameResults" @exit="handleExit" />
   </div>
@@ -28,12 +30,16 @@ export default {
       currentView: 'songSelection',
       selectedChartUrl: '',
       gameResults: null,
+      settings: {
+        volume: 100,
+        noteSpeed: 5,
+      },
     };
   },
   methods: {
     handleChartSelected(chartUrl) {
       this.selectedChartUrl = chartUrl;
-      this.gameResults = null; // Reset previous results
+      this.gameResults = null;
       this.currentView = 'game';
     },
     handleSongFinished(results) {
@@ -44,6 +50,9 @@ export default {
       this.currentView = 'songSelection';
       this.selectedChartUrl = '';
       this.gameResults = null;
+    },
+    updateSettings(newSettings) {
+      this.settings = { ...this.settings, ...newSettings };
     }
   },
 };

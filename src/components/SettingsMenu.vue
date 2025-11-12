@@ -10,10 +10,23 @@
             id="volume"
             min="0"
             max="100"
-            v-model="volume"
-            @input="onVolumeChange"
+            v-model.number="localSettings.volume"
+            @input="updateSettings"
           />
-          <span>{{ volume }}%</span>
+          <span>{{ localSettings.volume }}%</span>
+        </div>
+        <div class="setting-item">
+          <label for="noteSpeed">Note Speed</label>
+           <input
+            type="range"
+            id="noteSpeed"
+            min="1"
+            max="10"
+            step="0.5"
+            v-model.number="localSettings.noteSpeed"
+            @input="updateSettings"
+          />
+          <span>x{{ localSettings.noteSpeed.toFixed(1) }}</span>
         </div>
       </div>
       <button @click="$emit('close')">Close</button>
@@ -24,23 +37,36 @@
 <script>
 export default {
   name: 'SettingsMenu',
-  emits: ['close', 'volumeChange'],
+  props: {
+    settings: {
+      type: Object,
+      required: true,
+    },
+  },
+  emits: ['close', 'settingsChange'],
   data() {
     return {
-      volume: 100, // Default volume
+      localSettings: { ...this.settings },
     };
   },
   methods: {
-    onVolumeChange(event) {
-      // Emit the volume change event with the value (0-100)
-      this.$emit('volumeChange', parseInt(event.target.value));
+    updateSettings() {
+      this.$emit('settingsChange', this.localSettings);
     }
-  }
+  },
+  watch: {
+    settings: {
+      handler(newSettings) {
+        this.localSettings = { ...newSettings };
+      },
+      deep: true,
+    },
+  },
 };
 </script>
 
 <style scoped>
-/* Base styles are unchanged */
+/* Styles are largely unchanged, just ensuring they apply to new elements */
 .settings-overlay {
   position: absolute;
   top: 0;

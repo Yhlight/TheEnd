@@ -19,8 +19,9 @@
       </div>
       <settings-menu
         v-if="showSettings"
+        :settings="settings"
         @close="showSettings = false"
-        @volumeChange="handleVolumeChange"
+        @settingsChange="handleSettingsChange"
       />
     </div>
 
@@ -70,12 +71,10 @@ export default {
   name: 'GameScreen',
   components: { GeometricNote, JudgmentLine, HitEffect, HUD, ProgressBar, SettingsMenu },
   props: {
-    chartUrl: {
-      type: String,
-      required: true,
-    },
+    chartUrl: { type: String, required: true },
+    settings: { type: Object, required: true },
   },
-  emits: ['exit', 'songFinished'],
+  emits: ['exit', 'songFinished', 'settingsChange'],
   data() {
     return {
       chart: null,
@@ -91,7 +90,6 @@ export default {
       chartLoaded: false,
       songTime: 0,
       songDuration: 0,
-      lookaheadTime: 2000,
       score: 0,
       combo: 0,
       maxCombo: 0,
@@ -102,8 +100,12 @@ export default {
   mounted() {
     this.viewportHeight = window.innerHeight;
     this.loadChart();
+    this.applyVolume(this.settings.volume);
   },
   computed: {
+    lookaheadTime() {
+      return 4000 / this.settings.noteSpeed;
+    },
     visibleNotes() {
       return this.notes.filter(note => {
         if (note.judged && !note.active) return false;
@@ -156,14 +158,11 @@ export default {
     handleInteractionStart(event) {
       if (!this.isPlaying || this.isPaused) return;
       this.isDragging = true;
-
       let closestNote = null;
       let minTimeDiff = Infinity;
-
       this.notes.forEach(note => {
         if (note.judged || note.active) return;
         if (note.type !== 'tap' && note.type !== 'hold') return;
-
         const timingError = Math.abs(note.time - this.songTime);
         if (timingError <= TIMING_WINDOWS.good) {
           if (timingError < minTimeDiff) {
@@ -172,7 +171,6 @@ export default {
           }
         }
       });
-
       const hittableNote = closestNote;
       if (hittableNote) {
         if (hittableNote.type === 'tap') {
@@ -181,11 +179,9 @@ export default {
           hittableNote.active = true;
           this.activeHolds[event.pointerId] = hittableNote;
         }
-
         this.triggerLineFlash();
         this.playHitSound();
         const timingError = Math.abs(hittableNote.time - this.songTime);
-
         if (timingError <= TIMING_WINDOWS.perfect) {
           this.score += 100;
           this.combo++;
@@ -211,7 +207,6 @@ export default {
     },
     handleInteractionMove(event) {
       if (!this.isPlaying || this.isPaused || !this.isDragging) return;
-
       this.notes.forEach(note => {
         if ((note.type === 'swipe' || note.type === 'catch') && !note.judged) {
           const timingError = Math.abs(note.time - this.songTime);
@@ -240,12 +235,15 @@ export default {
       if (this.isPaused) {
         this.$refs.audioPlayer.pause();
       } else {
-        this.showSettings = false; // Close settings on resume
+        this.showSettings = false;
         this.$refs.audioPlayer.play();
         requestAnimationFrame(this.gameLoop);
       }
     },
-    handleVolumeChange(volume) {
+    handleSettingsChange(newSettings) {
+      this.$emit('settingsChange', newSettings);
+    },
+    applyVolume(volume) {
       const newVolume = volume / 100;
       if (this.$refs.audioPlayer) {
         this.$refs.audioPlayer.volume = newVolume;
@@ -282,7 +280,6 @@ export default {
     updateJudgmentLine() {
       const { events } = this.chart;
       if (!events || events.length === 0) return;
-
       let currentEvent = events[0];
       for (let i = events.length - 1; i >= 0; i--) {
         if (this.songTime >= events[i].time) {
@@ -290,7 +287,6 @@ export default {
           break;
         }
       }
-
       let nextEvent = null;
       for (let i = 0; i < events.length; i++) {
         if (events[i].time > this.songTime) {
@@ -298,7 +294,6 @@ export default {
           break;
         }
       }
-
       if (nextEvent) {
         const progress = (this.songTime - currentEvent.time) / (nextEvent.time - currentEvent.time);
         this.judgmentLinePosition = this.lerp(currentEvent.y, nextEvent.y, progress);
@@ -314,7 +309,6 @@ export default {
       for (const pointerId in this.activeHolds) {
         const note = this.activeHolds[pointerId];
         const holdEndTime = note.time + note.duration;
-
         if (this.songTime >= holdEndTime) {
           note.active = false;
           note.judged = true;
@@ -342,11 +336,9 @@ export default {
         if (note.type === 'hold' && note.active) {
           const endTimeUntilHit = (note.time + note.duration) - this.songTime;
           const endProgress = 1 - (endTimeUntilHit / this.lookaheadTime);
-          const endY = this.lerp(0, this.judgmentLinePosition, endProgress);
-          note.endY = endY;
+          note.endY = this.lerp(0, this.judgmentLinePosition, endProgress);
         }
       });
-
       if (this.songTime >= this.songDuration && this.songDuration > 0) {
         this.isPlaying = false;
         this.$emit('songFinished', { score: this.score, maxCombo: this.maxCombo });
@@ -355,6 +347,11 @@ export default {
       }
     }
   },
+  watch: {
+    'settings.volume'(newVolume) {
+      this.applyVolume(newVolume);
+    }
+  }
 };
 </script>
 

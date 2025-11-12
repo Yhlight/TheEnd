@@ -1,17 +1,30 @@
 <template>
   <div class="song-selection-screen">
-    <h1>Select a Song</h1>
-    <ul class="song-list">
-      <li
-        v-for="chart in charts"
-        :key="chart.id"
-        class="song-item"
-        @click="selectChart(chart)"
-      >
-        <div class="song-title">{{ chart.title }}</div>
-        <div class="song-artist">{{ chart.artist }}</div>
-      </li>
-    </ul>
+    <div class="crystals-bg">
+      <div
+        v-for="crystal in crystals"
+        :key="crystal.id"
+        class="crystal"
+        :style="crystal.style"
+      ></div>
+    </div>
+    <div class="content">
+      <h1>Select a Song</h1>
+      <ul class="song-list" v-if="charts.length > 0">
+        <li
+          v-for="chart in charts"
+          :key="chart.id"
+          class="song-item"
+          @click="selectChart(chart)"
+        >
+          <div class="song-title">{{ chart.title }}</div>
+          <div class="song-artist">{{ chart.artist }}</div>
+        </li>
+      </ul>
+      <div v-else>
+        <p>Loading charts...</p>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -21,19 +34,40 @@ export default {
   emits: ['chartSelected'],
   data() {
     return {
-      // Hardcoded chart list for now
-      charts: [
-        {
-          id: 'sample',
-          title: 'Sample Song',
-          artist: 'TheEnd Developer',
-          url: '/charts/sample.json',
-        },
-        // More charts can be added here in the future
-      ],
+      charts: [],
+      crystals: [],
+      numCrystals: 20,
     };
   },
+  async mounted() {
+    this.loadCharts();
+    this.generateCrystals();
+  },
   methods: {
+    async loadCharts() {
+      try {
+        const response = await fetch('/charts/index.json');
+        this.charts = await response.json();
+      } catch (error) {
+        console.error("Failed to load chart index:", error);
+      }
+    },
+    generateCrystals() {
+      for (let i = 0; i < this.numCrystals; i++) {
+        const size = 20 + Math.random() * 60;
+        this.crystals.push({
+          id: i,
+          style: {
+            top: `${Math.random() * 100}%`,
+            left: `${Math.random() * 100}%`,
+            width: `${size}px`,
+            height: `${size}px`,
+            animationDuration: `${15 + Math.random() * 20}s`,
+            animationDelay: `${Math.random() * 15}s`,
+          }
+        });
+      }
+    },
     selectChart(chart) {
       this.$emit('chartSelected', chart.url);
     },
@@ -43,12 +77,59 @@ export default {
 
 <style scoped>
 .song-selection-screen {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  color: #fff;
+}
+
+.crystals-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.crystal {
+  position: absolute;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.3), 0 0 25px rgba(0, 255, 255, 0.2);
+  transform: rotate(45deg);
+  animation: float linear infinite;
+}
+
+@keyframes float {
+  0% {
+    transform: translate(0, 0) rotate(45deg);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.7;
+  }
+  50% {
+    transform: translate(20px, 40px) rotate(60deg);
+    opacity: 0.5;
+  }
+  75% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(0, 0) rotate(45deg);
+    opacity: 0;
+  }
+}
+
+.content {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: #fff;
 }
 
 h1 {
