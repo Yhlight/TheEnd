@@ -8,6 +8,7 @@
       :class="[note.type, { selected: note.id === selectedNoteId }]"
       :style="getItemStyle(note)"
       @click.stop="selectNote(note.id)"
+      @mousedown.prevent="startDrag(note, $event)"
     >
       {{ note.type }}
     </div>
@@ -31,10 +32,13 @@ export default {
     chart: { type: Object, required: true },
     selectedNoteId: { type: [Number, null], default: null },
   },
-  emits: ['addNote', 'selectNote'],
+  emits: ['addNote', 'selectNote', 'updateNote'],
   data() {
     return {
       pixelsPerSecond: 100, // 100px represents 1 second
+      draggingNote: null,
+      dragStartX: 0,
+      dragStartY: 0,
     };
   },
   computed: {
@@ -65,11 +69,51 @@ export default {
     },
     selectNote(noteId) {
       // Emit an event to the parent to update the selection
-      this.$emit('selectNote', noteId);
+      if (!this.draggingNote) {
+        this.$emit('selectNote', noteId);
+      }
+    },
+    startDrag(note, event) {
+      this.draggingNote = {
+        ...note,
+        initialTime: note.time,
+        initialX: note.x
+      };
+      this.dragStartX = event.clientX;
+      this.dragStartY = event.clientY;
+
+      window.addEventListener('mousemove', this.onDrag);
+      window.addEventListener('mouseup', this.stopDrag);
+    },
+    onDrag(event) {
+      if (!this.draggingNote) return;
+
+      const rect = this.$el.getBoundingClientRect();
+      const timeOffset = (event.clientY - this.dragStartY) / this.pixelsPerSecond * 1000;
+      const xOffset = (event.clientX - this.dragStartX) / rect.width * 100;
+
+      const newTime = this.draggingNote.initialTime + timeOffset;
+      const newX = this.draggingNote.initialX + xOffset;
+
+      // Update the note in the parent component in real-time
+      this.$emit('updateNote', {
+        id: this.draggingNote.id,
+        time: Math.round(newTime),
+        x: Math.max(0, Math.min(100, newX)), // Clamp x between 0 and 100
+      });
+    },
+    stopDrag() {
+      window.removeEventListener('mousemove', this.onDrag);
+      window.removeEventListener('mouseup', this.stopDrag);
+
+      // A short timeout to prevent click event from firing after drag
+      setTimeout(() => {
+        this.draggingNote = null;
+      }, 10);
     },
     handleClick(event) {
       // If the click is on the timeline background, deselect any selected note
-      if (event.target === event.currentTarget) {
+      if (event.target === event.currentTarget && !this.draggingNote) {
         this.$emit('selectNote', null);
 
         // Also proceed to add a new note
