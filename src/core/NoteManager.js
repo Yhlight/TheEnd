@@ -116,14 +116,17 @@ export class NoteManager {
 
       const timeDiff = Math.abs(adjustedTime - note.time);
 
-      // Only consider notes within the judgement window
+      // 1. Check if the tap is vertically close to the judgement line
+      if (Math.abs(clickY - this.judgementLine.y) > 100) continue;
+
+      // 2. Check if the note is temporally close to being hit
       if (timeDiff > NoteManager.judgementWindows.Bad) continue;
 
       const notePixelX = this.judgementLine.x + (note.x - 0.5) * this.canvas.width;
-      const distance = Math.sqrt(Math.pow(clickX - notePixelX, 2) + Math.pow(clickY - note.y, 2));
+      const distanceX = Math.abs(clickX - notePixelX);
 
-      // Check if the tap is close enough to the note
-      if (distance < 100 && timeDiff < minTimeDiff) {
+      // 3. Check if the tap is horizontally close enough to the note
+      if (distanceX < note.width / 2 && timeDiff < minTimeDiff) {
         minTimeDiff = timeDiff;
         closestNote = note;
       }
@@ -149,12 +152,13 @@ export class NoteManager {
         if (note.isMissed || note.type !== 'flick') continue;
 
         const timeDiff = Math.abs(adjustedTime - note.time);
+        if (Math.abs(clickY - this.judgementLine.y) > 100) continue;
         if (timeDiff > NoteManager.judgementWindows.Bad) continue;
 
         const notePixelX = this.judgementLine.x + (note.x - 0.5) * this.canvas.width;
-        const distance = Math.sqrt(Math.pow(clickX - notePixelX, 2) + Math.pow(clickY - note.y, 2));
+        const distanceX = Math.abs(clickX - notePixelX);
 
-        if (distance < 100 && timeDiff < minTimeDiff) {
+        if (distanceX < note.width / 2 && timeDiff < minTimeDiff) {
             minTimeDiff = timeDiff;
             closestNote = note;
         }
@@ -179,12 +183,13 @@ export class NoteManager {
         if (note.isMissed || note.type !== 'hold') continue;
 
         const timeDiff = Math.abs(adjustedTime - note.time);
+        if (Math.abs(clickY - this.judgementLine.y) > 100) continue;
         if (timeDiff > NoteManager.judgementWindows.Bad) continue;
 
         const notePixelX = this.judgementLine.x + (note.x - 0.5) * this.canvas.width;
-        const distance = Math.sqrt(Math.pow(clickX - notePixelX, 2) + Math.pow(clickY - note.y, 2));
+        const distanceX = Math.abs(clickX - notePixelX);
 
-        if (distance < 100 && timeDiff < minTimeDiff) {
+        if (distanceX < note.width / 2 && timeDiff < minTimeDiff) {
             minTimeDiff = timeDiff;
             closestNote = note;
         }
@@ -222,12 +227,13 @@ export class NoteManager {
         if (note.isMissed || note.type !== 'drag') continue;
 
         const timeDiff = Math.abs(adjustedTime - note.time);
+        if (Math.abs(clickY - this.judgementLine.y) > 100) continue;
         if (timeDiff > NoteManager.judgementWindows.Bad) continue;
 
         const notePixelX = this.judgementLine.x + (note.x - 0.5) * this.canvas.width;
-        const distance = Math.sqrt(Math.pow(clickX - notePixelX, 2) + Math.pow(clickY - note.y, 2));
+        const distanceX = Math.abs(clickX - notePixelX);
 
-        if (distance < 100 && timeDiff < minTimeDiff) {
+        if (distanceX < note.width / 2 && timeDiff < minTimeDiff) {
             minTimeDiff = timeDiff;
             closestNote = note;
         }
