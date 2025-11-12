@@ -4,10 +4,12 @@
     <GameScreen
       v-if="currentView === 'game'"
       :chartUrl="selectedChartUrl"
+      :chartData="chartCache[selectedChartUrl]"
       :settings="settings"
       @exit="handleExit"
       @songFinished="handleSongFinished"
       @settingsChange="updateSettings"
+      @chartLoaded="cacheChart"
     />
     <ResultsScreen v-if="currentView === 'results'" :results="gameResults" @exit="handleExit" />
   </div>
@@ -33,7 +35,9 @@ export default {
       settings: {
         volume: 100,
         noteSpeed: 5,
+        backgroundBrightness: 100,
       },
+      chartCache: {},
     };
   },
   methods: {
@@ -53,13 +57,18 @@ export default {
     },
     updateSettings(newSettings) {
       this.settings = { ...this.settings, ...newSettings };
+    },
+    cacheChart({ url, data }) {
+      if (!this.chartCache[url]) {
+        this.chartCache[url] = data;
+      }
     }
   },
 };
 </script>
 
 <style>
-/* Resetting default styles for a cleaner base */
+/* ... styles unchanged ... */
 html, body {
   margin: 0;
   padding: 0;

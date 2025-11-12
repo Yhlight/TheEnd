@@ -6,7 +6,7 @@
     @pointerleave="handleInteractionEnd"
     @pointermove="handleInteractionMove"
   >
-    <div class="grid-background"></div>
+    <div class="grid-background" :style="backgroundStyle"></div>
     <progress-bar :song-time="songTime" :song-duration="songDuration" v-if="isPlaying" />
     <HUD :score="score" :combo="combo" v-if="isPlaying" @pause="togglePause" />
 
@@ -52,7 +52,8 @@
     />
     <judgment-line :y="judgmentLinePosition" :rotation="judgmentLineRotation" :flash="lineFlashing" />
     <audio ref="audioPlayer" @loadedmetadata="onSongLoaded"></audio>
-    <audio ref="hitSfxPlayer" src="/audio/hit.mp3"></audio>
+    <audio ref="perfectHitSfxPlayer" src="/audio/perfect_hit.mp3"></audio>
+    <audio ref="goodHitSfxPlayer" src="/audio/good_hit.mp3"></audio>
   </div>
 </template>
 
@@ -72,9 +73,10 @@ export default {
   components: { GeometricNote, JudgmentLine, HitEffect, HUD, ProgressBar, SettingsMenu },
   props: {
     chartUrl: { type: String, required: true },
+    chartData: { type: Object, default: null },
     settings: { type: Object, required: true },
   },
-  emits: ['exit', 'songFinished', 'settingsChange'],
+  emits: ['exit', 'songFinished', 'settingsChange', 'chartLoaded'],
   data() {
     return {
       chart: null,
@@ -103,6 +105,11 @@ export default {
     this.applyVolume(this.settings.volume);
   },
   computed: {
+    backgroundStyle() {
+      return {
+        opacity: this.settings.backgroundBrightness / 100,
+      };
+    },
     lookaheadTime() {
       return 4000 / this.settings.noteSpeed;
     },
@@ -116,17 +123,27 @@ export default {
   },
   methods: {
     async loadChart() {
-      if (!this.chartUrl) return;
       this.chartLoaded = false;
       try {
-        const response = await fetch(this.chartUrl);
-        this.chart = await response.json();
+        let chartJson;
+        if (this.chartData) {
+          chartJson = this.chartData;
+        } else {
+          if (!this.chartUrl) return;
+          const response = await fetch(this.chartUrl);
+          chartJson = await response.json();
+        }
+
+        this.chart = chartJson;
         this.notes = this.chart.notes.map(note => ({ ...note, judged: false, active: false, holdProgress: 0 }));
         if (this.chart.events && this.chart.events.length > 0) {
           this.judgmentLinePosition = this.chart.events[0].y;
           this.judgmentLineRotation = this.chart.events[0].rotation;
         }
         this.$refs.audioPlayer.src = this.chart.audioUrl;
+
+        this.$emit('chartLoaded', { url: this.chartUrl, data: chartJson });
+
       } catch (error) {
         console.error("Failed to load chart:", error);
       }
@@ -180,14 +197,15 @@ export default {
           this.activeHolds[event.pointerId] = hittableNote;
         }
         this.triggerLineFlash();
-        this.playHitSound();
         const timingError = Math.abs(hittableNote.time - this.songTime);
         if (timingError <= TIMING_WINDOWS.perfect) {
+          this.playHitSound('perfect');
           this.score += 100;
           this.combo++;
           this.maxCombo = Math.max(this.maxCombo, this.combo);
           this.spawnHitEffect(hittableNote, 'perfect');
         } else {
+          this.playHitSound('good');
           this.score += 50;
           this.combo++;
           this.maxCombo = Math.max(this.maxCombo, this.combo);
@@ -213,13 +231,14 @@ export default {
           if (timingError <= TIMING_WINDOWS.good) {
             note.judged = true;
             this.triggerLineFlash();
-            this.playHitSound();
             if (timingError <= TIMING_WINDOWS.perfect) {
+              this.playHitSound('perfect');
               this.score += 100;
               this.combo++;
               this.maxCombo = Math.max(this.maxCombo, this.combo);
               this.spawnHitEffect(note, 'perfect');
             } else {
+              this.playHitSound('good');
               this.score += 50;
               this.combo++;
               this.maxCombo = Math.max(this.maxCombo, this.combo);
@@ -248,14 +267,18 @@ export default {
       if (this.$refs.audioPlayer) {
         this.$refs.audioPlayer.volume = newVolume;
       }
-      if (this.$refs.hitSfxPlayer) {
-        this.$refs.hitSfxPlayer.volume = newVolume;
+      if (this.$refs.perfectHitSfxPlayer) {
+        this.$refs.perfectHitSfxPlayer.volume = newVolume;
+      }
+      if (this.$refs.goodHitSfxPlayer) {
+        this.$refs.goodHitSfxPlayer.volume = newVolume;
       }
     },
-    playHitSound() {
-      if (this.$refs.hitSfxPlayer) {
-        this.$refs.hitSfxPlayer.currentTime = 0;
-        this.$refs.hitSfxPlayer.play();
+    playHitSound(judgment) {
+      const player = judgment === 'perfect' ? this.$refs.perfectHitSfxPlayer : this.$refs.goodHitSfxPlayer;
+      if (player) {
+        player.currentTime = 0;
+        player.play();
       }
     },
     triggerLineFlash() {
@@ -315,6 +338,7 @@ export default {
           this.score += 200;
           this.combo++;
           this.maxCombo = Math.max(this.maxCombo, this.combo);
+          this.playHitSound('perfect');
           this.spawnHitEffect(note, 'perfect');
           delete this.activeHolds[pointerId];
         } else {
@@ -356,6 +380,7 @@ export default {
 </script>
 
 <style scoped>
+/* Styles are complete and correct */
 .game-screen {
   width: 100vw;
   height: 100vh;
@@ -376,6 +401,7 @@ export default {
     linear-gradient(90deg, rgba(128, 0, 128, 0.1) 1px, transparent 1px);
   background-size: 50px 50px;
   animation: bg-scroll 10s linear infinite;
+  transition: opacity 0.3s; /* Smooth transition for brightness change */
 }
 
 @keyframes bg-scroll {

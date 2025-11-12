@@ -28,6 +28,18 @@
           />
           <span>x{{ localSettings.noteSpeed.toFixed(1) }}</span>
         </div>
+        <div class="setting-item">
+          <label for="bgBrightness">BG Brightness</label>
+           <input
+            type="range"
+            id="bgBrightness"
+            min="0"
+            max="100"
+            v-model.number="localSettings.backgroundBrightness"
+            @input="updateSettings"
+          />
+          <span>{{ localSettings.backgroundBrightness }}%</span>
+        </div>
       </div>
       <button @click="$emit('close')">Close</button>
     </div>
