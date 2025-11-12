@@ -8,7 +8,9 @@
           <option value="tap">Tap</option>
           <option value="hold">Hold</option>
         </select>
+        <button @click="addEvent">Add Event</button>
         <button @click="deleteSelectedNote" :disabled="!selectedNoteId" class="delete-button">Delete Note</button>
+        <button @click="deleteSelectedEvent" :disabled="selectedEventIndex === null" class="delete-button">Delete Event</button>
         <button @click="$emit('exit')">Back to Menu</button>
       </div>
     </div>
@@ -18,16 +20,19 @@
           <EditorTimeline
              :chart="localChart"
              :selected-note-id="selectedNoteId"
+             :selected-event-index="selectedEventIndex"
              @addNote="addNote"
              @selectNote="handleSelectNote"
              @updateNote="handleUpdateNote"
+             @selectEvent="handleSelectEvent"
         />
       </div>
       <div v-else>
         <p>Loading chart data...</p>
       </div>
     </div>
-      <div v-if="selectedNote" class="editor-sidebar">
+    <div v-if="selectedNote || selectedEvent" class="editor-sidebar">
+      <div v-if="selectedNote">
         <h3>Note Properties</h3>
         <div class="property">
           <label for="note-time">Time (ms)</label>
@@ -40,6 +45,21 @@
         <div v-if="selectedNote.type === 'hold'" class="property">
           <label for="note-duration">Duration (ms)</label>
           <input id="note-duration" type="number" v-model.number="selectedNote.duration">
+        </div>
+      </div>
+      <div v-if="selectedEvent">
+        <h3>Event Properties</h3>
+        <div class="property">
+          <label for="event-time">Time (ms)</label>
+          <input id="event-time" type="number" v-model.number="selectedEvent.time">
+        </div>
+        <div class="property">
+          <label for="event-y">Y Position (%)</label>
+          <input id="event-y" type="number" v-model.number="selectedEvent.y">
+        </div>
+        <div class="property">
+          <label for="event-rotation">Rotation (deg)</label>
+          <input id="event-rotation" type="number" v-model.number="selectedEvent.rotation">
         </div>
       </div>
     </div>
@@ -62,6 +82,7 @@ export default {
       localChart: null,
       selectedNoteId: null,
       currentNoteType: 'tap',
+      selectedEventIndex: null,
     };
   },
   mounted() {
@@ -73,8 +94,12 @@ export default {
   },
   computed: {
     selectedNote() {
-      if (!this.selectedNoteId || !this.localChart) return null;
+      if (this.selectedNoteId === null || !this.localChart) return null;
       return this.localChart.notes.find(note => note.id === this.selectedNoteId);
+    },
+    selectedEvent() {
+      if (this.selectedEventIndex === null || !this.localChart) return null;
+      return this.localChart.events[this.selectedEventIndex];
     }
   },
   methods: {
@@ -125,6 +150,15 @@ export default {
         this.selectedNoteId = null;
       } else {
         this.selectedNoteId = noteId;
+        this.selectedEventIndex = null; // Deselect any selected event
+      }
+    },
+    handleSelectEvent(index) {
+      if (this.selectedEventIndex === index) {
+        this.selectedEventIndex = null;
+      } else {
+        this.selectedEventIndex = index;
+        this.selectedNoteId = null; // Deselect any selected note
       }
     },
     handleUpdateNote(updatedNote) {
@@ -143,9 +177,38 @@ export default {
         this.selectedNoteId = null; // Deselect after deletion
       }
     },
+    addEvent() {
+      if (!this.localChart) return;
+
+      const events = this.localChart.events;
+      const lastEvent = events.length > 0 ? events[events.length - 1] : { time: 0, y: 50, rotation: 0 };
+
+      const newEvent = {
+        time: lastEvent.time + 1000, // Add 1 second after the last event
+        y: lastEvent.y,
+        rotation: lastEvent.rotation
+      };
+
+      events.push(newEvent);
+      // Ensure events are sorted by time
+      events.sort((a, b) => a.time - b.time);
+      // Select the newly added event
+      this.selectedEventIndex = events.indexOf(newEvent);
+      this.selectedNoteId = null;
+    },
+    deleteSelectedEvent() {
+      if (this.selectedEventIndex === null) return;
+
+      this.localChart.events.splice(this.selectedEventIndex, 1);
+      this.selectedEventIndex = null;
+    },
     handleKeyDown(event) {
       if (event.key === 'Delete' || event.key === 'Backspace') {
-        this.deleteSelectedNote();
+        if (this.selectedNoteId !== null) {
+          this.deleteSelectedNote();
+        } else if (this.selectedEventIndex !== null) {
+          this.deleteSelectedEvent();
+        }
       }
     },
   },

@@ -23,7 +23,9 @@
       v-for="(event, index) in chart.events"
       :key="'event-' + index"
       class="timeline-item event"
+      :class="{ selected: index === selectedEventIndex }"
       :style="getItemStyle(event)"
+      @click="selectEvent(index)"
     >
       Event: y={{ event.y }}, rot={{ event.rotation }}
     </div>
@@ -36,8 +38,9 @@ export default {
   props: {
     chart: { type: Object, required: true },
     selectedNoteId: { type: [Number, null], default: null },
+    selectedEventIndex: { type: [Number, null], default: null },
   },
-  emits: ['addNote', 'selectNote', 'updateNote'],
+  emits: ['addNote', 'selectNote', 'updateNote', 'selectEvent'],
   data() {
     return {
       pixelsPerSecond: 100, // 100px represents 1 second
@@ -144,6 +147,9 @@ export default {
       window.removeEventListener('mouseup', this.stopResize);
       this.resizingNote = null;
     },
+    selectEvent(index) {
+      this.$emit('selectEvent', index);
+    },
     handleClick(event) {
       // If the click is on the timeline background, deselect any selected note
       if (event.target === event.currentTarget && !this.draggingNote) {
@@ -210,5 +216,16 @@ export default {
   color: orange;
   z-index: 5;
   text-align: right;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.event:hover {
+  background-color: rgba(255, 165, 0, 0.4);
+}
+
+.event.selected {
+  border-top: 2px solid #ff0000;
+  box-shadow: 0 0 10px #ff0000;
 }
 </style>
