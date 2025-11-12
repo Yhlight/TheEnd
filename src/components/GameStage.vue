@@ -563,7 +563,7 @@ const handlePress = (event) => {
         if (x > cardRenderX && x < cardRenderX + selectedCard.width) {
             const selectedSong = songLibrary[songSelectState.selectedIndex];
             noteManager.loadChart(selectedSong.chart);
-            audioElement.value.play().catch(e => console.error("Audio error:", e));
+            audioManager.playMusic();
             gameState.current = 'playing';
             gameStartTime = null;
         } else {

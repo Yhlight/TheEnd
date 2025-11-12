@@ -3,18 +3,24 @@
 export class AudioManager {
   constructor(musicElement) {
     this.musicElement = musicElement;
-    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-
+    this.audioContext = null;
     this.hitSoundBuffer = null;
     this.missSoundBuffer = null;
     this.sfxVolume = 1.0;
+    this.sfxGainNode = null;
+    this.isInitialized = false;
+  }
 
-    // Create a GainNode to control SFX volume
+  _initializeAudio() {
+    if (this.isInitialized) return;
+
+    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
     this.sfxGainNode = this.audioContext.createGain();
     this.sfxGainNode.connect(this.audioContext.destination);
 
     this._loadHitSound();
     this._loadMissSound();
+    this.isInitialized = true;
   }
 
   async _loadHitSound() {
@@ -68,7 +74,7 @@ export class AudioManager {
     this._playSound(this.missSoundBuffer);
   }
 
-  setMusicVolume(volume) {
+  setBgmVolume(volume) {
     if (this.musicElement) {
       this.musicElement.volume = volume;
     }
@@ -79,6 +85,7 @@ export class AudioManager {
   }
 
   playMusic() {
+    this._initializeAudio();
     if (this.musicElement) {
       this.musicElement.play().catch(e => console.error("Music play failed:", e));
     }
