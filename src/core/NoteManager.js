@@ -36,7 +36,6 @@ export class NoteManager {
     this.nextNoteIndex = 0;
 
     if (newChart) {
-        // Instantiate all notes at once for the editor
         this.notes = newChart.notes.map(noteData => {
             const judgementLineY = this.judgementLine.y;
             switch (noteData.type) {
@@ -58,8 +57,6 @@ export class NoteManager {
   update(gameTime) {
     if (!this.chart) return;
 
-    // The note spawning logic is removed as notes are pre-loaded.
-    // We just need to update their positions.
     for (const note of this.notes) {
       note.update(gameTime);
       const missThreshold = this.judgementLine.y + 100;
@@ -115,7 +112,7 @@ export class NoteManager {
     const adjustedTime = gameTime - this.settings.offset;
 
     for (const note of this.notes) {
-      if (note.isMissed || (note.type !== 'tap' && note.type !== 'flick')) continue;
+      if (note.isMissed || note.type !== 'tap') continue;
 
       const timeDiff = Math.abs(adjustedTime - note.time);
       if (timeDiff < minTimeDiff) {
@@ -130,6 +127,31 @@ export class NoteManager {
       if (minTimeDiff <= NoteManager.judgementWindows.Perfect) judgement = 'Perfect';
       this.notes = this.notes.filter(note => note !== closestNote);
       return { note: closestNote, judgement };
+    }
+    return null;
+  }
+
+  checkFlickHit(gameTime, velocity) {
+    let closestNote = null;
+    let minTimeDiff = Infinity;
+    const adjustedTime = gameTime - this.settings.offset;
+    const FLICK_VELOCITY_THRESHOLD = 5;
+
+    for (const note of this.notes) {
+        if (note.isMissed || note.type !== 'flick') continue;
+        const timeDiff = Math.abs(adjustedTime - note.time);
+        if (timeDiff < minTimeDiff) {
+            minTimeDiff = timeDiff;
+            closestNote = note;
+        }
+    }
+
+    if (closestNote && minTimeDiff <= NoteManager.judgementWindows.Bad && Math.abs(velocity) > FLICK_VELOCITY_THRESHOLD) {
+        let judgement = 'Bad';
+        if (minTimeDiff <= NoteManager.judgementWindows.Good) judgement = 'Good';
+        if (minTimeDiff <= NoteManager.judgementWindows.Perfect) judgement = 'Perfect';
+        this.notes = this.notes.filter(note => note !== closestNote);
+        return { note: closestNote, judgement };
     }
     return null;
   }
@@ -215,84 +237,6 @@ export class NoteManager {
       this.scoreManager.onMiss();
       this.activeDragNote.markAsMissed();
       this.activeDragNote = null;
-    }
-  }
-
-  addNote(noteData) {
-    if (!this.chart) return;
-
-    // Add to the chart's source data
-    this.chart.notes.push(noteData);
-
-    // Sort the notes array by time to maintain order
-    this.chart.notes.sort((a, b) => a.time - b.time);
-
-    // Regenerate the instantiated notes array to reflect the change
-    this.notes = this.chart.notes.map(nd => {
-        const judgementLineY = this.judgementLine.y;
-        switch (nd.type) {
-            case 'hold': return new HoldNote(this.canvas, 0, judgementLineY, this.scrollTime, nd);
-            case 'flick': return new FlickNote(this.canvas, 0, judgementLineY, this.scrollTime, nd);
-            case 'drag': return new DragNote(this.canvas, 0, judgementLineY, this.scrollTime, nd);
-            default: return new TapNote(this.canvas, 0, judgementLineY, this.scrollTime, nd);
-        }
-    });
-  }
-
-  getNoteAt(time) {
-    if (!this.notes) return null;
-    let minTimeDiff = 20; // ms window
-    let closestNote = null;
-
-    for (const note of this.notes) {
-      const timeDiff = Math.abs(note.time - time);
-      if (timeDiff < minTimeDiff) {
-        minTimeDiff = timeDiff;
-        closestNote = note;
-      }
-    }
-    return closestNote;
-  }
-
-  deleteNoteAt(time) {
-    if (!this.chart) return;
-
-    // Find the note closest to the given time to delete
-    let closestNoteIndex = -1;
-    let minTimeDiff = 20; // A small window (20ms) to prevent accidental deletion
-
-    this.chart.notes.forEach((noteData, index) => {
-        const timeDiff = Math.abs(noteData.time - time);
-        if (timeDiff < minTimeDiff) {
-            minTimeDiff = timeDiff;
-            closestNoteIndex = index;
-        }
-    });
-
-    if (closestNoteIndex !== -1) {
-        // Remove from the source data
-        this.chart.notes.splice(closestNoteIndex, 1);
-
-        // Regenerate the instantiated notes array
-        this.notes = this.chart.notes.map(nd => {
-            const judgementLineY = this.judgementLine.y;
-            switch (nd.type) {
-                case 'hold': return new HoldNote(this.canvas, 0, judgementLineY, this.scrollTime, nd);
-                case 'flick': return new FlickNote(this.canvas, 0, judgementLineY, this.scrollTime, nd);
-                case 'drag': return new DragNote(this.canvas, 0, judgementLineY, this.scrollTime, nd);
-                default: return new TapNote(this.canvas, 0, judgementLineY, this.scrollTime, nd);
-            }
-        });
-    }
-  }
-
-  sortNotes() {
-    // Sort both the source data and the instantiated notes
-    if (this.chart && this.chart.notes) {
-        this.chart.notes.sort((a, b) => a.time - b.time);
-    }
-    if (this.notes) {
-        this.notes.sort((a, b) => a.time - b.time);
     }
   }
 }

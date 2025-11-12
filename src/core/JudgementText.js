@@ -1,22 +1,21 @@
 // src/core/JudgementText.js
 
 export class JudgementText {
-  constructor(x, y, text, color) {
+  constructor(x, y, text, color, sizeMultiplier = 1.0, durationMultiplier = 1.0) {
     this.x = x;
     this.y = y;
     this.text = text;
     this.color = color;
-
-    this.life = 1.0; // Lives for 1.0 arbitrary units of time
-    this.decayRate = 1.5; // Controls how fast it fades and shrinks
-
-    this.scale = 1.5; // Initial scale
+    this.life = 1.0 * durationMultiplier;
+    this.decayRate = 1.5 / durationMultiplier;
+    this.baseSize = 30 * sizeMultiplier;
+    this.scale = 1.5;
   }
 
   update(deltaTime) {
     this.life -= this.decayRate * deltaTime;
-    this.scale = 1.0 + (this.life * 0.5); // Start big and shrink to normal size
-    this.y -= 30 * deltaTime; // Move upwards slightly
+    this.scale = 1.0 + (this.life * 0.5);
+    this.y -= 30 * deltaTime;
   }
 
   isAlive() {
@@ -25,19 +24,15 @@ export class JudgementText {
 
   draw(ctx) {
     if (!this.isAlive()) return;
-
     ctx.save();
-
     ctx.globalAlpha = Math.max(0, this.life);
     ctx.fillStyle = this.color;
-    ctx.font = `bold ${30 * this.scale}px Arial`;
+    ctx.font = `bold ${this.baseSize * this.scale}px Arial`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.shadowColor = this.color;
     ctx.shadowBlur = 10;
-
     ctx.fillText(this.text, this.x, this.y);
-
     ctx.restore();
   }
 }

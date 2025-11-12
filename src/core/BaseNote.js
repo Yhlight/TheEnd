@@ -4,51 +4,56 @@ export class BaseNote {
   constructor(canvas, x, judgementLineY, scrollTime, noteData) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
-    this.x = x;
-    this.type = noteData.type;
+
+    this.judgementLineY = judgementLineY;
+    this.scrollTime = scrollTime; // Time in ms for a note to travel from spawn to judgement line
+
+    this.noteData = noteData;
     this.time = noteData.time;
+    this.x = noteData.x; // Normalized x position (0 to 1)
+
+    this.y = 0; // This will be calculated in update()
     this.width = 100;
     this.height = 30;
     this.color = '#FFFFFF';
 
-    // Store properties needed for time-based updates
-    this.scrollTime = scrollTime;
-    this.judgementLineY = judgementLineY;
-    this.y = 0; // Initial y will be calculated in update
-
     this.isMissed = false;
-    this.fadeDuration = 20; // frames
-    this.fadeTimer = 0;
-  }
+    this.isBeingHeld = false; // For hold and drag notes
 
-  markAsMissed() {
-    if (!this.isMissed) {
-      this.isMissed = true;
-      this.fadeTimer = this.fadeDuration;
-    }
+    this.spawnAnimationDuration = 200; // ms
+    this.spawnTime = this.time - scrollTime;
+    this.alpha = 0;
+    this.scale = 0.5;
   }
 
   update(gameTime) {
-    if (this.isMissed) {
-      if (this.fadeTimer > 0) {
-        this.fadeTimer--;
-      }
-    } else {
-      // Time-based position calculation
-      const timeUntilHit = this.time - gameTime;
-      // Progress: 0 when note is spawning, 1 when note should be at the judgement line
-      const progress = 1 - (timeUntilHit / this.scrollTime);
+    const timeUntilJudgement = this.time - gameTime;
+    const progress = 1 - (timeUntilJudgement / this.scrollTime);
 
-      // Notes start appearing from the top (y=0)
-      this.y = this.judgementLineY * progress;
+    // Calculate Y position based on time
+    this.y = progress * this.judgementLineY;
+
+    // Handle spawn animation
+    const timeSinceSpawn = gameTime - this.spawnTime;
+    if (timeSinceSpawn < this.spawnAnimationDuration) {
+        const animationProgress = timeSinceSpawn / this.spawnAnimationDuration;
+        this.alpha = animationProgress; // Fade in
+        this.scale = 0.5 + animationProgress * 0.5; // Scale from 0.5 to 1.0
+    } else {
+        this.alpha = 1.0;
+        this.scale = 1.0;
     }
   }
 
-  isAlive() {
-    return !this.isMissed || this.fadeTimer > 0;
+  markAsMissed() {
+    this.isMissed = true;
   }
 
-  draw() {
+  isAlive() {
+    return !this.isMissed;
+  }
+
+  draw(ctx, judgementLineX) {
     throw new Error("Draw method must be implemented by subclass");
   }
 }

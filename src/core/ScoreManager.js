@@ -1,7 +1,8 @@
 // src/core/ScoreManager.js
 
 export class ScoreManager {
-  constructor() {
+  constructor(effectManager) {
+    this.effectManager = effectManager;
     this.score = 0;
     this.combo = 0;
     this.maxCombo = 0;
@@ -13,12 +14,9 @@ export class ScoreManager {
     };
   }
 
-  /**
-   * Called when a note interaction occurs (hit, hold tick, etc.).
-   * @param {string} judgement - The judgement category ('Perfect', 'Good', 'Bad', 'Miss').
-   */
   onHit(judgement) {
     this.judgements[judgement]++;
+    const oldCombo = this.combo;
 
     switch (judgement) {
       case 'Perfect':
@@ -40,16 +38,19 @@ export class ScoreManager {
     if (this.combo > this.maxCombo) {
       this.maxCombo = this.combo;
     }
+
+    const COMBO_MILESTONE = 50;
+    if (this.combo > 0 && Math.floor(this.combo / COMBO_MILESTONE) > Math.floor(oldCombo / COMBO_MILESTONE)) {
+        if (this.effectManager) {
+            this.effectManager.createComboMilestoneEffect(this.combo);
+        }
+    }
   }
 
-  /**
-   * A specific method for misses, which is just a wrapper around onHit.
-   */
   onMiss() {
     this.onHit('Miss');
   }
 
-  // This method is for continuous notes like holds and drags
   increaseCombo(amount) {
       this.combo += amount;
        if (this.combo > this.maxCombo) {
@@ -66,7 +67,7 @@ export class ScoreManager {
   }
 
   getMaxCombo() {
-    return this.maxCombo;
+    return Math.floor(this.maxCombo);
   }
 
   getJudgementCounts() {
@@ -74,23 +75,11 @@ export class ScoreManager {
   }
 
   getAccuracy() {
-    const totalNotes = Object.values(this.judgements).reduce((a, b) => a + b, 0);
-    if (totalNotes === 0) {
-      return 100;
-    }
-
-    // Perfects count as 100%, Goods as 50%
-    const weightedScore = this.judgements.Perfect * 1.0 + this.judgements.Good * 0.5;
-
-    // Bads and Misses don't contribute to the numerator, but do to the denominator.
-    // However, hold/drag ticks might add combo but don't have a judgement.
-    // Let's base accuracy on judgements only.
     const totalJudgements = this.judgements.Perfect + this.judgements.Good + this.judgements.Bad + this.judgements.Miss;
-
     if (totalJudgements === 0) {
       return 100;
     }
-
+    const weightedScore = this.judgements.Perfect * 1.0 + this.judgements.Good * 0.5;
     const accuracy = (weightedScore / totalJudgements) * 100;
     return accuracy;
   }

@@ -5,51 +5,43 @@ export class HoldNote extends BaseNote {
   constructor(canvas, x, judgementLineY, scrollTime, noteData) {
     super(canvas, x, judgementLineY, scrollTime, noteData);
     this.duration = noteData.duration;
-    this.flowAnimationTimer = Math.random() * Math.PI * 2;
-    this.flowSpeed = 0.1;
-    this.isBeingHeld = false;
+    this.color = '#80FFFF'; // A cyan color for hold notes
   }
 
-  update(gameTime) {
-    super.update(gameTime);
-    this.flowAnimationTimer += this.flowSpeed;
+  getHeadY(gameTime) {
+    const timeUntilJudgement = this.time - gameTime;
+    const progress = 1 - (timeUntilJudgement / this.scrollTime);
+    return progress * this.judgementLineY;
+  }
+
+  getTailY(gameTime) {
+    const endTime = this.time + this.duration;
+    const timeUntilJudgement = endTime - gameTime;
+    const progress = 1 - (timeUntilJudgement / this.scrollTime);
+    return progress * this.judgementLineY;
   }
 
   draw(ctx, judgementLineX) {
-    if (this.fadeTimer > 0 && this.isMissed) {
-      ctx.globalAlpha = this.fadeTimer / this.fadeDuration;
-    }
+    if (!this.isAlive()) return;
+
+    const headY = this.getHeadY(this.y / this.judgementLineY * this.scrollTime + (this.time - this.scrollTime));
+    const tailY = this.getTailY(this.y / this.judgementLineY * this.scrollTime + (this.time - this.scrollTime));
+    const renderX = judgementLineX + this.x * (this.canvas.width / 2);
+    const scaledWidth = this.width * this.scale;
+    const scaledHeight = this.height * this.scale;
+
     ctx.save();
-    const renderX = this.x - judgementLineX;
-    const startX = renderX - this.width / 2;
-    const startY = this.y - this.height / 2;
+    ctx.globalAlpha = this.alpha;
 
-    // Time-based calculation for note length
-    const bodyHeight = (this.duration / this.scrollTime) * this.judgementLineY;
-
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-    ctx.fillRect(startX, startY - bodyHeight, this.width, bodyHeight);
-
-    // Flow animation should be contained within the note body
-    if (this.isBeingHeld) {
-        const flowProgress = (Math.sin(this.flowAnimationTimer) + 1) / 2;
-        const flowY = startY - (bodyHeight * flowProgress);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.shadowColor = '#FFFFFF';
-        ctx.shadowBlur = 15;
-        ctx.fillRect(startX, flowY - 5, this.width, 10);
-        ctx.shadowBlur = 0;
-    }
-
+    // Draw the main body of the hold note
     ctx.fillStyle = this.color;
-    ctx.shadowColor = this.color;
-    ctx.shadowBlur = 5;
-    // Draw head
-    ctx.fillRect(startX, startY, this.width, this.height);
-    // Draw tail
-    ctx.fillRect(startX, startY - bodyHeight, this.width, this.height);
-    ctx.shadowBlur = 0;
+    ctx.globalAlpha = this.alpha * 0.5;
+    ctx.fillRect(renderX - scaledWidth / 2, tailY, scaledWidth, headY - tailY);
+
+    // Draw the head of the hold note
+    ctx.globalAlpha = this.alpha;
+    ctx.fillRect(renderX - scaledWidth / 2, headY - scaledHeight / 2, scaledWidth, scaledHeight);
+
     ctx.restore();
-    ctx.globalAlpha = 1.0;
   }
 }

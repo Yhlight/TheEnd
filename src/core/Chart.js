@@ -7,37 +7,13 @@
  */
 export const testChart = {
   notes: [
-    // A tap note to start
-    { time: 1000, x: 0.25, type: 'tap' },
-
-    // Introduce a flick note
-    { time: 2000, x: 0.75, type: 'flick' },
-
-    // A hold note
-    { time: 3000, x: 0.5, type: 'hold', duration: 500 },
-
-    // A couple more flicks and taps
-    { time: 4000, x: 0.25, type: 'flick' },
-    { time: 4500, x: 0.75, type: 'tap' },
-
-    // A longer hold note
-    { time: 5500, x: 0.75, type: 'hold', duration: 1000 },
-
-    // End with a flick
-    { time: 7000, x: 0.5, type: 'flick' },
-
-    // Example Drag Note
-    {
-      time: 8000,
-      type: 'drag',
-      duration: 2000,
-      path: [
-        [0, 0.1],      // Start at 8000ms, at 10% of screen width
-        [500, 0.3],    // At 8500ms, move to 30%
-        [1000, 0.7],   // At 9000ms, move to 70%
-        [1500, 0.9],   // At 9500ms, move to 90%
-        [2000, 0.5]    // End at 10000ms, back at 50%
-      ]
-    },
+    { time: 1000, x: 0.25 }, // Appears at 1s, at 25% of screen width
+    { time: 1500, x: 0.75 }, // Appears at 1.5s, at 75% of screen width
+    { time: 2000, x: 0.5 },  // Appears at 2s, at 50% of screen width
+    { time: 2750, x: 0.25 },
+    { time: 3000, x: 0.75 },
+    { time: 3250, x: 0.5 },
+    { time: 3500, x: 0.75 },
+    { time: 3750, x: 0.25 },
   ]
 };
