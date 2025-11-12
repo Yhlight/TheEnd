@@ -1,5 +1,5 @@
 <template>
-  <div class="editor-timeline" :style="{ height: timelineHeight + 'px' }">
+  <div class="editor-timeline" :style="{ height: timelineHeight + 'px' }" @click="handleClick">
     <!-- Render Notes -->
     <div
       v-for="note in chart.notes"
@@ -29,6 +29,7 @@ export default {
   props: {
     chart: { type: Object, required: true },
   },
+  emits: ['addNote'],
   data() {
     return {
       pixelsPerSecond: 100, // 100px represents 1 second
@@ -59,6 +60,18 @@ export default {
         style.height = (item.duration / 1000) * this.pixelsPerSecond + 'px';
       }
       return style;
+    },
+    handleClick(event) {
+      // Prevent adding notes if clicking on an existing item
+      if (event.target !== event.currentTarget) {
+        return;
+      }
+
+      const rect = event.currentTarget.getBoundingClientRect();
+      const time = (event.clientY - rect.top) / this.pixelsPerSecond * 1000;
+      const x = (event.clientX - rect.left) / rect.width * 100;
+
+      this.$emit('addNote', { time, x });
     },
   },
 };
