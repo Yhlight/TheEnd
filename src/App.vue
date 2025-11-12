@@ -1,6 +1,10 @@
 <template>
   <div id="app">
-    <SongSelection v-if="currentView === 'songSelection'" @chartSelected="handleChartSelected" />
+    <SongSelection
+      v-if="currentView === 'songSelection'"
+      @chartSelected="handleChartSelected"
+      @chartEditSelected="handleChartEditSelected"
+    />
     <GameScreen
       v-if="currentView === 'game'"
       :chartUrl="selectedChartUrl"
@@ -12,6 +16,13 @@
       @chartLoaded="cacheChart"
     />
     <ResultsScreen v-if="currentView === 'results'" :results="gameResults" @exit="handleExit" />
+    <ChartEditor
+      v-if="currentView === 'editor'"
+      :chartUrl="selectedChartUrl"
+      :chartData="chartCache[selectedChartUrl]"
+      @exit="handleExit"
+      @chartLoaded="cacheChart"
+    />
   </div>
 </template>
 
@@ -19,6 +30,7 @@
 import GameScreen from './components/GameScreen.vue';
 import SongSelection from './views/SongSelection.vue';
 import ResultsScreen from './views/ResultsScreen.vue';
+import ChartEditor from './views/ChartEditor.vue'; // Will create this
 
 export default {
   name: 'App',
@@ -26,6 +38,7 @@ export default {
     GameScreen,
     SongSelection,
     ResultsScreen,
+    ChartEditor,
   },
   data() {
     return {
@@ -46,6 +59,10 @@ export default {
       this.selectedChartUrl = chartUrl;
       this.gameResults = null;
       this.currentView = 'game';
+    },
+    handleChartEditSelected(chartUrl) {
+      this.selectedChartUrl = chartUrl;
+      this.currentView = 'editor';
     },
     handleSongFinished(results) {
       this.gameResults = results;

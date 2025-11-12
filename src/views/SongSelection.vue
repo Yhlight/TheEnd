@@ -15,10 +15,12 @@
           v-for="chart in charts"
           :key="chart.id"
           class="song-item"
-          @click="selectChart(chart)"
         >
+        <div class="song-info" @click="selectChart(chart)">
           <div class="song-title">{{ chart.title }}</div>
           <div class="song-artist">{{ chart.artist }}</div>
+        </div>
+        <button class="edit-button" @click="editChart(chart)">Edit</button>
         </li>
       </ul>
       <div v-else>
@@ -31,7 +33,7 @@
 <script>
 export default {
   name: 'SongSelection',
-  emits: ['chartSelected'],
+  emits: ['chartSelected', 'chartEditSelected'],
   data() {
     return {
       charts: [],
@@ -70,6 +72,9 @@ export default {
     },
     selectChart(chart) {
       this.$emit('chartSelected', chart.url);
+    },
+    editChart(chart) {
+      this.$emit('chartEditSelected', chart.url);
     },
   },
 };
@@ -145,19 +150,47 @@ h1 {
 }
 
 .song-item {
-  padding: 20px;
+  display: flex;
+  align-items: center;
   margin-bottom: 15px;
   border: 2px solid #fff;
   border-radius: 10px;
   background-color: rgba(20, 20, 20, 0.8);
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .song-item:hover {
-  transform: scale(1.05);
   box-shadow: 0 0 25px #fff, 0 0 40px #00ffff;
+}
+
+.song-info {
+  flex-grow: 1;
+  padding: 20px;
+  cursor: pointer;
+  border-radius: 8px 0 0 8px;
+}
+
+.song-info:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.edit-button {
+  padding: 0 20px;
+  height: 100%;
+  align-self: stretch;
+  background: rgba(0, 255, 255, 0.1);
+  color: white;
+  border: none;
+  border-left: 2px solid #fff;
+  border-radius: 0 8px 8px 0;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.edit-button:hover {
+  background-color: rgba(0, 255, 255, 0.3);
 }
 
 .song-title {
