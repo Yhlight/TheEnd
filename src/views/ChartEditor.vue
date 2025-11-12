@@ -2,7 +2,12 @@
   <div class="chart-editor">
     <div class="editor-header">
       <h1>Chart Editor</h1>
-      <div>
+      <div class="editor-toolbar">
+        <label for="note-type-select">Note Type:</label>
+        <select id="note-type-select" v-model="currentNoteType">
+          <option value="tap">Tap</option>
+          <option value="hold">Hold</option>
+        </select>
         <button @click="deleteSelectedNote" :disabled="!selectedNoteId" class="delete-button">Delete Note</button>
         <button @click="$emit('exit')">Back to Menu</button>
       </div>
@@ -32,6 +37,10 @@
           <label for="note-x">X Position (%)</label>
           <input id="note-x" type="number" v-model.number="selectedNote.x">
         </div>
+        <div v-if="selectedNote.type === 'hold'" class="property">
+          <label for="note-duration">Duration (ms)</label>
+          <input id="note-duration" type="number" v-model.number="selectedNote.duration">
+        </div>
       </div>
     </div>
   </div>
@@ -52,6 +61,7 @@ export default {
     return {
       localChart: null,
       selectedNoteId: null,
+      currentNoteType: 'tap',
     };
   },
   mounted() {
@@ -96,10 +106,14 @@ export default {
 
       const newNote = {
         id: newId,
-        type: 'tap',
+        type: this.currentNoteType,
         time: Math.round(time),
         x: Math.round(x),
       };
+
+      if (newNote.type === 'hold') {
+        newNote.duration = 500; // Default duration of 500ms
+      }
 
       this.localChart.notes.push(newNote);
       // Optional: Sort notes by time after adding
@@ -160,6 +174,24 @@ export default {
   padding: 10px 20px;
   background-color: #222;
   border-bottom: 2px solid #00ffff;
+}
+
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.editor-toolbar label {
+  font-weight: bold;
+}
+
+.editor-toolbar select {
+  background-color: #333;
+  color: #fff;
+  border: 1px solid #555;
+  padding: 5px;
+  border-radius: 4px;
 }
 
 h1 {

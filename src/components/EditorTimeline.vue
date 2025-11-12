@@ -11,6 +11,11 @@
       @mousedown.prevent="startDrag(note, $event)"
     >
       {{ note.type }}
+      <div
+        v-if="note.type === 'hold'"
+        class="resize-handle"
+        @mousedown.stop.prevent="startResize(note, $event)"
+      ></div>
     </div>
 
     <!-- Render Events -->
@@ -39,6 +44,8 @@ export default {
       draggingNote: null,
       dragStartX: 0,
       dragStartY: 0,
+      resizingNote: null,
+      resizeStartY: 0,
     };
   },
   computed: {
@@ -111,6 +118,32 @@ export default {
         this.draggingNote = null;
       }, 10);
     },
+    startResize(note, event) {
+      this.resizingNote = {
+        ...note,
+        initialDuration: note.duration,
+      };
+      this.resizeStartY = event.clientY;
+      window.addEventListener('mousemove', this.onResize);
+      window.addEventListener('mouseup', this.stopResize);
+    },
+    onResize(event) {
+      if (!this.resizingNote) return;
+
+      const heightOffset = event.clientY - this.resizeStartY;
+      const durationOffset = (heightOffset / this.pixelsPerSecond) * 1000;
+      const newDuration = this.resizingNote.initialDuration + durationOffset;
+
+      this.$emit('updateNote', {
+        id: this.resizingNote.id,
+        duration: Math.max(50, Math.round(newDuration)), // Minimum duration 50ms
+      });
+    },
+    stopResize() {
+      window.removeEventListener('mousemove', this.onResize);
+      window.removeEventListener('mouseup', this.stopResize);
+      this.resizingNote = null;
+    },
     handleClick(event) {
       // If the click is on the timeline background, deselect any selected note
       if (event.target === event.currentTarget && !this.draggingNote) {
@@ -157,6 +190,16 @@ export default {
   border: 2px solid #ff0000;
   box-shadow: 0 0 10px #ff0000;
   z-index: 10;
+}
+
+.resize-handle {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 8px;
+  cursor: ns-resize;
+  background-color: rgba(255, 255, 255, 0.3);
 }
 
 .event {
