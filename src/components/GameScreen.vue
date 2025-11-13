@@ -50,7 +50,12 @@
       :y="effect.y"
       :judgment="effect.judgment"
     />
-    <judgment-line :y="judgmentLinePosition" :rotation="judgmentLineRotation" :flash="lineFlashing" />
+    <judgment-line
+      :y="judgmentLinePosition"
+      :rotation="judgmentLineRotation"
+      :flash="lineFlashing"
+      :show-shockwave="triggerShockwave"
+    />
     <audio ref="audioPlayer" @loadedmetadata="onSongLoaded"></audio>
     <audio ref="perfectHitSfxPlayer" src="/audio/perfect_hit.mp3"></audio>
     <audio ref="goodHitSfxPlayer" src="/audio/good_hit.mp3"></audio>
@@ -96,6 +101,7 @@ export default {
       combo: 0,
       maxCombo: 0,
       lineFlashing: false,
+      triggerShockwave: false,
       viewportHeight: 0,
     };
   },
@@ -200,6 +206,7 @@ export default {
         const timingError = Math.abs(hittableNote.time - this.songTime);
         if (timingError <= TIMING_WINDOWS.perfect) {
           this.playHitSound('perfect');
+          this.triggerShockwaveEffect();
           this.score += 100;
           this.combo++;
           this.maxCombo = Math.max(this.maxCombo, this.combo);
@@ -233,6 +240,7 @@ export default {
             this.triggerLineFlash();
             if (timingError <= TIMING_WINDOWS.perfect) {
               this.playHitSound('perfect');
+              this.triggerShockwaveEffect();
               this.score += 100;
               this.combo++;
               this.maxCombo = Math.max(this.maxCombo, this.combo);
@@ -290,6 +298,10 @@ export default {
       this.lineFlashing = true;
       setTimeout(() => { this.lineFlashing = false; }, 200);
     },
+    triggerShockwaveEffect() {
+      this.triggerShockwave = true;
+      setTimeout(() => { this.triggerShockwave = false; }, 500); // Duration should match animation
+    },
     spawnHitEffect(note, judgment) {
       const newEffect = {
         id: effectIdCounter++,
@@ -344,6 +356,7 @@ export default {
           this.combo++;
           this.maxCombo = Math.max(this.maxCombo, this.combo);
           this.playHitSound('perfect');
+          this.triggerShockwaveEffect();
           this.spawnHitEffect(note, 'perfect');
           delete this.activeHolds[pointerId];
         } else {

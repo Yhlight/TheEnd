@@ -1,5 +1,7 @@
 <template>
-  <div class="judgment-line" :class="{ flash: flash }" :style="lineStyle"></div>
+  <div class="judgment-line" :class="{ flash: flash }" :style="lineStyle">
+    <div class="shockwave" :class="{ active: showShockwave }"></div>
+  </div>
 </template>
 
 <script>
@@ -15,6 +17,10 @@ export default {
       default: 0,
     },
     flash: {
+      type: Boolean,
+      default: false,
+    },
+    showShockwave: {
       type: Boolean,
       default: false,
     }
@@ -48,6 +54,33 @@ export default {
 
 .judgment-line.flash {
   animation: flash-anim 0.2s ease-out;
+}
+
+.shockwave {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  background-color: #00ffff;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  opacity: 0;
+}
+
+.shockwave.active {
+  animation: shockwave-anim 0.5s ease-out;
+}
+
+@keyframes shockwave-anim {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(30);
+    opacity: 0;
+  }
 }
 
 @keyframes flash-anim {

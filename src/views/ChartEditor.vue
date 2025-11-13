@@ -122,6 +122,13 @@ export default {
   beforeUnmount() {
     window.removeEventListener('keydown', this.handleKeyDown);
   },
+  watch: {
+    audioCurrentTime(newTime) {
+      if (this.isPlaying) {
+        this.autoscrollTimeline(newTime);
+      }
+    }
+  },
   computed: {
     selectedNote() {
       if (this.selectedNoteId === null || !this.localChart) return null;
@@ -192,6 +199,21 @@ export default {
       const minutes = Math.floor(seconds / 60);
       const secs = Math.floor(seconds % 60);
       return `${minutes}:${secs.toString().padStart(2, '0')}`;
+    },
+    autoscrollTimeline(currentTime) {
+      const pixelsPerSecond = 100; // Must match EditorTimeline
+      const timelineContainer = this.$el.querySelector('.timeline-container');
+      const editorContent = this.$el.querySelector('.editor-content');
+      if (!timelineContainer || !editorContent) return;
+
+      const playheadPx = currentTime * pixelsPerSecond;
+      const viewHeight = editorContent.clientHeight;
+
+      // Target position: center of the viewport
+      const targetScrollTop = playheadPx - (viewHeight / 2);
+
+      // Smoothly scroll towards the target
+      editorContent.scrollTop += (targetScrollTop - editorContent.scrollTop) * 0.1;
     },
     addNote({ time, x }) {
       if (!this.localChart) return;
