@@ -12,7 +12,10 @@
           <span class="value">{{ results.maxCombo }}</span>
         </div>
       </div>
-      <button @click="$emit('exit')">Back to Menu</button>
+      <div class="button-container">
+        <button @click="$emit('retry')">Retry</button>
+        <button @click="$emit('exit')">Back to Menu</button>
+      </div>
     </div>
   </div>
 </template>
@@ -29,7 +32,7 @@ export default {
       },
     },
   },
-  emits: ['exit'],
+  emits: ['exit', 'retry'],
 };
 </script>
 
@@ -87,8 +90,14 @@ h1 {
   text-shadow: 0 0 10px #fff;
 }
 
+.button-container {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 30px;
+}
+
 button {
-  margin-top: 20px;
   padding: 10px 20px;
   font-size: 18px;
   background: rgba(0,0,0,0.4);

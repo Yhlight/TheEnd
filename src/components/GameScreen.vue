@@ -97,6 +97,8 @@ export default {
       chartLoaded: false,
       songTime: 0,
       songDuration: 0,
+      isAudioReady: false,
+      gameStartTime: 0,
       score: 0,
       combo: 0,
       maxCombo: 0,
@@ -109,6 +111,16 @@ export default {
     this.viewportHeight = window.innerHeight;
     this.loadChart();
     this.applyVolume(this.settings.volume);
+
+    // Add error listeners for robust audio handling
+    this.$refs.audioPlayer.addEventListener('error', this.handleAudioError);
+    this.$refs.perfectHitSfxPlayer.addEventListener('error', this.handleAudioError);
+    this.$refs.goodHitSfxPlayer.addEventListener('error', this.handleAudioError);
+  },
+  beforeUnmount() {
+    this.$refs.audioPlayer.removeEventListener('error', this.handleAudioError);
+    this.$refs.perfectHitSfxPlayer.removeEventListener('error', this.handleAudioError);
+    this.$refs.goodHitSfxPlayer.removeEventListener('error', this.handleAudioError);
   },
   computed: {
     backgroundStyle() {
@@ -146,18 +158,27 @@ export default {
           this.judgmentLinePosition = this.chart.events[0].y;
           this.judgmentLineRotation = this.chart.events[0].rotation;
         }
+        this.notes = this.chart.notes.map(note => ({ ...note, judged: false, active: false, holdProgress: 0 }));
+        if (this.chart.events && this.chart.events.length > 0) {
+          this.judgmentLinePosition = this.chart.events[0].y;
+          this.judgmentLineRotation = this.chart.events[0].rotation;
+        }
         this.$refs.audioPlayer.src = this.chart.audioUrl;
 
+        // Decouple chart loading from audio loading
+        this.chartLoaded = true;
         this.$emit('chartLoaded', { url: this.chartUrl, data: chartJson });
 
       } catch (error) {
-        console.error("Failed to load chart:", error);
+        console.error("Failed to load chart JSON:", error);
+        // Even if the chart fails to load, we might want to stop showing "Loading..."
+        this.chartLoaded = true;
       }
     },
     onSongLoaded() {
       if (this.$refs.audioPlayer) {
         this.songDuration = this.$refs.audioPlayer.duration * 1000;
-        this.chartLoaded = true;
+        this.isAudioReady = true;
       }
     },
     startGame() {
@@ -174,8 +195,16 @@ export default {
         note.active = false;
         note.holdProgress = 0;
       });
-      this.$refs.audioPlayer.currentTime = 0;
-      this.$refs.audioPlayer.play();
+
+      this.gameStartTime = performance.now();
+
+      if (this.isAudioReady) {
+        this.$refs.audioPlayer.currentTime = 0;
+        this.$refs.audioPlayer.play().catch(error => {
+          console.warn(`[Audio Playback Error] Could not play main audio track, continuing in silence. Error: ${error.message}`);
+        });
+      }
+
       requestAnimationFrame(this.gameLoop);
     },
     handleInteractionStart(event) {
@@ -287,11 +316,19 @@ export default {
         this.$refs.goodHitSfxPlayer.volume = newVolume;
       }
     },
+    handleAudioError(event) {
+      console.warn(`[Audio Error] Failed to load audio source: ${event.target.src}. Gameplay will continue without this audio.`);
+      // We could set a flag here, e.g., event.target.failedToLoad = true, if needed.
+    },
     playHitSound(judgment) {
       const player = judgment === 'perfect' ? this.$refs.perfectHitSfxPlayer : this.$refs.goodHitSfxPlayer;
-      if (player) {
+      // Play sound only if it has loaded some data and hasn't failed
+      if (player && player.readyState > 0 && !player.error) {
         player.currentTime = 0;
-        player.play();
+        // The play() method itself returns a Promise which can be used for further error handling
+        player.play().catch(error => {
+          console.warn(`[Audio Playback Error] Could not play hit sound: ${error.message}`);
+        });
       }
     },
     triggerLineFlash() {
@@ -345,7 +382,15 @@ export default {
     },
     gameLoop() {
       if (!this.isPlaying || this.isPaused) return;
-      this.songTime = this.$refs.audioPlayer.currentTime * 1000 + this.settings.audioOffset;
+
+      if (this.isAudioReady) {
+        // Primary, more accurate clock source
+        this.songTime = this.$refs.audioPlayer.currentTime * 1000 + this.settings.audioOffset;
+      } else {
+        // Fallback clock source if audio failed to load
+        this.songTime = (performance.now() - this.gameStartTime) + this.settings.audioOffset;
+      }
+
       for (const pointerId in this.activeHolds) {
         const note = this.activeHolds[pointerId];
         const holdEndTime = note.time + note.duration;
