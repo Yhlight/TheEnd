@@ -32,6 +32,7 @@
     <div class="editor-main">
       <div class="editor-content">
         <div v-if="localChart" class="timeline-container">
+          <div class="playhead" :style="playheadStyle"></div>
           <EditorTimeline
              :chart="localChart"
              :selected-note-id="selectedNoteId"
@@ -129,6 +130,16 @@ export default {
     selectedEvent() {
       if (this.selectedEventIndex === null || !this.localChart) return null;
       return this.localChart.events[this.selectedEventIndex];
+    },
+    playheadStyle() {
+      // This value must match the one in EditorTimeline.vue
+      const pixelsPerSecond = 100;
+      // audioCurrentTime is in seconds, so this calculation is correct
+      const top = this.audioCurrentTime * pixelsPerSecond;
+      return {
+        // We add the padding of the timeline-container
+        transform: `translateY(${top + 20}px)`
+      };
     }
   },
   methods: {
@@ -461,8 +472,19 @@ button {
 }
 
 .timeline-container {
-  /* Placeholder styles */
+  position: relative; /* Needed for absolute positioning of playhead */
   border: 1px dashed #555;
   padding: 20px;
+}
+
+.playhead {
+  position: absolute;
+  left: 0;
+  top: 0; /* The transform will handle the Y positioning */
+  width: 100%;
+  height: 2px;
+  background-color: #ff3b30;
+  z-index: 50; /* Ensure it's above notes and events */
+  pointer-events: none; /* Make sure it doesn't interfere with clicks */
 }
 </style>

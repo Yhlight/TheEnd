@@ -8,7 +8,7 @@
     <GameScreen
       v-if="currentView === 'game'"
       :chartUrl="selectedChartUrl"
-      :chartData="chartCache[selectedChartUrl]"
+      :chartData="selectedChartData || chartCache[selectedChartUrl]"
       :settings="settings"
       @exit="handleExit"
       @songFinished="handleSongFinished"
@@ -19,7 +19,7 @@
     <ChartEditor
       v-if="currentView === 'editor'"
       :chartUrl="selectedChartUrl"
-      :chartData="chartCache[selectedChartUrl]"
+      :chartData="selectedChartData || chartCache[selectedChartUrl]"
       @exit="handleExit"
       @chartLoaded="cacheChart"
     />
@@ -44,6 +44,7 @@ export default {
     return {
       currentView: 'songSelection',
       selectedChartUrl: '',
+      selectedChartData: null, // To hold data for custom charts
       gameResults: null,
       settings: {
         volume: 100,
@@ -55,13 +56,25 @@ export default {
     };
   },
   methods: {
-    handleChartSelected(chartUrl) {
-      this.selectedChartUrl = chartUrl;
+    handleChartSelected(chartUrl, chartData = null) {
+      if (chartUrl) {
+        this.selectedChartUrl = chartUrl;
+        this.selectedChartData = null; // Ensure custom data is cleared
+      } else if (chartData) {
+        this.selectedChartUrl = chartData.id; // Use a unique identifier
+        this.selectedChartData = chartData;
+      }
       this.gameResults = null;
       this.currentView = 'game';
     },
-    handleChartEditSelected(chartUrl) {
-      this.selectedChartUrl = chartUrl;
+    handleChartEditSelected(chartUrl, chartData = null) {
+      if (chartUrl) {
+        this.selectedChartUrl = chartUrl;
+        this.selectedChartData = null;
+      } else if (chartData) {
+        this.selectedChartUrl = chartData.id;
+        this.selectedChartData = chartData;
+      }
       this.currentView = 'editor';
     },
     handleSongFinished(results) {

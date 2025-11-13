@@ -32,13 +32,15 @@ export default {
   },
   methods: {
     createParticles() {
-      const particleCount = this.judgment === 'perfect' ? 15 : 8;
-      const baseHue = this.judgment === 'perfect' ? 180 : 300; // Cyan for perfect, Magenta for good
+      const isPerfect = this.judgment === 'perfect';
+      const particleCount = isPerfect ? 25 : 12;
+      const baseHue = isPerfect ? 180 : 300; // Cyan for perfect, Magenta for good
+      const gravity = 0.15;
 
       for (let i = 0; i < particleCount; i++) {
         const angle = Math.random() * Math.PI * 2;
-        const velocity = 2 + Math.random() * 4;
-        const size = 5 + Math.random() * 10;
+        const velocity = isPerfect ? 4 + Math.random() * 5 : 3 + Math.random() * 4;
+        const size = 3 + Math.random() * 6;
 
         this.particles.push({
           id: i,
@@ -48,7 +50,10 @@ export default {
           vy: Math.sin(angle) * velocity,
           size: size,
           opacity: 1,
-          hue: baseHue + (Math.random() * 60 - 30),
+          gravity: gravity,
+          rotation: Math.random() * 360,
+          rotationSpeed: Math.random() * 10 - 5,
+          hue: baseHue + (Math.random() * 40 - 20),
           style: {}, // Will be populated by animate()
         });
       }
@@ -58,17 +63,21 @@ export default {
       this.particles.forEach(p => {
         p.x += p.vx;
         p.y += p.vy;
-        p.opacity -= 0.02; // Fade out rate
+        p.vy += p.gravity; // Apply gravity
+        p.rotation += p.rotationSpeed;
+        p.opacity -= 0.025; // Faster fade out
 
         if (p.opacity > 0) {
           allFaded = false;
+          const isPerfect = this.judgment === 'perfect';
+          const glow = isPerfect ? 15 : 8;
           p.style = {
-            transform: `translate(${p.x}px, ${p.y}px)`,
+            transform: `translate(${p.x}px, ${p.y}px) rotate(${p.rotation}deg)`,
             width: `${p.size}px`,
             height: `${p.size}px`,
             opacity: p.opacity,
             backgroundColor: `hsl(${p.hue}, 100%, 75%)`,
-            boxShadow: `0 0 10px hsl(${p.hue}, 100%, 75%)`,
+            boxShadow: `0 0 ${glow}px hsl(${p.hue}, 100%, 75%)`,
           };
         } else {
           p.opacity = 0;
@@ -92,6 +101,6 @@ export default {
 
 .particle {
   position: absolute;
-  border-radius: 2px; /* Slightly rounded squares */
+  border-radius: 0; /* Sharp squares */
 }
 </style>

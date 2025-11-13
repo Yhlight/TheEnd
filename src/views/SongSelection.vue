@@ -25,6 +25,7 @@
           <div class="song-artist">{{ chart.artist }}</div>
         </div>
         <button class="edit-button" @click="editChart(chart)">Edit</button>
+        <button v-if="chart.isCustom" class="delete-button" @click.stop="deleteCustomChart(chart.id)">Delete</button>
         </li>
       </ul>
       <div v-else>
@@ -135,6 +136,14 @@ export default {
 
       // Reset file input to allow importing the same file again
       event.target.value = '';
+    },
+    deleteCustomChart(chartId) {
+      if (window.confirm('Are you sure you want to delete this custom chart? This action cannot be undone.')) {
+        let customCharts = JSON.parse(localStorage.getItem('customCharts') || '[]');
+        customCharts = customCharts.filter(chart => chart.id !== chartId);
+        localStorage.setItem('customCharts', JSON.stringify(customCharts));
+        this.loadCharts(); // Refresh the list
+      }
     },
   },
 };
@@ -262,14 +271,42 @@ h1 {
   color: white;
   border: none;
   border-left: 2px solid #fff;
+  border-radius: 0; /* Remove default radius */
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+/* Apply radius only if it is the last button */
+.edit-button:last-child {
+  border-radius: 0 8px 8px 0;
+}
+
+.edit-button:hover {
+  background-color: rgba(0, 255, 255, 0.3);
+}
+
+.delete-button {
+  padding: 0 20px;
+  height: 100%;
+  align-self: stretch;
+  background: rgba(255, 59, 48, 0.2);
+  color: white;
+  border: none;
+  border-left: 2px solid #fff;
   border-radius: 0 8px 8px 0;
   font-size: 16px;
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
-.edit-button:hover {
-  background-color: rgba(0, 255, 255, 0.3);
+.delete-button:hover {
+  background-color: rgba(255, 59, 48, 0.4);
+}
+
+/* Adjust edit button radius now that it's not always the last button */
+.song-item .edit-button + .delete-button {
+  border-radius: 0;
 }
 
 .song-title {
