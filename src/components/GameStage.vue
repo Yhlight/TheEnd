@@ -128,6 +128,14 @@ const initializeGame = () => {
   console.log('Game initialized.');
   loadSettings();
   gameLoop();
+
+  // Temporary listener for Playwright control
+  window.addEventListener('playwright-control', (e) => {
+    const { action, value } = e.detail;
+    if (action === 'createExplosion') {
+      effectManager.createExplosion(value.x, value.y, value.color);
+    }
+  });
 };
 
 onMounted(initializeGame);
