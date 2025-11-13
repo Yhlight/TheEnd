@@ -25,7 +25,8 @@
       class="timeline-item event"
       :class="{ selected: index === selectedEventIndex }"
       :style="getItemStyle(event)"
-      @click="selectEvent(index)"
+      @click.stop="selectEvent(index)"
+      @mousedown.prevent="startEventDrag(index, $event)"
     >
       Event: y={{ event.y }}, rot={{ event.rotation }}
     </div>
@@ -40,7 +41,7 @@ export default {
     selectedNoteId: { type: [Number, null], default: null },
     selectedEventIndex: { type: [Number, null], default: null },
   },
-  emits: ['addNote', 'selectNote', 'updateNote', 'selectEvent'],
+  emits: ['addNote', 'selectNote', 'updateNote', 'selectEvent', 'updateEvent'],
   data() {
     return {
       pixelsPerSecond: 100, // 100px represents 1 second
@@ -49,6 +50,7 @@ export default {
       dragStartY: 0,
       resizingNote: null,
       resizeStartY: 0,
+      draggingEvent: null,
     };
   },
   computed: {
@@ -148,12 +150,42 @@ export default {
       this.resizingNote = null;
     },
     selectEvent(index) {
-      this.$emit('selectEvent', index);
+      if (!this.draggingEvent) {
+        this.$emit('selectEvent', index);
+      }
+    },
+    startEventDrag(index, event) {
+      this.draggingEvent = {
+        index: index,
+        initialTime: this.chart.events[index].time,
+        dragStartY: event.clientY,
+      };
+      window.addEventListener('mousemove', this.onEventDrag);
+      window.addEventListener('mouseup', this.stopEventDrag);
+    },
+    onEventDrag(event) {
+      if (!this.draggingEvent) return;
+
+      const timeOffset = (event.clientY - this.draggingEvent.dragStartY) / this.pixelsPerSecond * 1000;
+      const newTime = this.draggingEvent.initialTime + timeOffset;
+
+      this.$emit('updateEvent', {
+        index: this.draggingEvent.index,
+        time: Math.max(0, Math.round(newTime)), // Prevent negative time
+      });
+    },
+    stopEventDrag() {
+      window.removeEventListener('mousemove', this.onEventDrag);
+      window.removeEventListener('mouseup', this.stopEventDrag);
+      setTimeout(() => {
+        this.draggingEvent = null;
+      }, 10);
     },
     handleClick(event) {
       // If the click is on the timeline background, deselect any selected note
-      if (event.target === event.currentTarget && !this.draggingNote) {
+      if (event.target === event.currentTarget && !this.draggingNote && !this.draggingEvent) {
         this.$emit('selectNote', null);
+        this.$emit('selectEvent', null);
 
         // Also proceed to add a new note
         const rect = event.currentTarget.getBoundingClientRect();
