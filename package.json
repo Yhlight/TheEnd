@@ -1,17 +1,32 @@
 {
-  "name": "the-end",
-  "version": "0.0.0",
-  "private": true,
+  "name": "app",
+  "version": "1.0.0",
+  "description": "LP的一款游戏",
+  "main": "index.js",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "test": "vitest"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Yhlight/TheEnd.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Yhlight/TheEnd/issues"
+  },
+  "homepage": "https://github.com/Yhlight/TheEnd#readme",
   "dependencies": {
-    "vue": "^3.2.47"
+    "@vitejs/plugin-vue": "^6.0.1",
+    "vite": "^7.2.2",
+    "vue": "^3.5.24",
+    "vue-router": "^4.6.3"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^4.0.0",
-    "vite": "^4.1.4"
+    "@vue/test-utils": "^2.4.6",
+    "jsdom": "^27.2.0",
+    "vitest": "^4.0.8"
   }
 }
