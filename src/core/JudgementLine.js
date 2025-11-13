@@ -126,26 +126,24 @@ export class JudgementLine {
 
     // Draw shockwaves (they will also be transformed)
     this.shockwaves.forEach(shockwave => {
-      const easedProgress = Easing.easeOutQuad(shockwave.progress);
-      const radius = easedProgress * 200;
+      const easedProgress = Easing.easeOutCubic(shockwave.progress);
+      const radius = easedProgress * 250; // Increased radius
       const alpha = 1 - easedProgress;
-      const lineWidth = 5 * (1 - easedProgress);
+      const lineWidth = 8 * (1 - easedProgress); // Increased line width
 
       ctx.save();
       ctx.globalAlpha = alpha; // Local alpha for shockwave fade
       ctx.lineWidth = lineWidth;
       ctx.strokeStyle = shockwave.color;
       ctx.shadowColor = shockwave.color;
-      ctx.shadowBlur = 15;
+      ctx.shadowBlur = 25; // Increased shadow blur
 
       ctx.beginPath();
-      for (let i = 0; i < 3; i++) {
-        const waveRadius = radius + i * 20;
-        ctx.moveTo(0, this.y - waveRadius);
-        ctx.lineTo(this.canvas.width, this.y - waveRadius);
-        ctx.moveTo(0, this.y + waveRadius);
-        ctx.lineTo(this.canvas.width, this.y + waveRadius);
-      }
+      // A single, more impactful wave expanding outwards
+      ctx.moveTo(0, this.y - radius);
+      ctx.lineTo(this.canvas.width, this.y - radius);
+      ctx.moveTo(0, this.y + radius);
+      ctx.lineTo(this.canvas.width, this.y + radius);
       ctx.stroke();
       ctx.restore();
     });

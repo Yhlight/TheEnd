@@ -74,6 +74,42 @@ class MovingLine {
     }
 }
 
+class GridLine {
+    constructor(width, height, isHorizontal) {
+        this.width = width;
+        this.height = height;
+        this.isHorizontal = isHorizontal;
+        this.position = Math.random() * (isHorizontal ? height : width);
+        this.opacity = 1;
+        this.ttl = 0.5; // seconds
+        this.velocity = (Math.random() - 0.5) * 200;
+    }
+
+    update(dt) {
+        this.ttl -= dt;
+        this.opacity = Math.max(0, this.ttl / 0.5);
+        this.position += this.velocity * dt;
+
+        if (this.position < 0 || (this.isHorizontal && this.position > this.height) || (!this.isHorizontal && this.position > this.width)) {
+            this.velocity *= -0.9; // Dampen and reverse
+        }
+    }
+
+    draw(ctx) {
+        ctx.strokeStyle = `rgba(220, 220, 255, ${this.opacity * 0.5})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        if (this.isHorizontal) {
+            ctx.moveTo(0, this.position);
+            ctx.lineTo(this.width, this.position);
+        } else {
+            ctx.moveTo(this.position, 0);
+            ctx.lineTo(this.position, this.height);
+        }
+        ctx.stroke();
+    }
+}
+
 
 export class DynamicBackground {
     constructor(width, height) {
@@ -81,18 +117,30 @@ export class DynamicBackground {
         this.height = height;
         this.crystals = Array.from({ length: 15 }, () => new FloatingCrystal(width, height));
         this.lines = Array.from({ length: 25 }, () => new MovingLine(width, height));
+        this.gridLines = [];
     }
 
-    update(dt) {
+    triggerEffect() {
+        // Create a flash of grid lines
+        for (let i = 0; i < 10; i++) {
+            this.gridLines.push(new GridLine(this.width, this.height, true)); // Horizontal
+            this.gridLines.push(new GridLine(this.width, this.height, false)); // Vertical
+        }
+    }
+
+    update(dt = 1/60) {
         this.crystals.forEach(crystal => crystal.update(dt));
         this.lines.forEach(line => line.update(dt));
+
+        this.gridLines.forEach(line => line.update(dt));
+        this.gridLines = this.gridLines.filter(line => line.ttl > 0);
     }
 
     draw(ctx) {
         ctx.save();
-        // Placeholder for background-specific drawing logic
         this.crystals.forEach(crystal => crystal.draw(ctx));
         this.lines.forEach(line => line.draw(ctx));
+        this.gridLines.forEach(line => line.draw(ctx));
         ctx.restore();
     }
 }
