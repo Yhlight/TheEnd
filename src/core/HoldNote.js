@@ -26,7 +26,7 @@ export class HoldNote extends BaseNote {
 
     const headY = this.getHeadY(this.y / this.judgementLineY * this.scrollTime + (this.time - this.scrollTime));
     const tailY = this.getTailY(this.y / this.judgementLineY * this.scrollTime + (this.time - this.scrollTime));
-    const renderX = judgementLineX + this.x * (this.canvas.width / 2);
+    const renderX = judgementLineX + (this.x - 0.5) * this.canvas.width;
     const scaledWidth = this.width * this.scale;
     const scaledHeight = this.height * this.scale;
 

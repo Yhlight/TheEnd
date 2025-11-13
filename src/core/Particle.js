@@ -23,6 +23,9 @@ export class Particle {
     // Lifespan and fade properties
     this.maxLife = Math.random() * 60 + 40; // Lives for 40 to 100 frames
     this.life = this.maxLife;
+
+    // Shape
+    this.shape = Math.random() > 0.5 ? 'square' : 'triangle';
   }
 
   update() {
@@ -55,8 +58,18 @@ export class Particle {
     ctx.shadowColor = this.color;
     ctx.shadowBlur = 5;
 
-    // Draw the particle centered at (0, 0) because of the translation
-    ctx.fillRect(-currentSize / 2, -currentSize / 2, currentSize, currentSize);
+    if (this.shape === 'square') {
+        // Draw the particle centered at (0, 0) because of the translation
+        ctx.fillRect(-currentSize / 2, -currentSize / 2, currentSize, currentSize);
+    } else {
+        // Draw a triangle
+        ctx.beginPath();
+        ctx.moveTo(0, -currentSize / 2);
+        ctx.lineTo(currentSize / 2, currentSize / 2);
+        ctx.lineTo(-currentSize / 2, currentSize / 2);
+        ctx.closePath();
+        ctx.fill();
+    }
 
     ctx.restore();
   }

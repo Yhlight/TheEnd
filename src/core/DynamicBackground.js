@@ -1,161 +1,98 @@
 // src/core/DynamicBackground.js
 
-// A base class for background elements
-class BackgroundElement {
-    constructor(canvas) {
-        this.canvas = canvas;
-        this.life = 0; // Start at 0 for fade-in
-        this.maxLife = 1;
-        this.fadeInSpeed = 0.05;
-        this.fadeOutSpeed = 0.01;
-        this.isFadingIn = true;
+class FloatingCrystal {
+    constructor(width, height) {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.size = Math.random() * 20 + 10; // 10 to 30
+        this.rotation = Math.random() * Math.PI * 2;
+        this.rotationSpeed = (Math.random() - 0.5) * 0.01;
+        this.speedX = (Math.random() - 0.5) * 0.5;
+        this.speedY = (Math.random() - 0.5) * 0.5;
+        this.width = width;
+        this.height = height;
     }
 
-    update() {
-        if (this.isFadingIn) {
-            this.life += this.fadeInSpeed;
-            if (this.life >= this.maxLife) {
-                this.life = this.maxLife;
-                this.isFadingIn = false;
-            }
-        } else {
-            this.life -= this.fadeOutSpeed;
-        }
-    }
+    update(dt) {
+        this.x += this.speedX;
+        this.y += this.speedY;
+        this.rotation += this.rotationSpeed;
 
-    isDead() {
-        return this.life <= 0;
+        if (this.x < -this.size || this.x > this.width + this.size) this.speedX *= -1;
+        if (this.y < -this.size || this.y > this.height + this.size) this.speedY *= -1;
     }
 
     draw(ctx) {
-        // To be implemented by subclasses
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        ctx.strokeStyle = 'rgba(200, 200, 255, 0.3)';
+        ctx.lineWidth = 2;
+
+        ctx.beginPath();
+        ctx.moveTo(0, -this.size); // Top point
+        ctx.lineTo(this.size / 2, 0); // Right point
+        ctx.lineTo(0, this.size); // Bottom point
+        ctx.lineTo(-this.size / 2, 0); // Left point
+        ctx.closePath();
+        ctx.stroke();
+
+        ctx.restore();
     }
 }
 
-// A moving line element that drifts across the screen
-class MovingLine extends BackgroundElement {
-    constructor(canvas) {
-        super(canvas);
-        this.isHorizontal = Math.random() > 0.5;
-        this.thickness = Math.random() * 2 + 1;
-        this.fadeOutSpeed = Math.random() * 0.005 + 0.001;
+class MovingLine {
+    constructor(width, height) {
+        this.width = width;
+        this.height = height;
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.angle = Math.random() * Math.PI * 2;
+        this.speed = Math.random() * 0.5 + 0.1;
+        this.length = Math.random() * 200 + 100;
+        this.opacity = Math.random() * 0.3 + 0.1;
+    }
 
-        if (this.isHorizontal) {
-            this.x = Math.random() * canvas.width;
-            this.y = -this.thickness; // Start off-screen top
-            this.length = Math.random() * canvas.width * 0.3 + 20;
-            this.speed = Math.random() * 0.5 + 0.2;
-        } else { // Vertical
-            this.x = -this.thickness; // Start off-screen left
-            this.y = Math.random() * canvas.height;
-            this.length = Math.random() * canvas.height * 0.3 + 20;
-            this.speed = Math.random() * 0.5 + 0.2;
+    update(dt) {
+        this.x += Math.cos(this.angle) * this.speed;
+        this.y += Math.sin(this.angle) * this.speed;
+
+        if (this.x < -this.length || this.x > this.width + this.length || this.y < -this.length || this.y > this.height + this.length) {
+            // Reset when out of bounds
+            this.x = Math.random() * this.width;
+            this.y = Math.random() * this.height;
         }
     }
 
-    update() {
-         // This element lives forever until it moves off-screen
-         if (this.isHorizontal) {
-            this.y += this.speed;
-         } else {
-            this.x += this.speed;
-         }
-    }
-
-    isDead() {
-         if (this.isHorizontal && this.y > this.canvas.height) {
-             return true;
-         }
-         if (!this.isHorizontal && this.x > this.canvas.width) {
-             return true;
-         }
-         return false;
-    }
-
-    draw(ctx, brightness) {
-        ctx.fillStyle = `rgba(100, 100, 100, ${0.5 * brightness})`;
-        if (this.isHorizontal) {
-            ctx.fillRect(this.x - this.length / 2, this.y, this.length, this.thickness);
-        } else {
-            ctx.fillRect(this.x, this.y - this.length / 2, this.thickness, this.length);
-        }
-    }
-}
-
-// A flashing grid line effect
-class GridLine extends BackgroundElement {
-    constructor(canvas, isHorizontal, position) {
-        super(canvas);
-        this.isHorizontal = isHorizontal;
-        this.position = position;
-        this.thickness = 1.5;
-        this.fadeInSpeed = 0.25; // Faster fade in
-        this.fadeOutSpeed = 0.08; // Faster fade out
-    }
-
-    draw(ctx, brightness) {
-        // Use a brighter color for the effect
-        ctx.fillStyle = `rgba(200, 200, 200, ${this.life * brightness})`;
-        if (this.isHorizontal) {
-            ctx.fillRect(0, this.position, this.canvas.width, this.thickness);
-        } else {
-            ctx.fillRect(this.position, 0, this.thickness, this.canvas.height);
-        }
+    draw(ctx) {
+        ctx.strokeStyle = `rgba(200, 200, 255, ${this.opacity})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(this.x, this.y);
+        ctx.lineTo(this.x + Math.cos(this.angle) * this.length, this.y + Math.sin(this.angle) * this.length);
+        ctx.stroke();
     }
 }
 
 
 export class DynamicBackground {
-    constructor(canvas) {
-        this.canvas = canvas;
-        this.elements = [];
-        this.maxMovingLines = 30;
-        this.brightness = 1.0;
+    constructor(width, height) {
+        this.width = width;
+        this.height = height;
+        this.crystals = Array.from({ length: 15 }, () => new FloatingCrystal(width, height));
+        this.lines = Array.from({ length: 25 }, () => new MovingLine(width, height));
     }
 
-    setBrightness(newBrightness) {
-        this.brightness = Math.max(0, Math.min(1, newBrightness));
-    }
-
-    // Call this when a note is hit to create a visual effect
-    triggerEffect() {
-        const lineCount = Math.floor(Math.random() * 5) + 5; // 5 to 9 lines
-        // Horizontal lines
-        for (let i = 0; i < lineCount; i++) {
-            const y = Math.random() * this.canvas.height;
-            this.elements.push(new GridLine(this.canvas, true, y));
-        }
-        // Vertical lines
-        for (let i = 0; i < lineCount; i++) {
-            const x = Math.random() * this.canvas.width;
-            this.elements.push(new GridLine(this.canvas, false, x));
-        }
-    }
-
-    update() {
-        // Add new moving lines if needed
-        const movingLineCount = this.elements.filter(el => el instanceof MovingLine).length;
-        if (movingLineCount < this.maxMovingLines && Math.random() > 0.9) {
-             this.elements.push(new MovingLine(this.canvas));
-        }
-
-        // Update all elements
-        for (const element of this.elements) {
-            element.update();
-        }
-
-        // Remove dead elements
-        this.elements = this.elements.filter(element => !element.isDead());
+    update(dt) {
+        this.crystals.forEach(crystal => crystal.update(dt));
+        this.lines.forEach(line => line.update(dt));
     }
 
     draw(ctx) {
-        // Set a base background color that is also affected by brightness
-        const baseGray = 26; // Corresponds to #1a1a1a
-        ctx.fillStyle = `rgba(${baseGray * this.brightness}, ${baseGray * this.brightness}, ${baseGray * this.brightness}, 1)`;
-        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-        for (const element of this.elements) {
-            element.draw(ctx, this.brightness);
-        }
+        ctx.save();
+        // Placeholder for background-specific drawing logic
+        this.crystals.forEach(crystal => crystal.draw(ctx));
+        this.lines.forEach(line => line.draw(ctx));
+        ctx.restore();
     }
 }

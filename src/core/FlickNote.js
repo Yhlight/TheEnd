@@ -10,7 +10,7 @@ export class FlickNote extends TapNote {
   draw(ctx, judgementLineX) {
     if (!this.isAlive()) return;
 
-    const renderX = judgementLineX + this.x * (this.canvas.width / 2);
+    const renderX = judgementLineX + (this.x - 0.5) * this.canvas.width;
     const scaledWidth = this.width * this.scale * 0.8;
     const scaledHeight = this.height * this.scale * 1.5;
 

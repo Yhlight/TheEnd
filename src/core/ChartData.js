@@ -20,6 +20,7 @@ export const songLibrary = [
         { time: 4250, x: 0.8, type: 'tap' },
         { time: 4500, x: 0.5, type: 'flick' },
         { time: 5000, x: 0.5, type: 'tap' },
+        { time: 6000, type: 'drag', duration: 2000, path: [ [0, 0.2], [1000, 0.8], [2000, 0.5] ] },
       ],
       // Events to move the judgement line
       // All values are relative to the default state

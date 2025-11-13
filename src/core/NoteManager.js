@@ -106,7 +106,7 @@ export class NoteManager {
     Bad: 120,
   };
 
-  checkTapHit(gameTime) {
+  checkTapHit(gameTime, clickX, clickY) {
     let closestNote = null;
     let minTimeDiff = Infinity;
     const adjustedTime = gameTime - this.settings.offset;
@@ -115,13 +115,24 @@ export class NoteManager {
       if (note.isMissed || note.type !== 'tap') continue;
 
       const timeDiff = Math.abs(adjustedTime - note.time);
-      if (timeDiff < minTimeDiff) {
+
+      // 1. Check if the tap is vertically close to the judgement line
+      if (Math.abs(clickY - this.judgementLine.y) > 100) continue;
+
+      // 2. Check if the note is temporally close to being hit
+      if (timeDiff > NoteManager.judgementWindows.Bad) continue;
+
+      const notePixelX = this.judgementLine.x + (note.x - 0.5) * this.canvas.width;
+      const distanceX = Math.abs(clickX - notePixelX);
+
+      // 3. Check if the tap is horizontally close enough to the note
+      if (distanceX < note.width / 2 && timeDiff < minTimeDiff) {
         minTimeDiff = timeDiff;
         closestNote = note;
       }
     }
 
-    if (closestNote && minTimeDiff <= NoteManager.judgementWindows.Bad) {
+    if (closestNote) {
       let judgement = 'Bad';
       if (minTimeDiff <= NoteManager.judgementWindows.Good) judgement = 'Good';
       if (minTimeDiff <= NoteManager.judgementWindows.Perfect) judgement = 'Perfect';
@@ -131,7 +142,7 @@ export class NoteManager {
     return null;
   }
 
-  checkFlickHit(gameTime, velocity) {
+  checkFlickHit(gameTime, clickX, clickY, velocity) {
     let closestNote = null;
     let minTimeDiff = Infinity;
     const adjustedTime = gameTime - this.settings.offset;
@@ -139,14 +150,21 @@ export class NoteManager {
 
     for (const note of this.notes) {
         if (note.isMissed || note.type !== 'flick') continue;
+
         const timeDiff = Math.abs(adjustedTime - note.time);
-        if (timeDiff < minTimeDiff) {
+        if (Math.abs(clickY - this.judgementLine.y) > 100) continue;
+        if (timeDiff > NoteManager.judgementWindows.Bad) continue;
+
+        const notePixelX = this.judgementLine.x + (note.x - 0.5) * this.canvas.width;
+        const distanceX = Math.abs(clickX - notePixelX);
+
+        if (distanceX < note.width / 2 && timeDiff < minTimeDiff) {
             minTimeDiff = timeDiff;
             closestNote = note;
         }
     }
 
-    if (closestNote && minTimeDiff <= NoteManager.judgementWindows.Bad && Math.abs(velocity) > FLICK_VELOCITY_THRESHOLD) {
+    if (closestNote && Math.abs(velocity) > FLICK_VELOCITY_THRESHOLD) {
         let judgement = 'Bad';
         if (minTimeDiff <= NoteManager.judgementWindows.Good) judgement = 'Good';
         if (minTimeDiff <= NoteManager.judgementWindows.Perfect) judgement = 'Perfect';
@@ -156,21 +174,28 @@ export class NoteManager {
     return null;
   }
 
-  checkHoldStart(gameTime) {
+  checkHoldStart(gameTime, clickX, clickY) {
     let closestNote = null;
     let minTimeDiff = Infinity;
     const adjustedTime = gameTime - this.settings.offset;
 
     for (const note of this.notes) {
         if (note.isMissed || note.type !== 'hold') continue;
+
         const timeDiff = Math.abs(adjustedTime - note.time);
-        if (timeDiff < minTimeDiff) {
+        if (Math.abs(clickY - this.judgementLine.y) > 100) continue;
+        if (timeDiff > NoteManager.judgementWindows.Bad) continue;
+
+        const notePixelX = this.judgementLine.x + (note.x - 0.5) * this.canvas.width;
+        const distanceX = Math.abs(clickX - notePixelX);
+
+        if (distanceX < note.width / 2 && timeDiff < minTimeDiff) {
             minTimeDiff = timeDiff;
             closestNote = note;
         }
     }
 
-    if (closestNote && minTimeDiff <= NoteManager.judgementWindows.Bad) {
+    if (closestNote) {
         let judgement = 'Bad';
         if (minTimeDiff <= NoteManager.judgementWindows.Good) judgement = 'Good';
         if (minTimeDiff <= NoteManager.judgementWindows.Perfect) judgement = 'Perfect';
@@ -191,7 +216,7 @@ export class NoteManager {
     }
   }
 
-  checkDragStart(gameTime) {
+  checkDragStart(gameTime, clickX, clickY) {
     if (this.activeDragNote) return null;
 
     let closestNote = null;
@@ -200,14 +225,21 @@ export class NoteManager {
 
     for (const note of this.notes) {
         if (note.isMissed || note.type !== 'drag') continue;
+
         const timeDiff = Math.abs(adjustedTime - note.time);
-        if (timeDiff < minTimeDiff) {
+        if (Math.abs(clickY - this.judgementLine.y) > 100) continue;
+        if (timeDiff > NoteManager.judgementWindows.Bad) continue;
+
+        const notePixelX = this.judgementLine.x + (note.x - 0.5) * this.canvas.width;
+        const distanceX = Math.abs(clickX - notePixelX);
+
+        if (distanceX < note.width / 2 && timeDiff < minTimeDiff) {
             minTimeDiff = timeDiff;
             closestNote = note;
         }
     }
 
-    if (closestNote && minTimeDiff <= NoteManager.judgementWindows.Bad) {
+    if (closestNote) {
         let judgement = 'Bad';
         if (minTimeDiff <= NoteManager.judgementWindows.Good) judgement = 'Good';
         if (minTimeDiff <= NoteManager.judgementWindows.Perfect) judgement = 'Perfect';
@@ -220,10 +252,11 @@ export class NoteManager {
 
   checkDragUpdate(pointerX) {
     if (!this.activeDragNote) return;
-    const hitBoxWidth = this.activeDragNote.width * 2;
-    const noteCenterX = this.activeDragNote.x;
 
-    if (Math.abs(pointerX - noteCenterX) > hitBoxWidth / 2) {
+    const notePixelX = this.judgementLine.x + (this.activeDragNote.x - 0.5) * this.canvas.width;
+    const hitBoxWidth = this.activeDragNote.width * 2;
+
+    if (Math.abs(pointerX - notePixelX) > hitBoxWidth / 2) {
       this.scoreManager.onMiss();
       this.activeDragNote.markAsMissed();
       this.activeDragNote = null;
