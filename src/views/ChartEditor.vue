@@ -41,6 +41,7 @@
              @selectNote="handleSelectNote"
              @updateNote="handleUpdateNote"
              @selectEvent="handleSelectEvent"
+             @updateEvent="handleUpdateEvent"
         />
       </div>
       <div v-else>
@@ -259,6 +260,15 @@ export default {
       const note = this.localChart.notes.find(n => n.id === updatedNote.id);
       if (note) {
         Object.assign(note, updatedNote);
+      }
+    },
+    handleUpdateEvent(updatedEvent) {
+      if (!this.localChart) return;
+      const event = this.localChart.events[updatedEvent.index];
+      if (event) {
+        event.time = updatedEvent.time;
+        // The events array might need to be re-sorted if time changes significantly
+        this.localChart.events.sort((a, b) => a.time - b.time);
       }
     },
     deleteSelectedNote() {
