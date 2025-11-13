@@ -41,6 +41,7 @@
              @selectNote="handleSelectNote"
              @updateNote="handleUpdateNote"
              @selectEvent="handleSelectEvent"
+             @updateEvent="handleUpdateEvent"
         />
       </div>
       <div v-else>
@@ -57,6 +58,14 @@
         <div class="property">
           <label for="chart-artist">Artist</label>
           <input id="chart-artist" type="text" v-model="localChart.artist">
+        </div>
+        <div class="property">
+          <label for="chart-audio-url">Audio URL</label>
+          <input id="chart-audio-url" type="text" v-model="localChart.audioUrl">
+        </div>
+        <div class="property">
+          <label for="chart-cover-url">Cover Image URL</label>
+          <input id="chart-cover-url" type="text" v-model="localChart.coverUrl">
         </div>
       </div>
       <div v-if="selectedNote" class="sidebar-section">
@@ -123,6 +132,16 @@ export default {
     window.removeEventListener('keydown', this.handleKeyDown);
   },
   watch: {
+    'localChart.audioUrl'(newUrl, oldUrl) {
+      if (newUrl && newUrl !== oldUrl) {
+        const audio = this.$refs.audioPlayer;
+        audio.src = newUrl;
+        audio.load();
+        // Reset playback state
+        this.isPlaying = false;
+        this.audioCurrentTime = 0;
+      }
+    },
     audioCurrentTime(newTime) {
       if (this.isPlaying) {
         this.autoscrollTimeline(newTime);
@@ -259,6 +278,15 @@ export default {
       const note = this.localChart.notes.find(n => n.id === updatedNote.id);
       if (note) {
         Object.assign(note, updatedNote);
+      }
+    },
+    handleUpdateEvent(updatedEvent) {
+      if (!this.localChart) return;
+      const event = this.localChart.events[updatedEvent.index];
+      if (event) {
+        event.time = updatedEvent.time;
+        // The events array might need to be re-sorted if time changes significantly
+        this.localChart.events.sort((a, b) => a.time - b.time);
       }
     },
     deleteSelectedNote() {
