@@ -323,74 +323,31 @@ export default {
 </script>
 
 <style scoped>
+/* Base */
 .chart-editor {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: #111;
-  color: #fff;
+  background-color: #0d0d0d; /* Even darker base */
+  color: #e0e0e0;
+  font-family: 'Segoe UI', sans-serif; /* A more geometric font */
 }
 
-.audio-controls {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  padding: 10px 20px;
-  background-color: #1c1c1c;
-  border-bottom: 1px solid #444;
-}
-
-.audio-controls button {
-  padding: 5px 10px;
-}
-
-.progress-bar {
-  flex-grow: 1;
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 8px;
-  background: #444;
-  outline: none;
-  opacity: 0.7;
-  transition: opacity .2s;
-}
-
-.progress-bar:hover {
-  opacity: 1;
-}
-
-.progress-bar::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 15px;
-  height: 15px;
-  background: #00ffff;
-  cursor: pointer;
-  border-radius: 50%;
-}
-
-.progress-bar::-moz-range-thumb {
-  width: 15px;
-  height: 15px;
-  background: #00ffff;
-  cursor: pointer;
-  border-radius: 50%;
-}
-
-.editor-main {
-  display: flex;
-  flex-grow: 1;
-  overflow: hidden; /* Prevent parent from growing due to children */
-}
-
+/* Header & Toolbar */
 .editor-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 10px 20px;
-  background-color: #222;
-  border-bottom: 2px solid #00ffff;
+  background-color: #1a1a1a;
+  border-bottom: 2px solid #ff00ff;
+  box-shadow: 0 0 15px #ff00ff;
+}
+
+h1 {
+  margin: 0;
+  font-size: 24px;
+  text-shadow: 0 0 5px #ff00ff;
 }
 
 .editor-toolbar {
@@ -399,82 +356,81 @@ export default {
   gap: 15px;
 }
 
-.editor-toolbar label {
-  font-weight: bold;
-}
-
-.editor-toolbar select {
-  background-color: #333;
-  color: #fff;
-  border: 1px solid #555;
-  padding: 5px;
-  border-radius: 4px;
-}
-
-h1 {
-  margin: 0;
-  font-size: 24px;
-}
-
-button {
-  padding: 8px 15px;
-  /* ... standard button styles */
-}
-
-.export-button {
-  background-color: #34c759;
-  color: white;
-  border: 1px solid #34c759;
-}
-
-.delete-button {
-  background-color: #ff3b30;
-  color: white;
-  border: 1px solid #ff3b30;
-  margin-right: 10px;
-}
-
-.delete-button:disabled {
-  background-color: #555;
-  border-color: #555;
-  cursor: not-allowed;
+/* Main Content Area */
+.editor-main {
+  display: flex;
+  flex-grow: 1;
+  overflow: hidden;
 }
 
 .editor-content {
   flex-grow: 1;
-  padding: 20px;
   overflow-y: auto;
+  /* Custom scrollbar to match aesthetic */
+  scrollbar-width: thin;
+  scrollbar-color: #ff00ff #1a1a1a;
 }
 
+.timeline-container {
+  position: relative;
+  border: none; /* Remove the dashed border */
+  padding: 20px 0; /* Adjust padding */
+}
+
+/* Sidebar */
 .editor-sidebar {
-  width: 250px;
+  width: 280px;
   flex-shrink: 0;
   padding: 20px;
   background-color: #1a1a1a;
   border-left: 2px solid #00ffff;
+  box-shadow: 0 0 15px #00ffff;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #00ffff #1a1a1a;
 }
 
 .editor-sidebar h3 {
   margin-top: 0;
-  border-bottom: 1px solid #444;
+  border-bottom: 1px solid #00ffff;
   padding-bottom: 10px;
+  text-shadow: 0 0 5px #00ffff;
 }
 
 .sidebar-section {
-  padding-top: 15px;
-  margin-top: 15px;
+  margin-top: 20px;
+  padding-top: 20px;
   border-top: 1px solid #444;
 }
+.sidebar-section:first-child { margin-top: 0; padding-top: 0; border-top: none; }
 
-.sidebar-section:first-child {
-  margin-top: 0;
-  padding-top: 0;
-  border-top: none;
+/* Form Elements */
+button, select {
+  background: transparent;
+  border: 2px solid #e0e0e0;
+  color: #e0e0e0;
+  padding: 8px 15px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
-.property {
-  margin-bottom: 15px;
+button:hover, select:hover {
+  border-color: #ff00ff;
+  color: #ff00ff;
+  box-shadow: 0 0 10px #ff00ff;
+}
+
+.export-button { border-color: #34c759; color: #34c759; }
+.export-button:hover { box-shadow: 0 0 10px #34c759; }
+.delete-button { border-color: #ff3b30; color: #ff3b30; }
+.delete-button:hover { box-shadow: 0 0 10px #ff3b30; }
+.delete-button:disabled {
+  border-color: #555;
+  color: #555;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 .property label {
@@ -482,31 +438,81 @@ button {
   font-size: 14px;
   margin-bottom: 5px;
   color: #aaa;
+  text-transform: uppercase;
 }
 
-.property input {
+.property input, .editor-toolbar select {
   width: 100%;
   padding: 8px;
-  background-color: #333;
-  border: 1px solid #555;
-  color: #fff;
-  border-radius: 4px;
+  background-color: #0d0d0d;
+  border: 2px solid #555;
+  color: #e0e0e0;
+  transition: all 0.2s ease;
 }
 
-.timeline-container {
-  position: relative; /* Needed for absolute positioning of playhead */
-  border: 1px dashed #555;
-  padding: 20px;
+.property input:focus, .editor-toolbar select:focus {
+  outline: none;
+  border-color: #00ffff;
+  box-shadow: 0 0 10px #00ffff;
 }
 
+/* Audio Controls */
+.audio-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 10px 20px;
+  background-color: #1a1a1a;
+  border-bottom: 1px solid #444;
+}
+
+.progress-bar {
+  flex-grow: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: #444;
+  outline: none;
+}
+
+.progress-bar::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: #00ffff;
+  cursor: pointer;
+  border: 2px solid #0d0d0d;
+  box-shadow: 0 0 10px #00ffff;
+}
+.progress-bar::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: #00ffff;
+  cursor: pointer;
+  border: 2px solid #0d0d0d;
+  box-shadow: 0 0 10px #00ffff;
+}
+
+
+/* Playhead */
 .playhead {
   position: absolute;
   left: 0;
   top: 0; /* The transform will handle the Y positioning */
   width: 100%;
-  height: 2px;
-  background-color: #ff3b30;
-  z-index: 50; /* Ensure it's above notes and events */
-  pointer-events: none; /* Make sure it doesn't interfere with clicks */
+  height: 4px;
+  background-color: #00ffff;
+  box-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff;
+  z-index: 50;
+  pointer-events: none;
+  animation: pulse 2s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff; }
+  50% { box-shadow: 0 0 15px #00ffff, 0 0 30px #00ffff; }
+  100% { box-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff; }
 }
 </style>
