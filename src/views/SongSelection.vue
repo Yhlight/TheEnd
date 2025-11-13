@@ -10,6 +10,10 @@
     </div>
     <div class="content">
       <h1>Select a Song</h1>
+      <div class="actions-bar">
+        <label for="import-chart-input" class="import-button">Import Chart</label>
+        <input id="import-chart-input" type="file" @change="handleChartImport" accept=".json" style="display: none;">
+      </div>
       <ul class="song-list" v-if="charts.length > 0">
         <li
           v-for="chart in charts"
@@ -48,10 +52,20 @@ export default {
   methods: {
     async loadCharts() {
       try {
+        // Load default charts
         const response = await fetch('/charts/index.json');
-        this.charts = await response.json();
+        const defaultCharts = await response.json();
+
+        // Load custom charts from localStorage
+        const customCharts = JSON.parse(localStorage.getItem('customCharts') || '[]');
+
+        // Combine them, ensuring no ID collisions if that's a concern
+        this.charts = [...defaultCharts, ...customCharts];
+
       } catch (error) {
         console.error("Failed to load chart index:", error);
+        // Fallback to only custom charts if index fetch fails
+        this.charts = JSON.parse(localStorage.getItem('customCharts') || '[]');
       }
     },
     generateCrystals() {
@@ -71,10 +85,56 @@ export default {
       }
     },
     selectChart(chart) {
-      this.$emit('chartSelected', chart.url);
+      if (chart.isCustom) {
+        this.$emit('chartSelected', null, chart);
+      } else {
+        this.$emit('chartSelected', chart.url);
+      }
     },
     editChart(chart) {
-      this.$emit('chartEditSelected', chart.url);
+      if (chart.isCustom) {
+        this.$emit('chartEditSelected', null, chart);
+      } else {
+        this.$emit('chartEditSelected', chart.url);
+      }
+    },
+    handleChartImport(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const chartData = JSON.parse(e.target.result);
+
+          // Basic validation
+          if (!chartData.title || !chartData.artist || !chartData.notes) {
+            alert('Invalid chart file. Missing required properties.');
+            return;
+          }
+
+          const customCharts = JSON.parse(localStorage.getItem('customCharts') || '[]');
+
+          // Use a unique ID for the custom chart
+          const newChartId = `custom_${Date.now()}`;
+          chartData.id = newChartId;
+          chartData.isCustom = true;
+
+          customCharts.push(chartData);
+          localStorage.setItem('customCharts', JSON.stringify(customCharts));
+
+          // Reload charts to display the new one
+          this.loadCharts();
+
+        } catch (error) {
+          console.error("Error parsing imported chart:", error);
+          alert('Failed to parse the chart file. Please ensure it is a valid JSON file.');
+        }
+      };
+      reader.readAsText(file);
+
+      // Reset file input to allow importing the same file again
+      event.target.value = '';
     },
   },
 };
@@ -139,7 +199,26 @@ export default {
 
 h1 {
   text-shadow: 0 0 10px #fff, 0 0 20px #00ffff;
-  margin-bottom: 40px;
+  margin-bottom: 20px;
+}
+
+.actions-bar {
+  margin-bottom: 20px;
+}
+
+.import-button {
+  display: inline-block;
+  padding: 10px 20px;
+  background-color: rgba(0, 255, 255, 0.2);
+  border: 1px solid #00ffff;
+  color: #fff;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.import-button:hover {
+  background-color: rgba(0, 255, 255, 0.4);
 }
 
 .song-list {

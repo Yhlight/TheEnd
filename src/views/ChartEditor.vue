@@ -1,5 +1,17 @@
 <template>
   <div class="chart-editor">
+    <div class="audio-controls">
+      <button @click="toggleAudioPlayback">{{ isPlaying ? 'Pause' : 'Play' }}</button>
+      <span>{{ formatTime(audioCurrentTime) }} / {{ formatTime(audioDuration) }}</span>
+      <input
+        type="range"
+        class="progress-bar"
+        :value="audioCurrentTime"
+        :max="audioDuration"
+        @input="seekAudio"
+      >
+      <audio ref="audioPlayer" @timeupdate="onTimeUpdate" @loadedmetadata="onLoadedMetadata"></audio>
+    </div>
     <div class="editor-header">
       <h1>Chart Editor</h1>
       <div class="editor-toolbar">
@@ -97,6 +109,9 @@ export default {
       selectedNoteId: null,
       currentNoteType: 'tap',
       selectedEventIndex: null,
+      isPlaying: false,
+      audioCurrentTime: 0,
+      audioDuration: 0,
     };
   },
   mounted() {
@@ -132,9 +147,40 @@ export default {
 
         // Emit the original loaded data for caching
         this.$emit('chartLoaded', { url: this.chartUrl, data: chartJson });
+
+        // Load the audio for the chart
+        this.$nextTick(() => {
+          const audio = this.$refs.audioPlayer;
+          audio.src = this.localChart.audioUrl;
+          audio.load();
+        });
       } catch (error) {
         console.error("Failed to load chart for editor:", error);
       }
+    },
+    toggleAudioPlayback() {
+      const audio = this.$refs.audioPlayer;
+      if (this.isPlaying) {
+        audio.pause();
+      } else {
+        audio.play();
+      }
+      this.isPlaying = !this.isPlaying;
+    },
+    onTimeUpdate() {
+      this.audioCurrentTime = this.$refs.audioPlayer.currentTime;
+    },
+    onLoadedMetadata() {
+      this.audioDuration = this.$refs.audioPlayer.duration;
+    },
+    seekAudio(event) {
+      const time = event.target.value;
+      this.$refs.audioPlayer.currentTime = time;
+    },
+    formatTime(seconds) {
+      const minutes = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${minutes}:${secs.toString().padStart(2, '0')}`;
     },
     addNote({ time, x }) {
       if (!this.localChart) return;
@@ -250,6 +296,53 @@ export default {
   height: 100%;
   background-color: #111;
   color: #fff;
+}
+
+.audio-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 10px 20px;
+  background-color: #1c1c1c;
+  border-bottom: 1px solid #444;
+}
+
+.audio-controls button {
+  padding: 5px 10px;
+}
+
+.progress-bar {
+  flex-grow: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  background: #444;
+  outline: none;
+  opacity: 0.7;
+  transition: opacity .2s;
+}
+
+.progress-bar:hover {
+  opacity: 1;
+}
+
+.progress-bar::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  background: #00ffff;
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+.progress-bar::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
+  background: #00ffff;
+  cursor: pointer;
+  border-radius: 50%;
 }
 
 .editor-main {
