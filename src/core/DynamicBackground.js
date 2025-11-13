@@ -115,9 +115,14 @@ export class DynamicBackground {
     constructor(width, height) {
         this.width = width;
         this.height = height;
+        this.brightness = 1;
         this.crystals = Array.from({ length: 15 }, () => new FloatingCrystal(width, height));
         this.lines = Array.from({ length: 25 }, () => new MovingLine(width, height));
         this.gridLines = [];
+    }
+
+    setBrightness(value) {
+        this.brightness = value;
     }
 
     triggerEffect() {
@@ -138,6 +143,7 @@ export class DynamicBackground {
 
     draw(ctx) {
         ctx.save();
+        ctx.globalAlpha = this.brightness;
         this.crystals.forEach(crystal => crystal.draw(ctx));
         this.lines.forEach(line => line.draw(ctx));
         this.gridLines.forEach(line => line.draw(ctx));

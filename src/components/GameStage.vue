@@ -336,102 +336,171 @@ const updateResults = () => {
 
 const drawTitle = () => {
     dynamicBackground.draw(ctx);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
     ctx.fillRect(0, 0, gameCanvas.value.width, gameCanvas.value.height);
+
+    const centerX = gameCanvas.value.width / 2;
+    const centerY = gameCanvas.value.height / 2;
+
+    // Stylized Title
     ctx.fillStyle = 'white';
-    ctx.font = '48px sans-serif';
+    ctx.shadowColor = 'cyan';
+    ctx.shadowBlur = 20;
+    ctx.font = '80px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('TheEnd', gameCanvas.value.width / 2, gameCanvas.value.height / 2 - 50);
+    ctx.fillText('TheEnd', centerX, centerY - 40);
+    ctx.shadowBlur = 0;
+
+    // "Click to Start" with flashing animation
+    const flash = Math.abs(Math.sin(performance.now() * 0.002));
+    ctx.fillStyle = `rgba(255, 255, 255, ${0.5 + flash * 0.5})`;
     ctx.font = '24px sans-serif';
-    ctx.fillText('Click to Start', gameCanvas.value.width / 2, gameCanvas.value.height / 2 + 20);
+    ctx.fillText('Click to Start', centerX, centerY + 40);
 };
 
 const drawSongSelect = () => {
     dynamicBackground.draw(ctx);
+    ctx.save();
+    ctx.translate(0, gameCanvas.value.height / 2 - CARD_HEIGHT / 2);
+
     songSelectState.cards.forEach((card, index) => {
-        const cardRenderX = card.x - songSelectState.currentScrollX - card.width / 2;
+        const cardRenderX = card.x - songSelectState.currentScrollX;
         let scale = 1.0;
-        if (index === songSelectState.selectedIndex) {
-            scale = SELECTED_CARD_SCALE;
-        }
+        let distance = Math.abs(gameCanvas.value.width / 2 - cardRenderX);
+        let distanceFactor = Math.max(0, 1 - distance / (gameCanvas.value.width / 2));
+
+        scale = 1 + (SELECTED_CARD_SCALE - 1) * distanceFactor;
+
         const scaledWidth = card.width * scale;
         const scaledHeight = card.height * scale;
-        const renderX = cardRenderX + (card.width - scaledWidth) / 2;
-        const renderY = card.y + (card.height - scaledHeight) / 2;
+        const renderX = cardRenderX - scaledWidth / 2;
+        const renderY = (CARD_HEIGHT - scaledHeight) / 2;
 
         ctx.save();
-        ctx.translate(renderX + scaledWidth / 2, renderY + scaledHeight / 2);
-        ctx.translate(-(renderX + scaledWidth / 2), -(renderY + scaledHeight / 2));
+        ctx.globalAlpha = 0.3 + 0.7 * distanceFactor;
+
+        // Draw card base
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(renderX, renderY, scaledWidth, scaledHeight);
+
+        // Draw title
+        ctx.fillStyle = 'white';
+        ctx.font = `${32 * scale}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText(card.song.title, cardRenderX, renderY + scaledHeight * 0.4);
+
+        // Draw artist
+        ctx.font = `${20 * scale}px sans-serif`;
+        ctx.fillText(card.song.artist, cardRenderX, renderY + scaledHeight * 0.6);
 
         if (index === songSelectState.selectedIndex) {
-            ctx.fillStyle = 'rgba(0, 255, 255, 0.7)';
             ctx.strokeStyle = 'cyan';
             ctx.lineWidth = 4;
             ctx.shadowColor = 'cyan';
             ctx.shadowBlur = 20;
-        } else {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-            ctx.strokeStyle = 'white';
-            ctx.lineWidth = 2;
-            ctx.shadowBlur = 0;
+            ctx.strokeRect(renderX, renderY, scaledWidth, scaledHeight);
+
+            // Animated corner brackets
+            const animProgress = (Math.sin(performance.now() * 0.002) + 1) / 2;
+            const bracketLength = 30 * scale;
+            const bracketOffset = 10 * scale + animProgress * 5 * scale;
+
+            ctx.beginPath();
+            // Top-left
+            ctx.moveTo(renderX - bracketOffset, renderY - bracketOffset + bracketLength);
+            ctx.lineTo(renderX - bracketOffset, renderY - bracketOffset);
+            ctx.lineTo(renderX - bracketOffset + bracketLength, renderY - bracketOffset);
+            // Top-right
+            ctx.moveTo(renderX + scaledWidth + bracketOffset - bracketLength, renderY - bracketOffset);
+            ctx.lineTo(renderX + scaledWidth + bracketOffset, renderY - bracketOffset);
+            ctx.lineTo(renderX + scaledWidth + bracketOffset, renderY - bracketOffset + bracketLength);
+            // Bottom-left
+            ctx.moveTo(renderX - bracketOffset, renderY + scaledHeight + bracketOffset - bracketLength);
+            ctx.lineTo(renderX - bracketOffset, renderY + scaledHeight + bracketOffset);
+            ctx.lineTo(renderX - bracketOffset + bracketLength, renderY + scaledHeight + bracketOffset);
+             // Bottom-right
+            ctx.moveTo(renderX + scaledWidth + bracketOffset - bracketLength, renderY + scaledHeight + bracketOffset);
+            ctx.lineTo(renderX + scaledWidth + bracketOffset, renderY + scaledHeight + bracketOffset);
+            ctx.lineTo(renderX + scaledWidth + bracketOffset, renderY + scaledHeight + bracketOffset - bracketLength);
+            ctx.stroke();
         }
-
-        ctx.fillRect(renderX, renderY, scaledWidth, scaledHeight);
-        ctx.strokeRect(renderX, renderY, scaledWidth, scaledHeight);
-
-        ctx.fillStyle = 'white';
-        ctx.font = `${32 * scale}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.fillText(card.song.title, renderX + scaledWidth / 2, renderY + scaledHeight / 2);
-        ctx.font = `${20 * scale}px sans-serif`;
-        ctx.fillText(card.song.artist, renderX + scaledWidth / 2, renderY + scaledHeight / 2 + 30 * scale);
 
         ctx.restore();
     });
+
+    ctx.restore();
 };
 
-const drawHudBackground = (ctx) => {
-    // Background for the score
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-    ctx.fillRect(gameCanvas.value.width - 220, 10, 210, 50);
+const drawHUD = () => {
+    const width = gameCanvas.value.width;
+    const height = gameCanvas.value.height;
 
-    // Background for the combo
+    // Background for the score
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(width - 250, 20, 230, 60);
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(width - 250, 20, 230, 60);
+
+    // Score
+    drawStylizedNumber(ctx, scoreManager.getScore().toString().padStart(7, '0'), width - 30, 30, 4, 'white');
+
+    // Combo
     if (scoreManager.getCombo() > 1) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
         const comboText = scoreManager.getCombo().toString();
-        const textWidth = comboText.length * 5 * 8 + (comboText.length - 1) * 8 + 40;
-        const x = (gameCanvas.value.width / 2) - (textWidth / 2);
-        ctx.fillRect(x, gameCanvas.value.height * 0.4 - 20, textWidth, 80);
+        const textWidth = comboText.length * 5 * 8 + (comboText.length - 1) * 8;
+        const comboX = width / 2;
+        const comboY = height * 0.4;
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(comboX - textWidth/2 - 20, comboY - 20, textWidth + 40, 80);
+        ctx.strokeRect(comboX - textWidth/2 - 20, comboY - 20, textWidth + 40, 80);
+
+        drawStylizedNumber(ctx, comboText, comboX + textWidth / 2, comboY, 8, 'white');
+    }
+
+    // Progress Bar
+    if (audioElement.value && audioElement.value.duration) {
+        const progress = audioElement.value.currentTime / audioElement.value.duration;
+        const barWidth = width * 0.6;
+        const barX = (width - barWidth) / 2;
+        const barY = height - 40;
+
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(barX, barY, barWidth, 10);
+
+        ctx.fillStyle = 'cyan';
+        ctx.fillRect(barX, barY, barWidth * progress, 10);
+
+        // Progress marker
+        const markerX = barX + barWidth * progress;
+        ctx.fillStyle = 'white';
+        ctx.fillRect(markerX - 2, barY - 5, 4, 20);
+        ctx.shadowColor = 'cyan';
+        ctx.shadowBlur = 10;
+        ctx.fillRect(markerX - 2, barY - 5, 4, 20);
+        ctx.shadowBlur = 0;
     }
 };
 
 const drawPlaying = () => {
   dynamicBackground.draw(ctx);
+
+  // Pause Button
   const pb = uiElements.pauseButton;
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.fillRect(pb.x, pb.y, pb.width, pb.height);
+  ctx.strokeStyle = 'white';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(pb.x, pb.y, pb.width, pb.height);
   ctx.fillStyle = 'white';
   ctx.fillRect(pb.x + 15, pb.y + 10, 8, 30);
   ctx.fillRect(pb.x + 30, pb.y + 10, 8, 30);
 
-  if (audioElement.value && audioElement.value.duration) {
-    const progress = audioElement.value.currentTime / audioElement.value.duration;
-    ctx.fillStyle = 'rgba(0, 255, 255, 0.5)';
-    ctx.fillRect(0, 0, progress * gameCanvas.value.width, 5);
-  }
-
   judgementLine.draw();
   noteManager.draw(ctx, judgementLine.x);
   effectManager.draw(ctx);
-
-  drawHudBackground(ctx);
-  drawStylizedNumber(ctx, scoreManager.getScore().toString(), gameCanvas.value.width - 20, 20, 4, 'white');
-  if (scoreManager.getCombo() > 1) {
-      const comboText = scoreManager.getCombo().toString();
-      const textWidth = comboText.length * 5 * 8 + (comboText.length - 1) * 8;
-      const x = (gameCanvas.value.width / 2) + (textWidth / 2);
-      drawStylizedNumber(ctx, comboText, x, gameCanvas.value.height * 0.4, 8, 'white');
-  }
+  drawHUD();
 };
 
 const drawPaused = () => {
