@@ -1,40 +1,46 @@
 <template>
   <div class="editor-timeline" :style="{ height: timelineHeight + 'px' }" @click="handleClick">
     <!-- Render Notes -->
-    <div
+    <GeometricNote
       v-for="note in chart.notes"
       :key="'note-' + note.id"
-      class="timeline-item note"
-      :class="[note.type, { selected: note.id === selectedNoteId }]"
+      :note="note"
+      :lookaheadTime="850"
+      :viewportHeight="100"
+      class="timeline-item note-wrapper"
+      :class="{ selected: note.id === selectedNoteId }"
       :style="getItemStyle(note)"
       @click.stop="selectNote(note.id)"
       @mousedown.prevent="startDrag(note, $event)"
     >
-      {{ note.type }}
       <div
         v-if="note.type === 'hold'"
         class="resize-handle"
         @mousedown.stop.prevent="startResize(note, $event)"
       ></div>
-    </div>
+    </GeometricNote>
 
     <!-- Render Events -->
     <div
       v-for="(event, index) in chart.events"
       :key="'event-' + index"
-      class="timeline-item event"
+      class="timeline-item event-wrapper"
       :class="{ selected: index === selectedEventIndex }"
       :style="getItemStyle(event)"
-      @click="selectEvent(index)"
+      @click.stop="selectEvent(index)"
     >
-      Event: y={{ event.y }}, rot={{ event.rotation }}
+      <JudgmentLine :y="event.y" :rotation="event.rotation" />
     </div>
   </div>
 </template>
 
 <script>
+import GeometricNote from './GeometricNote.vue';
+import JudgmentLine from './JudgmentLine.vue';
+
 export default {
   name: 'EditorTimeline',
+  components: { GeometricNote, JudgmentLine },
   props: {
     chart: { type: Object, required: true },
     selectedNoteId: { type: [Number, null], default: null },
@@ -68,13 +74,13 @@ export default {
       const style = {
         top: `${top}px`,
       };
-      if (item.x) { // For notes
+      if ('x' in item) { // For notes
         style.left = `${item.x}%`;
+        // The transform is now handled by the GeometricNote component, but we need it for positioning the wrapper
         style.transform = 'translateX(-50%)';
       }
-      if (item.duration) { // For hold notes
-        style.height = (item.duration / 1000) * this.pixelsPerSecond + 'px';
-      }
+      // The height for hold notes is now handled internally by GeometricNote based on our faked props.
+      // We no longer set it here.
       return style;
     },
     selectNote(noteId) {
@@ -170,32 +176,36 @@ export default {
 .editor-timeline {
   position: relative;
   width: 100%;
-  background-color: #222;
   border-left: 1px solid #444;
   border-right: 1px solid #444;
+  background-color: #111; /* Darker base for the grid */
+  background-image:
+    linear-gradient(rgba(128, 0, 128, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(128, 0, 128, 0.1) 1px, transparent 1px);
+  background-size: 50px 50px;
+  animation: bg-scroll 20s linear infinite;
+}
+
+@keyframes bg-scroll {
+  0% { background-position: 0 0; }
+  100% { background-position: 50px 50px; }
 }
 
 .timeline-item {
   position: absolute;
-  width: 80px;
-  padding: 2px 5px;
-  font-size: 12px;
-  border-radius: 3px;
   box-sizing: border-box;
 }
 
-.note {
-  border: 1px solid;
-}
-.note.tap { background-color: rgba(0, 255, 255, 0.3); border-color: #00ffff; }
-.note.hold { background-color: rgba(255, 0, 255, 0.3); border-color: #ff00ff; }
-.note.swipe { background-color: rgba(255, 255, 0, 0.3); border-color: #ffff00; }
-.note.catch { background-color: rgba(0, 255, 0, 0.3); border-color: #00ff00; width: 100px; height: 4px; }
-
-.note.selected {
-  border: 2px solid #ff0000;
-  box-shadow: 0 0 10px #ff0000;
+.note-wrapper {
+  /* This wrapper helps with positioning and applying effects without messing with the component's internal styles */
   z-index: 10;
+  cursor: grab;
+}
+
+.note-wrapper.selected {
+  /* The GLOW effect */
+  filter: drop-shadow(0 0 4px #ff00ff) drop-shadow(0 0 12px #ff00ff);
+  z-index: 20; /* Bring selected notes to the front */
 }
 
 .resize-handle {
@@ -205,27 +215,27 @@ export default {
   width: 100%;
   height: 8px;
   cursor: ns-resize;
-  background-color: rgba(255, 255, 255, 0.3);
+  z-index: 25; /* Above the note itself */
 }
 
-.event {
-  width: 95%;
-  left: 2.5%;
-  background-color: rgba(255, 165, 0, 0.2);
-  border-top: 1px dashed orange;
-  color: orange;
+.event-wrapper {
+  width: 100%;
+  height: 100px; /* Represents the in-game viewport height */
+  left: 0;
   z-index: 5;
-  text-align: right;
   cursor: pointer;
-  transition: background-color 0.2s;
+  /* Add a subtle border to make the area clickable and visible */
+  border-top: 1px dashed rgba(255, 165, 0, 0.5);
+  transform: translateY(-50px); /* Center the viewport on the time marker */
 }
 
-.event:hover {
-  background-color: rgba(255, 165, 0, 0.4);
+.event-wrapper:hover {
+  background-color: rgba(255, 165, 0, 0.1);
 }
 
-.event.selected {
-  border-top: 2px solid #ff0000;
-  box-shadow: 0 0 10px #ff0000;
+.event-wrapper.selected {
+  /* Use a glow effect on the border to indicate selection */
+  border-top: 1px dashed #ff00ff;
+  box-shadow: 0 -10px 20px -10px #ff00ff, 0 10px 20px -10px #ff00ff;
 }
 </style>
