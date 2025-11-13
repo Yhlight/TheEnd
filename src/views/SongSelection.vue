@@ -177,21 +177,22 @@ export default {
 
 @keyframes float {
   0% {
-    transform: translate(0, 0) rotate(45deg);
+    transform: translate(0, 0) rotate(45deg) scale(1);
     opacity: 0;
   }
   25% {
-    opacity: 0.7;
+    opacity: 0.8;
   }
   50% {
-    transform: translate(20px, 40px) rotate(60deg);
-    opacity: 0.5;
+    transform: translate(40px, 80px) rotate(90deg) scale(1.2);
+    opacity: 0.4;
   }
   75% {
-    opacity: 0.7;
+      transform: translate(-20px, -30px) rotate(30deg) scale(0.8);
+      opacity: 0.6;
   }
   100% {
-    transform: translate(0, 0) rotate(45deg);
+    transform: translate(0, 0) rotate(45deg) scale(1);
     opacity: 0;
   }
 }
@@ -204,11 +205,14 @@ export default {
   align-items: center;
   justify-content: center;
   height: 100%;
+  text-align: center;
 }
 
 h1 {
-  text-shadow: 0 0 10px #fff, 0 0 20px #00ffff;
+  text-shadow: 0 0 10px #ff00ff, 0 0 20px #ff00ff;
   margin-bottom: 20px;
+  font-size: 3rem;
+  letter-spacing: 2px;
 }
 
 .actions-bar {
@@ -218,95 +222,81 @@ h1 {
 .import-button {
   display: inline-block;
   padding: 10px 20px;
-  background-color: rgba(0, 255, 255, 0.2);
-  border: 1px solid #00ffff;
-  color: #fff;
-  border-radius: 5px;
+  background: transparent;
+  border: 2px solid #e0e0e0;
+  color: #e0e0e0;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease-in-out;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .import-button:hover {
-  background-color: rgba(0, 255, 255, 0.4);
+  border-color: #ff00ff;
+  color: #ff00ff;
+  box-shadow: 0 0 10px #ff00ff;
 }
 
 .song-list {
   list-style: none;
   padding: 0;
   width: 80%;
-  max-width: 600px;
+  max-width: 700px; /* Increased max-width for a bolder look */
 }
 
 .song-item {
   display: flex;
-  align-items: center;
+  align-items: stretch; /* Stretch children to fill height */
   margin-bottom: 15px;
-  border: 2px solid #fff;
-  border-radius: 10px;
-  background-color: rgba(20, 20, 20, 0.8);
-  box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
-  transition: transform 0.2s, box-shadow 0.2s;
+  border: 2px solid #00ffff;
+  background-color: rgba(13, 13, 13, 0.8);
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+  transition: box-shadow 0.2s ease-in-out;
+  backdrop-filter: blur(5px);
 }
 
 .song-item:hover {
-  box-shadow: 0 0 25px #fff, 0 0 40px #00ffff;
+  box-shadow: 0 0 25px #00ffff, 0 0 40px #ff00ff;
 }
 
 .song-info {
   flex-grow: 1;
   padding: 20px;
   cursor: pointer;
-  border-radius: 8px 0 0 8px;
+  transition: background-color 0.2s ease-in-out;
 }
 
 .song-info:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(0, 255, 255, 0.1);
 }
 
-.edit-button {
+.edit-button, .delete-button {
   padding: 0 20px;
-  height: 100%;
-  align-self: stretch;
-  background: rgba(0, 255, 255, 0.1);
-  color: white;
+  background: transparent;
   border: none;
-  border-left: 2px solid #fff;
-  border-radius: 0; /* Remove default radius */
-  font-size: 16px;
+  border-left: 2px solid #00ffff;
+  color: #e0e0e0;
   cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-/* Apply radius only if it is the last button */
-.edit-button:last-child {
-  border-radius: 0 8px 8px 0;
+  transition: all 0.2s ease-in-out;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 1em;
 }
 
 .edit-button:hover {
-  background-color: rgba(0, 255, 255, 0.3);
+  background: rgba(0, 255, 255, 0.1);
+  color: #00ffff;
+  box-shadow: inset 0 0 10px rgba(0, 255, 255, 0.5);
 }
 
 .delete-button {
-  padding: 0 20px;
-  height: 100%;
-  align-self: stretch;
-  background: rgba(255, 59, 48, 0.2);
-  color: white;
-  border: none;
-  border-left: 2px solid #fff;
-  border-radius: 0 8px 8px 0;
-  font-size: 16px;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  border-left: 2px solid #ff3b30;
 }
 
 .delete-button:hover {
-  background-color: rgba(255, 59, 48, 0.4);
-}
-
-/* Adjust edit button radius now that it's not always the last button */
-.song-item .edit-button + .delete-button {
-  border-radius: 0;
+  background: rgba(255, 59, 48, 0.1);
+  color: #ff3b30;
+  box-shadow: inset 0 0 10px rgba(255, 59, 48, 0.5);
 }
 
 .song-title {

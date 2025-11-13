@@ -57,8 +57,8 @@
       :show-shockwave="triggerShockwave"
     />
     <audio ref="audioPlayer" @loadedmetadata="onSongLoaded"></audio>
-    <audio ref="perfectHitSfxPlayer" src="/audio/perfect_hit.mp3"></audio>
-    <audio ref="goodHitSfxPlayer" src="/audio/good_hit.mp3"></audio>
+    <audio ref="perfectHitSfxPlayer"></audio>
+    <audio ref="goodHitSfxPlayer"></audio>
   </div>
 </template>
 
@@ -109,6 +109,7 @@ export default {
     this.viewportHeight = window.innerHeight;
     this.loadChart();
     this.applyVolume(this.settings.volume);
+    this.setupSfx();
   },
   computed: {
     backgroundStyle() {
@@ -128,6 +129,24 @@ export default {
     }
   },
   methods: {
+    setupSfx() {
+      const perfectHitPlayer = this.$refs.perfectHitSfxPlayer;
+      const goodHitPlayer = this.$refs.goodHitSfxPlayer;
+
+      if (perfectHitPlayer) {
+        perfectHitPlayer.src = '/audio/perfect_hit.mp3';
+        perfectHitPlayer.onerror = () => {
+          console.warn('Could not load perfect_hit.mp3. Gameplay will continue without this sound effect.');
+        };
+      }
+
+      if (goodHitPlayer) {
+        goodHitPlayer.src = '/audio/good_hit.mp3';
+        goodHitPlayer.onerror = () => {
+          console.warn('Could not load good_hit.mp3. Gameplay will continue without this sound effect.');
+        };
+      }
+    },
     async loadChart() {
       this.chartLoaded = false;
       try {
@@ -289,9 +308,13 @@ export default {
     },
     playHitSound(judgment) {
       const player = judgment === 'perfect' ? this.$refs.perfectHitSfxPlayer : this.$refs.goodHitSfxPlayer;
-      if (player) {
+      // readyState > 2 means the audio data is available to be played.
+      if (player && player.readyState > 2) {
         player.currentTime = 0;
-        player.play();
+        player.play().catch(error => {
+          // Catch potential errors on play, e.g., if the user hasn't interacted with the page yet.
+          console.warn("Could not play sound effect:", error);
+        });
       }
     },
     triggerLineFlash() {
