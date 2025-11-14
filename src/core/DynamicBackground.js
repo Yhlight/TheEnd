@@ -123,7 +123,7 @@ export class DynamicBackground {
         this.height = height;
         this.brightness = 1;
         this.intensity = 0; // 0 = calm, 1 = medium, 2 = high
-        this.crystals = Array.from({ length: 15 }, () => new FloatingCrystal(width, height));
+        this.crystals = Array.from({ length: 35 }, () => new FloatingCrystal(width, height)); // Create max possible crystals
         this.lines = Array.from({ length: 25 }, () => new MovingLine(width, height));
         this.gridLines = [];
     }
@@ -145,7 +145,7 @@ export class DynamicBackground {
     }
 
     update(dt = 1/60) {
-        const intensityMultiplier = 1 + this.intensity * 1.5; // Up to 2.5x speed at max intensity
+        const intensityMultiplier = 1 + this.intensity * 2; // Up to 5x speed at max intensity
         this.crystals.forEach(crystal => crystal.update(dt, intensityMultiplier));
         this.lines.forEach(line => line.update(dt, intensityMultiplier));
 
@@ -156,8 +156,29 @@ export class DynamicBackground {
     draw(ctx) {
         ctx.save();
         ctx.globalAlpha = this.brightness;
-        this.crystals.forEach(crystal => crystal.draw(ctx, this.intensity));
-        this.lines.forEach(line => line.draw(ctx));
+
+        // Control crystal count based on intensity
+        const crystalCount = 15 + Math.floor(this.intensity * 10); // 15, 25, or 35 crystals
+        for(let i = 0; i < crystalCount && i < this.crystals.length; i++) {
+            this.crystals[i].draw(ctx, this.intensity);
+        }
+
+        // Vary line color with intensity
+        this.lines.forEach((line, index) => {
+            if (this.intensity > 0 && index % (3 - Math.floor(this.intensity)) === 0) { // More frequent color changes at higher intensity
+                 const highIntensityColor = this.intensity > 1 ? 'white' : 'cyan';
+                 const originalOpacity = line.opacity;
+                 line.opacity = Math.min(1, originalOpacity * 2); // Make them brighter
+                 const originalStrokeStyle = ctx.strokeStyle;
+                 ctx.strokeStyle = highIntensityColor;
+                 line.draw(ctx);
+                 ctx.strokeStyle = originalStrokeStyle; // Restore for others
+                 line.opacity = originalOpacity; // Restore for next frame logic
+            } else {
+                line.draw(ctx);
+            }
+        });
+
         this.gridLines.forEach(line => line.draw(ctx));
         ctx.restore();
     }

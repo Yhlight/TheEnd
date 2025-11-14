@@ -12,29 +12,50 @@ export class EffectManager {
     this.shockwaves = [];
   }
 
-  createExplosion(x, y, color, judgement) {
-    let count = 0;
+  createHitEffect(x, y, color, judgement) {
     switch (judgement) {
-      case 'Perfect':
-        count = 30;
-        break;
-      case 'Good':
-        count = 15;
-        break;
-      // No explosion for 'Miss' or 'Bad'
-      default:
-        count = 0;
-        break;
-    }
+      case 'Perfect': {
+        const triangleCount = 20;
+        for (let i = 0; i < triangleCount; i++) {
+          const speed = Math.random() * 8 + 5;
+          const angle = Math.random() * Math.PI * 2;
+          const p = this.particlePool.pop() || new Particle(x, y, color);
+          p.reset(x, y, 'white', {
+            shape: 'triangle',
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            gravity: 0.1,
+            rotationSpeed: (Math.random() - 0.5) * 20,
+          });
+          this.particles.push(p);
+        }
 
-    for (let i = 0; i < count; i++) {
-      let p = this.particlePool.pop();
-      if (p) {
-        p.reset(x, y, color);
-      } else {
-        p = new Particle(x, y, color);
+        const lineCount = 15;
+        for (let i = 0; i < lineCount; i++) {
+          const p = this.particlePool.pop() || new Particle(x, y, color);
+          p.reset(x, y, color, { shape: 'line' });
+          this.particles.push(p);
+        }
+        break;
       }
-      this.particles.push(p);
+      case 'Good': {
+        const squareCount = 15;
+        for (let i = 0; i < squareCount; i++) {
+          const speed = Math.random() * 4 + 1;
+          const angle = Math.random() * Math.PI * 2;
+          const p = this.particlePool.pop() || new Particle(x, y, color);
+          p.reset(x, y, color, {
+            shape: 'square',
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            gravity: 0.2,
+          });
+          this.particles.push(p);
+        }
+        break;
+      }
+      default:
+        break;
     }
   }
 
@@ -94,8 +115,28 @@ export class EffectManager {
       const x = this.canvas.width / 2;
       const y = this.canvas.height / 2;
       const text = `${combo}`;
-      const color = 'gold';
-      this.judgementTexts.push(new JudgementText(x, y, text, color, 1.5, 1.5, true)); // Add isMilestone flag
+      const color = '#FFD700'; // Gold color
+
+      // 1. Create the prominent text
+      this.judgementTexts.push(new JudgementText(x, y, text, color, 1.5, 1.5, true));
+
+      // 2. Create a large, fast shockwave
+      const shockwave = new Shockwave(x, y, color, { radius: 150, speed: 8, lineWidth: 15 });
+      this.shockwaves.push(shockwave);
+
+      // 3. Create a burst of line particles
+      const lineCount = 50;
+      for (let i = 0; i < lineCount; i++) {
+        const angle = (i / lineCount) * Math.PI * 2; // Evenly spaced burst
+        const speed = Math.random() * 10 + 10;
+        const p = this.particlePool.pop() || new Particle(x, y, color);
+        p.reset(x, y, color, {
+            shape: 'line',
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+        });
+        this.particles.push(p);
+      }
   }
 
   update() {

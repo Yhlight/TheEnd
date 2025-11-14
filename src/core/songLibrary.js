@@ -7,11 +7,11 @@
 export const songLibrary = [
   {
     id: 1,
-    title: "Orion",
-    artist: "A.I. Voice",
-    audioUrl: '/hit.wav',
+    title: "Intergalactic Odyssey",
+    artist: "Patrick de Arteaga",
+    audioUrl: 'https://patrickdearteaga.com/audio/Intergalactic%20Odyssey.ogg',
     chart: {
-      duration: 10000, // Explicitly set chart duration in milliseconds
+      duration: 90000, // approx 1:30
       notes: [
         { time: 1000, x: 0.2, type: 'hold', duration: 1000 },
         { time: 1500, x: 0.8, type: 'tap' },
@@ -40,11 +40,11 @@ export const songLibrary = [
   },
   {
     id: 2,
-    title: "Orion (Hard)",
-    artist: "A.I. Voice",
-    audioUrl: '/hit.wav',
+    title: "Intergalactic Odyssey (Hard)",
+    artist: "Patrick de Arteaga",
+    audioUrl: 'https://patrickdearteaga.com/audio/Intergalactic%20Odyssey.ogg',
     chart: {
-      duration: 7000, // Explicitly set chart duration in milliseconds
+      duration: 90000,
       notes: [
         { time: 1000, x: 0.2, type: 'tap' },
         { time: 1250, x: 0.8, type: 'tap' },
@@ -75,11 +75,11 @@ export const songLibrary = [
   },
   {
     id: 3,
-    title: "Catastrophe",
-    artist: "A.I. Voice",
-    audioUrl: '/hit.wav',
+    title: "Electronic Fantasy",
+    artist: "Patrick de Arteaga",
+    audioUrl: 'https://patrickdearteaga.com/audio/Electronic%20Fantasy.ogg',
     chart: {
-      duration: 12000, // Explicitly set chart duration in milliseconds
+      duration: 120000, // approx 2:00
       notes: [
         // Opening sequence
         { time: 1000, x: 0.5, type: 'tap' },

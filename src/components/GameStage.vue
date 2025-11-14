@@ -9,9 +9,11 @@
 <script setup>
 import { ref, onMounted, reactive } from 'vue';
 const songUrl = ref('');
+const screenShake = ref(0);
+const screenFlash = ref(0);
 import { JudgementLine } from '../core/JudgementLine.js';
 import { NoteManager } from '../core/NoteManager.js';
-import { songLibrary } from '../core/ChartData.js';
+import { songLibrary } from '../core/songLibrary.js';
 import { EffectManager } from '../core/EffectManager.js';
 import { ScoreManager } from '../core/ScoreManager.js';
 import { AudioManager } from '../core/AudioManager.js';
@@ -322,6 +324,13 @@ const updatePlaying = () => {
   noteManager.update(gameTime);
   effectManager.update();
 
+  if (screenShake.value > 0) {
+    screenShake.value *= 0.9; // Decay shake
+  }
+  if (screenFlash.value > 0) {
+    screenFlash.value -= 0.05; // Decay flash
+  }
+
   const combo = scoreManager.getCombo();
 
   // Update spirit based on combo
@@ -539,53 +548,84 @@ const drawSongSelect = () => {
 const drawHUD = (gameTime) => {
     const width = gameCanvas.value.width;
     const height = gameCanvas.value.height;
+    const selectedSong = songLibrary[songSelectState.selectedIndex];
 
-    // Background for the score
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-    ctx.fillRect(width - 250, 20, 230, 60);
-    ctx.strokeStyle = 'white';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(width - 250, 20, 230, 60);
+    // --- Top Bar Background ---
+    const topBarHeight = 80;
+    ctx.fillStyle = 'rgba(10, 20, 30, 0.7)';
+    ctx.strokeStyle = 'cyan';
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = 'cyan';
+    ctx.shadowBlur = 10;
 
-    // Score
-    drawStylizedNumber(ctx, scoreManager.getScore().toString().padStart(7, '0'), width - 30, 30, 4, 'white');
+    // Draw stylized top bar shape
+    const cornerCut = 20;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(width, 0);
+    ctx.lineTo(width, topBarHeight - cornerCut);
+    ctx.lineTo(width - cornerCut, topBarHeight);
+    ctx.lineTo(0, topBarHeight);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.shadowBlur = 0;
 
-    // Combo
-    if (scoreManager.getCombo() > 1) {
-        const comboText = scoreManager.getCombo().toString();
-        const textWidth = comboText.length * 5 * 8 + (comboText.length - 1) * 8;
+
+    // --- Song Info (Top Left) ---
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 24px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(selectedSong.title, 20, topBarHeight / 2 - 10);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.font = 'italic 16px sans-serif';
+    ctx.fillText(selectedSong.artist, 22, topBarHeight / 2 + 15);
+
+
+    // --- Score (Top Right) ---
+    drawStylizedNumber(ctx, scoreManager.getScore().toString().padStart(8, '0'), width - 20, topBarHeight / 2 - 15, 5, 'white');
+
+
+    // --- Combo (Center Screen) ---
+    if (scoreManager.getCombo() > 2) {
+        const combo = scoreManager.getCombo();
+        const comboText = combo.toString();
+
+        // Dynamic scaling based on combo milestones
+        const scaleFactor = (combo % 50 === 0 && combo > 0) ? 1.5 : 1.0;
+        const size = 8 * scaleFactor;
+
+        const textWidth = comboText.length * 5 * size + (comboText.length - 1) * size;
         const comboX = width / 2;
-        const comboY = height * 0.4;
+        const comboY = height * 0.35;
 
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-        ctx.fillRect(comboX - textWidth/2 - 20, comboY - 20, textWidth + 40, 80);
-        ctx.strokeRect(comboX - textWidth/2 - 20, comboY - 20, textWidth + 40, 80);
+        // Semi-transparent background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 1;
+        ctx.fillRect(comboX - textWidth/2 - 20, comboY - 20, textWidth + 40, 60 + (size * 2));
+        ctx.strokeRect(comboX - textWidth/2 - 20, comboY - 20, textWidth + 40, 60 + (size * 2));
 
-        drawStylizedNumber(ctx, comboText, comboX + textWidth / 2, comboY, 8, 'white');
+        drawStylizedNumber(ctx, comboText, comboX + textWidth / 2, comboY, size, 'white');
     }
 
-    // Progress Bar
+
+    // --- Progress Bar (Bottom of Top Bar) ---
     const currentChart = noteManager.getCurrentChart();
     if (currentChart && currentChart.duration > 0) {
         const progress = Math.min(gameTime / currentChart.duration, 1.0);
-        const barWidth = width * 0.4;
-        const barX = (width - barWidth) / 2;
-        const barY = 45;
+        const barY = topBarHeight;
 
-        ctx.strokeStyle = 'white';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(barX, barY, barWidth, 10);
+        // Bar track
+        ctx.fillStyle = 'rgba(0, 255, 255, 0.2)';
+        ctx.fillRect(0, barY, width, 5);
 
+        // Bar progress
         ctx.fillStyle = 'cyan';
-        ctx.fillRect(barX, barY, barWidth * progress, 10);
-
-        // Progress marker
-        const markerX = barX + barWidth * progress;
-        ctx.fillStyle = 'white';
-        ctx.fillRect(markerX - 2, barY - 5, 4, 20);
-        ctx.shadowColor = 'cyan';
+        ctx.shadowColor = 'white';
         ctx.shadowBlur = 10;
-        ctx.fillRect(markerX - 2, barY - 5, 4, 20);
+        ctx.fillRect(0, barY, width * progress, 5);
         ctx.shadowBlur = 0;
     }
 };
@@ -593,19 +633,17 @@ const drawHUD = (gameTime) => {
 const drawPlaying = (gameTime) => {
   dynamicBackground.draw(ctx);
 
-  // Pause Button
-  const pb = uiElements.pauseButton;
-  ctx.strokeStyle = 'white';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(pb.x, pb.y, pb.width, pb.height);
-  ctx.fillStyle = 'white';
-  ctx.fillRect(pb.x + 15, pb.y + 10, 8, 30);
-  ctx.fillRect(pb.x + 30, pb.y + 10, 8, 30);
-
   judgementLine.draw();
   spirit.draw(ctx);
   noteManager.draw(ctx, judgementLine.x);
   effectManager.draw(ctx);
+
+  // Screen Flash Effect
+  if (screenFlash.value > 0) {
+    ctx.fillStyle = `rgba(255, 255, 255, ${screenFlash.value})`;
+    ctx.fillRect(0, 0, gameCanvas.value.width, gameCanvas.value.height);
+  }
+
   drawHUD(gameTime);
 };
 
@@ -952,13 +990,15 @@ const handlePress = (event) => {
       if (tapResult) {
           scoreManager.onHit(tapResult.judgement);
           spirit.onHit(tapResult.note.color);
-          effectManager.createExplosion(tapResult.note.x, judgementLine.y, tapResult.note.color, tapResult.judgement);
+          effectManager.createHitEffect(tapResult.note.x, judgementLine.y, tapResult.note.color, tapResult.judgement);
           effectManager.createJudgementText(tapResult.note.x, judgementLine.y - 50, tapResult.judgement, tapResult.note.color);
           audioManager.playSound(tapResult.note.type);
           judgementLine.flash(tapResult.note.color);
           dynamicBackground.triggerEffect();
           if (tapResult.judgement === 'Perfect') {
             effectManager.createShockwave(tapResult.note.x, judgementLine.y, tapResult.note.color);
+            screenShake.value = 10;
+            screenFlash.value = 0.5;
           }
           return;
       }
@@ -982,10 +1022,14 @@ const handlePress = (event) => {
       if (catchResult) {
           scoreManager.onHit(catchResult.judgement);
           spirit.onHit(catchResult.note.color);
-          effectManager.createExplosion(catchResult.note.x, judgementLine.y, catchResult.note.color, catchResult.judgement);
+          effectManager.createHitEffect(catchResult.note.x, judgementLine.y, catchResult.note.color, catchResult.judgement);
           effectManager.createJudgementText(catchResult.note.x, judgementLine.y - 50, catchResult.judgement, catchResult.note.color);
           audioManager.playSound(catchResult.note.type);
           judgementLine.flash(catchResult.note.color);
+          if (catchResult.judgement === 'Perfect') {
+            screenShake.value = 8; // Slightly less shake for catch notes
+            screenFlash.value = 0.4;
+          }
       }
       break;
     }
@@ -1118,6 +1162,13 @@ const gameLoop = () => {
 
   ctx.clearRect(0, 0, gameCanvas.value.width, gameCanvas.value.height);
 
+  ctx.save();
+  if (screenShake.value > 0) {
+    const dx = (Math.random() - 0.5) * screenShake.value;
+    const dy = (Math.random() - 0.5) * screenShake.value;
+    ctx.translate(dx, dy);
+  }
+
   // This part remains outside the update switch to ensure gameTime is always available for paused draw
   let gameTime = audioElement.value.currentTime * 1000;
   if (audioElement.value.paused && gameTime === 0) {
@@ -1136,6 +1187,8 @@ const gameLoop = () => {
     case 'settings': drawSettings(); break;
     case 'results': drawResults(); break;
   }
+
+  ctx.restore(); // Restore canvas from screen shake translation
 
   requestAnimationFrame(gameLoop);
 };
