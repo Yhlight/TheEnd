@@ -933,7 +933,7 @@ const handlePress = (event) => {
           scoreManager.onHit(tapResult.judgement);
           effectManager.createExplosion(tapResult.note.x, judgementLine.y, tapResult.note.color, tapResult.judgement);
           effectManager.createJudgementText(tapResult.note.x, judgementLine.y - 50, tapResult.judgement, tapResult.note.color);
-          audioManager.playSound(tapResult.judgement);
+          audioManager.playSound(tapResult.note.type);
           judgementLine.flash(tapResult.note.color);
           dynamicBackground.triggerEffect();
           if (tapResult.judgement === 'Perfect') {
@@ -945,14 +945,14 @@ const handlePress = (event) => {
       if (holdResult) {
           scoreManager.onHit(holdResult.judgement);
           effectManager.createJudgementText(holdResult.note.x, judgementLine.y - 50, holdResult.judgement, holdResult.note.color);
-          audioManager.playSound(holdResult.judgement);
+          audioManager.playSound(holdResult.note.type);
           return;
       }
       const dragResult = noteManager.checkDragStart(gameTime, x, y);
       if (dragResult) {
           scoreManager.onHit(dragResult.judgement);
           effectManager.createJudgementText(dragResult.note.x, judgementLine.y - 50, dragResult.judgement, dragResult.note.color);
-          audioManager.playSound(dragResult.judgement);
+          audioManager.playSound(dragResult.note.type);
           return;
       }
       const catchResult = noteManager.checkCatchHit(gameTime, x, y);
@@ -960,7 +960,7 @@ const handlePress = (event) => {
           scoreManager.onHit(catchResult.judgement);
           effectManager.createExplosion(catchResult.note.x, judgementLine.y, catchResult.note.color, catchResult.judgement);
           effectManager.createJudgementText(catchResult.note.x, judgementLine.y - 50, catchResult.judgement, catchResult.note.color);
-          audioManager.playSound(catchResult.judgement);
+          audioManager.playSound(catchResult.note.type);
           judgementLine.flash(catchResult.note.color);
       }
       break;
@@ -1058,9 +1058,9 @@ const handleRelease = (event) => {
     const flickResult = noteManager.checkFlickHit(gameTime, x, y, pointerState.velocityY);
     if (flickResult) {
         scoreManager.onHit(flickResult.judgement);
-        effectManager.createExplosion(flickResult.note.x, judgementLine.y, flickResult.note.color, flickResult.judgement);
+        effectManager.createFlickEffect(flickResult.note.x, judgementLine.y, flickResult.note.color); // Use the new flick effect
         effectManager.createJudgementText(flickResult.note.x, judgementLine.y - 50, flickResult.judgement, flickResult.note.color);
-        audioManager.playSound(flickResult.judgement);
+        audioManager.playSound(flickResult.note.type);
         judgementLine.flash(flickResult.note.color);
         dynamicBackground.triggerEffect();
         if (flickResult.judgement === 'Perfect') {

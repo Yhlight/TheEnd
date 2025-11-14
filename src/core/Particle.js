@@ -1,31 +1,28 @@
 // src/core/Particle.js
 
 export class Particle {
-  constructor(x, y, color) {
+  constructor(x, y, color, options = {}) {
     this.x = x;
     this.y = y;
     this.color = color;
 
-    // Give particles a more powerful initial velocity burst outwards
+    // Default values
     const angle = Math.random() * Math.PI * 2;
-    const speed = Math.random() * 8 + 3; // Speed between 3 and 11
-    this.vx = Math.cos(angle) * speed;
-    this.vy = Math.sin(angle) * speed;
+    const speed = Math.random() * 8 + 3;
 
-    this.size = Math.random() * 6 + 3; // Size between 3 and 9
+    // Customizable properties via options
+    this.vx = options.vx ?? Math.cos(angle) * speed;
+    this.vy = options.vy ?? Math.sin(angle) * speed;
+    this.gravity = options.gravity ?? 0.2;
+    this.shape = options.shape ?? (Math.random() > 0.5 ? 'square' : 'triangle');
+    this.rotationSpeed = options.rotationSpeed ?? (Math.random() - 0.5) * 15;
 
-    // Physics properties
-    this.gravity = 0.2;
-    this.friction = 0.98; // Air resistance
+    // Non-customizable properties
+    this.size = Math.random() * 6 + 3;
+    this.friction = 0.98;
     this.rotation = Math.random() * 360;
-    this.rotationSpeed = (Math.random() - 0.5) * 15;
-
-    // Lifespan and fade properties
-    this.maxLife = Math.random() * 60 + 40; // Lives for 40 to 100 frames
+    this.maxLife = Math.random() * 60 + 40;
     this.life = this.maxLife;
-
-    // Shape
-    this.shape = Math.random() > 0.5 ? 'square' : 'triangle';
   }
 
   update() {
@@ -78,23 +75,26 @@ export class Particle {
     return this.life > 0;
   }
 
-  reset(x, y, color) {
+  reset(x, y, color, options = {}) {
     this.x = x;
     this.y = y;
     this.color = color;
 
+    // Default values
     const angle = Math.random() * Math.PI * 2;
     const speed = Math.random() * 8 + 3;
-    this.vx = Math.cos(angle) * speed;
-    this.vy = Math.sin(angle) * speed;
 
+    // Customizable properties via options
+    this.vx = options.vx ?? Math.cos(angle) * speed;
+    this.vy = options.vy ?? Math.sin(angle) * speed;
+    this.gravity = options.gravity ?? 0.2;
+    this.shape = options.shape ?? (Math.random() > 0.5 ? 'square' : 'triangle');
+    this.rotationSpeed = options.rotationSpeed ?? (Math.random() - 0.5) * 15;
+
+    // Non-customizable properties
     this.size = Math.random() * 6 + 3;
     this.rotation = Math.random() * 360;
-    this.rotationSpeed = (Math.random() - 0.5) * 15;
-
     this.maxLife = Math.random() * 60 + 40;
     this.life = this.maxLife;
-
-    this.shape = Math.random() > 0.5 ? 'square' : 'triangle';
   }
 }

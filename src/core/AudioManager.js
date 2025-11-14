@@ -8,11 +8,14 @@ export class AudioManager {
     this.sfxGainNode = null;
     this.isInitialized = false;
 
-    // Define the sound map. Using placeholders since we only have hit.wav for now.
+    // Define the sound map by note type. Using placeholders.
     this.soundMap = {
-      'Perfect': '/hit.wav',
-      'Good': '/hit.wav',
-      'Miss': '/hit.wav', // Temporarily using hit.wav for Miss as well
+      'tap': '/hit.wav',
+      'flick': '/hit.wav',
+      'hold': '/hit.wav',
+      'drag': '/hit.wav',
+      'catch': '/hit.wav',
+      'miss': '/hit.wav', // A sound for when a note is missed
     };
   }
 
@@ -45,10 +48,10 @@ export class AudioManager {
     }
   }
 
-  playSound(judgement) {
-    const buffer = this.soundBuffers.get(judgement);
+  playSound(noteType) {
+    // The noteType could be 'tap', 'flick', 'miss', etc.
+    const buffer = this.soundBuffers.get(noteType);
     if (!buffer) {
-      // Fallback to a default sound or do nothing if a specific sound isn't found
       return;
     }
     this.sfxGainNode.gain.setValueAtTime(this.sfxVolume, this.audioContext.currentTime);

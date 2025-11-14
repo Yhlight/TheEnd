@@ -63,6 +63,32 @@ export class EffectManager {
     this.shockwaves.push(new Shockwave(x, y, color));
   }
 
+  createFlickEffect(x, y, color) {
+    const count = 25; // Create a burst of sharp particles
+    for (let i = 0; i < count; i++) {
+        let p = this.particlePool.pop();
+        if (p) {
+            // Reset with custom velocity for an upward, sharp burst
+            p.reset(x, y, color, {
+                vx: (Math.random() - 0.5) * 4,
+                vy: -Math.random() * 10 - 5, // Strong upward velocity
+                gravity: 0.4,
+                rotationSpeed: (Math.random() - 0.5) * 10,
+                shape: 'triangle', // Use a sharper shape
+            });
+        } else {
+            p = new Particle(x, y, color, {
+                vx: (Math.random() - 0.5) * 4,
+                vy: -Math.random() * 10 - 5,
+                gravity: 0.4,
+                rotationSpeed: (Math.random() - 0.5) * 10,
+                shape: 'triangle',
+            });
+        }
+        this.particles.push(p);
+    }
+  }
+
   createComboMilestoneEffect(combo) {
       if (!this.canvas) return;
       const x = this.canvas.width / 2;

@@ -74,7 +74,7 @@ export class NoteManager {
       if (!note.isMissed && !note.isBeingHeld && note.y > missThreshold) {
           this.scoreManager.onMiss();
           note.markAsMissed();
-          this.audioManager.playSound('Miss');
+          this.audioManager.playSound('miss');
           const missX = this.canvas.width / 2;
           const missY = this.judgementLine.y - 50;
           this.effectManager.createJudgementText(missX, missY, 'Miss', '#FF8080');
