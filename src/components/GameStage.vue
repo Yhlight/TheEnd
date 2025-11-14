@@ -317,6 +317,16 @@ const updatePlaying = () => {
   judgementLine.update(gameTime);
   noteManager.update(gameTime);
   effectManager.update();
+
+  // Update background intensity based on combo
+  const combo = scoreManager.getCombo();
+  if (combo < 50) {
+    dynamicBackground.setIntensity(0);
+  } else if (combo < 100) {
+    dynamicBackground.setIntensity(1);
+  } else {
+    dynamicBackground.setIntensity(2);
+  }
   dynamicBackground.update();
 
   const currentChart = noteManager.getCurrentChart();

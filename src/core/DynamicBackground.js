@@ -13,21 +13,27 @@ class FloatingCrystal {
         this.height = height;
     }
 
-    update(dt) {
-        this.x += this.speedX;
-        this.y += this.speedY;
-        this.rotation += this.rotationSpeed;
+    update(dt, intensityMultiplier = 1) {
+        this.x += this.speedX * intensityMultiplier;
+        this.y += this.speedY * intensityMultiplier;
+        this.rotation += this.rotationSpeed * intensityMultiplier;
 
         if (this.x < -this.size || this.x > this.width + this.size) this.speedX *= -1;
         if (this.y < -this.size || this.y > this.height + this.size) this.speedY *= -1;
     }
 
-    draw(ctx) {
+    draw(ctx, intensity = 0) {
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(this.rotation);
-        ctx.strokeStyle = 'rgba(200, 200, 255, 0.3)';
+
+        const baseAlpha = 0.3;
+        const alpha = baseAlpha + intensity * 0.2; // Increase alpha with intensity
+        ctx.strokeStyle = `rgba(200, 200, 255, ${alpha})`;
         ctx.lineWidth = 2;
+        ctx.shadowColor = 'rgba(150, 150, 255, 0.8)';
+        ctx.shadowBlur = 5 + intensity * 10; // Increase glow with intensity
+
 
         ctx.beginPath();
         ctx.moveTo(0, -this.size); // Top point
@@ -53,9 +59,9 @@ class MovingLine {
         this.opacity = Math.random() * 0.3 + 0.1;
     }
 
-    update(dt) {
-        this.x += Math.cos(this.angle) * this.speed;
-        this.y += Math.sin(this.angle) * this.speed;
+    update(dt, intensityMultiplier = 1) {
+        this.x += Math.cos(this.angle) * this.speed * intensityMultiplier;
+        this.y += Math.sin(this.angle) * this.speed * intensityMultiplier;
 
         if (this.x < -this.length || this.x > this.width + this.length || this.y < -this.length || this.y > this.height + this.length) {
             // Reset when out of bounds
@@ -116,6 +122,7 @@ export class DynamicBackground {
         this.width = width;
         this.height = height;
         this.brightness = 1;
+        this.intensity = 0; // 0 = calm, 1 = medium, 2 = high
         this.crystals = Array.from({ length: 15 }, () => new FloatingCrystal(width, height));
         this.lines = Array.from({ length: 25 }, () => new MovingLine(width, height));
         this.gridLines = [];
@@ -123,6 +130,10 @@ export class DynamicBackground {
 
     setBrightness(value) {
         this.brightness = value;
+    }
+
+    setIntensity(level) {
+        this.intensity = Math.max(0, Math.min(level, 2)); // Clamp between 0 and 2
     }
 
     triggerEffect() {
@@ -134,8 +145,9 @@ export class DynamicBackground {
     }
 
     update(dt = 1/60) {
-        this.crystals.forEach(crystal => crystal.update(dt));
-        this.lines.forEach(line => line.update(dt));
+        const intensityMultiplier = 1 + this.intensity * 1.5; // Up to 2.5x speed at max intensity
+        this.crystals.forEach(crystal => crystal.update(dt, intensityMultiplier));
+        this.lines.forEach(line => line.update(dt, intensityMultiplier));
 
         this.gridLines.forEach(line => line.update(dt));
         this.gridLines = this.gridLines.filter(line => line.ttl > 0);
@@ -144,7 +156,7 @@ export class DynamicBackground {
     draw(ctx) {
         ctx.save();
         ctx.globalAlpha = this.brightness;
-        this.crystals.forEach(crystal => crystal.draw(ctx));
+        this.crystals.forEach(crystal => crystal.draw(ctx, this.intensity));
         this.lines.forEach(line => line.draw(ctx));
         this.gridLines.forEach(line => line.draw(ctx));
         ctx.restore();
