@@ -3,23 +3,22 @@
 import { BaseNote } from './BaseNote.js';
 
 export class CatchNote extends BaseNote {
-  constructor(noteData) {
-    super(noteData);
+  constructor(canvas, x, judgementLineY, scrollTime, noteData, sizeMultiplier) {
+    super(canvas, x, judgementLineY, scrollTime, noteData, sizeMultiplier);
     this.duration = noteData.duration;
     this.type = 'catch';
     this.color = '#FFFF80'; // A yellow color for catch notes
   }
 
-  draw(ctx, judgementLine) {
-    if (this.judged) return;
+  draw(ctx, judgementLineX) {
+    if (this.isMissed) return;
 
-    const timeUntilJudgement = this.time - judgementLine.gameTime;
-    if (timeUntilJudgement > judgementLine.scrollTime) return;
+    const headY = this.y;
+    const tailY = this.y - (this.duration / this.scrollTime) * this.judgementLineY;
 
-    const headY = judgementLine.getYPosition(this.time);
-    const tailY = judgementLine.getYPosition(this.time + this.duration);
-
-    const renderX = judgementLine.x + (this.x - 0.5) * judgementLine.canvas.width;
+    const renderX = judgementLineX + (this.x - 0.5) * this.canvas.width;
+    const scaledWidth = this.width * this.scale;
+    const scaledHeight = this.height * this.scale;
 
     ctx.save();
     ctx.globalAlpha = this.alpha;
@@ -27,11 +26,11 @@ export class CatchNote extends BaseNote {
     // Draw the main body of the catch note
     ctx.fillStyle = this.color;
     ctx.globalAlpha = this.alpha * 0.5;
-    ctx.fillRect(renderX - this.width / 2, tailY, this.width, headY - tailY);
+    ctx.fillRect(renderX - scaledWidth / 2, tailY, scaledWidth, headY - tailY);
 
     // Draw the head of the catch note
     ctx.globalAlpha = this.alpha;
-    ctx.fillRect(renderX - this.width / 2, headY - this.height / 2, this.width, this.height);
+    ctx.fillRect(renderX - scaledWidth / 2, headY - scaledHeight / 2, scaledWidth, scaledHeight);
 
     ctx.restore();
   }

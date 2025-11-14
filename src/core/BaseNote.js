@@ -1,7 +1,7 @@
 // src/core/BaseNote.js
 
 export class BaseNote {
-  constructor(canvas, x, judgementLineY, scrollTime, noteData) {
+  constructor(canvas, x, judgementLineY, scrollTime, noteData, sizeMultiplier = 1) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
 
@@ -13,8 +13,11 @@ export class BaseNote {
     this.x = noteData.x; // Normalized x position (0 to 1)
 
     this.y = 0; // This will be calculated in update()
-    this.width = 100;
-    this.height = 30;
+    this.baseWidth = 100; // Store the original width
+    this.baseHeight = 30; // Store the original height
+    this.sizeMultiplier = sizeMultiplier;
+    this.width = this.baseWidth * this.sizeMultiplier;
+    this.height = this.baseHeight * this.sizeMultiplier;
     this.color = '#FFFFFF';
 
     this.isMissed = false;
@@ -55,5 +58,11 @@ export class BaseNote {
 
   draw(ctx, judgementLineX) {
     throw new Error("Draw method must be implemented by subclass");
+  }
+
+  setSizeMultiplier(multiplier) {
+    this.sizeMultiplier = multiplier;
+    this.width = this.baseWidth * this.sizeMultiplier;
+    this.height = this.baseHeight * this.sizeMultiplier;
   }
 }

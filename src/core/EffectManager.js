@@ -31,7 +31,7 @@ export class EffectManager {
       const y = this.canvas.height / 2;
       const text = `${combo}`;
       const color = 'gold';
-      this.judgementTexts.push(new JudgementText(x, y, text, color, 1.5, 1.5));
+      this.judgementTexts.push(new JudgementText(x, y, text, color, 1.5, 1.5, true)); // Add isMilestone flag
   }
 
   update() {

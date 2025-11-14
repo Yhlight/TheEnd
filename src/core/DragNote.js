@@ -3,13 +3,14 @@ import { BaseNote } from './BaseNote.js';
 import { Easing } from './Easing.js';
 
 export class DragNote extends BaseNote {
-  constructor(canvas, x, judgementLineY, scrollTime, noteData) {
-    super(canvas, x, judgementLineY, scrollTime, noteData);
+  constructor(canvas, x, judgementLineY, scrollTime, noteData, sizeMultiplier) {
+    super(canvas, x, judgementLineY, scrollTime, noteData, sizeMultiplier);
     this.path = noteData.path;
     this.duration = noteData.duration;
     this.color = '#80FFFF'; // A cyan color for drag notes
-    this.width = 40;
-    this.height = 40;
+    this.baseWidth = 40;
+    this.baseHeight = 40;
+    this.setSizeMultiplier(sizeMultiplier || 1);
   }
 
   update(gameTime) {

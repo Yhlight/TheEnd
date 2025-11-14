@@ -17,6 +17,7 @@ export class NoteManager {
     this.effectManager = effectManager;
     this.settings = settings;
     this.scrollTime = BASE_SCROLL_TIME / this.settings.noteSpeed;
+    this.noteSizeMultiplier = this.settings.noteSize || 1;
 
     this.notes = [];
     this.activeHolds = new Set();
@@ -29,6 +30,14 @@ export class NoteManager {
     this.scrollTime = BASE_SCROLL_TIME / this.settings.noteSpeed;
   }
 
+  setNoteSize(newSize) {
+    this.noteSizeMultiplier = newSize;
+    // Apply the new size to all existing notes
+    for (const note of this.notes) {
+      note.setSizeMultiplier(newSize);
+    }
+  }
+
   loadChart(newChart) {
     this.chart = newChart;
     this.notes = [];
@@ -38,7 +47,7 @@ export class NoteManager {
 
     if (newChart) {
         this.notes = newChart.notes.map(noteData => {
-            const commonArgs = [this.canvas, 0, this.judgementLine.y, this.scrollTime, noteData];
+            const commonArgs = [this.canvas, 0, this.judgementLine.y, this.scrollTime, noteData, this.noteSizeMultiplier];
             switch (noteData.type) {
                 case 'hold': return new HoldNote(...commonArgs);
                 case 'flick': return new FlickNote(...commonArgs);

@@ -38,6 +38,7 @@ const uiElements = {
   settings: {
       backButton: { x: 10, y: 10, width: 100, height: 40 },
       noteSpeed: { label: 'Note Speed', x: 0, y: 0, width: 300, height: 20, value: 1, min: 0.5, max: 5 },
+      noteSize: { label: 'Note Size', x: 0, y: 0, width: 300, height: 20, value: 1, min: 0.5, max: 2 },
       bgmVolume: { label: 'BGM Volume', x: 0, y: 0, width: 300, height: 20, value: 1, min: 0, max: 1 },
       sfxVolume: { label: 'SFX Volume', x: 0, y: 0, width: 300, height: 20, value: 1, min: 0, max: 1 },
       bgBrightness: { label: 'BG Brightness', x: 0, y: 0, width: 300, height: 20, value: 1, min: 0, max: 1 },
@@ -68,6 +69,7 @@ const songSelectState = reactive({
 
 const settings = reactive({
     noteSpeed: 1,
+    noteSize: 1, // Add noteSize setting
     bgmVolume: 1,
     sfxVolume: 1,
     bgBrightness: 1,
@@ -148,7 +150,10 @@ const loadSettings = () => {
 };
 
 const applySettings = () => {
-    if (noteManager) noteManager.setNoteSpeed(settings.noteSpeed);
+    if (noteManager) {
+        noteManager.setNoteSpeed(settings.noteSpeed);
+        noteManager.setNoteSize(settings.noteSize);
+    }
     if (audioManager) {
         audioManager.setBgmVolume(settings.bgmVolume);
         audioManager.setSfxVolume(settings.sfxVolume);

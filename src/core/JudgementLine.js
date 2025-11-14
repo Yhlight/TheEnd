@@ -26,6 +26,10 @@ export class JudgementLine {
     // Shockwave effect properties
     this.shockwaves = [];
     this.shockwaveDuration = 30; // frames
+
+    // Flash effect properties
+    this.flashIntensity = 0;
+    this.flashColor = '#FFFFFF';
   }
 
   loadEvents(lineEvents) {
@@ -95,10 +99,18 @@ export class JudgementLine {
         this.shockwaves.splice(i, 1);
       }
     }
+
+    // Update flash effect
+    if (this.flashIntensity > 0) {
+      this.flashIntensity -= 0.05; // Decay rate
+    }
+    this.flashIntensity = Math.max(0, this.flashIntensity);
   }
 
   flash(color = '#FFFFFF') {
     this.shockwaves.push({ progress: 0, color: color });
+    this.flashIntensity = 1.0;
+    this.flashColor = color;
   }
 
   draw() {
@@ -120,8 +132,25 @@ export class JudgementLine {
     ctx.lineTo(this.canvas.width, this.y);
     ctx.strokeStyle = '#FFFFFF';
     ctx.lineWidth = 3;
-    ctx.shadowBlur = 10;
-    ctx.shadowColor = '#00FFFF';
+
+    // Dynamic Glow Effect
+    const baseBlur = 10;
+    const pulsingBlur = Math.sin(performance.now() * 0.002) * 2 + 2; // Pulsates between 0 and 4
+    const flashBlur = this.flashIntensity * 25; // Intense blur on flash
+    ctx.shadowBlur = baseBlur + pulsingBlur + flashBlur;
+
+    // Mix flash color with base color
+    const flashR = parseInt(this.flashColor.slice(1, 3), 16);
+    const flashG = parseInt(this.flashColor.slice(3, 5), 16);
+    const flashB = parseInt(this.flashColor.slice(5, 7), 16);
+    const baseR = 0;
+    const baseG = 255;
+    const baseB = 255;
+    const r = Math.floor(baseR + (flashR - baseR) * this.flashIntensity);
+    const g = Math.floor(baseG + (flashG - baseG) * this.flashIntensity);
+    const b = Math.floor(baseB + (flashB - baseB) * this.flashIntensity);
+    ctx.shadowColor = `rgb(${r}, ${g}, ${b})`;
+
     ctx.stroke();
 
     // Draw shockwaves (they will also be transformed)

@@ -2,8 +2,8 @@
 import { TapNote } from './TapNote.js';
 
 export class FlickNote extends TapNote {
-  constructor(canvas, x, judgementLineY, scrollTime, noteData) {
-    super(canvas, x, judgementLineY, scrollTime, noteData);
+  constructor(canvas, x, judgementLineY, scrollTime, noteData, sizeMultiplier) {
+    super(canvas, x, judgementLineY, scrollTime, noteData, sizeMultiplier);
     this.color = '#FFFF80'; // A yellowish color for flick notes
   }
 
