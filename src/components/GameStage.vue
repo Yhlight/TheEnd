@@ -883,22 +883,22 @@ const handlePress = (event) => {
       gameState.current = 'songSelect';
       break;
     case 'songSelect': {
-      // Use the same logic as drawing to determine the selected card's scaled size and position
+      const centerX = gameCanvas.value.width / 2;
+      const centerY = gameCanvas.value.height / 2;
+
+      // Define the hitbox for the selected, scaled-up card which is always in the center.
+      const scaledWidth = CARD_WIDTH * SELECTED_CARD_SCALE;
+      const scaledHeight = CARD_HEIGHT * SELECTED_CARD_SCALE;
+      const boxX = centerX - scaledWidth / 2;
+      const boxY = centerY - scaledHeight / 2;
+
+      // Also check if the selected card is actually near the center, to avoid clicks while scrolling.
       const selectedCard = songSelectState.cards[songSelectState.selectedIndex];
-      const cardCenterX = selectedCard.x - songSelectState.currentScrollX;
+      const cardScreenX = selectedCard.x - songSelectState.currentScrollX;
+      const isCardCentered = Math.abs(cardScreenX - centerX) < 50; // Generous tolerance
 
-      let distance = Math.abs(gameCanvas.value.width / 2 - cardCenterX);
-      let distanceFactor = Math.max(0, 1 - distance / (gameCanvas.value.width / 2));
-      let scale = 1 + (SELECTED_CARD_SCALE - 1) * distanceFactor;
-
-      const scaledWidth = selectedCard.width * scale;
-      const scaledHeight = selectedCard.height * scale;
-
-      const renderX = cardCenterX - scaledWidth / 2;
-      const renderY = (gameCanvas.value.height - scaledHeight) / 2;
-
-      // Check if the click is within the scaled card's bounds
-      if (x > renderX && x < renderX + scaledWidth && y > renderY && y < renderY + scaledHeight) {
+      // If the click is inside the central hitbox and the card is centered, start the game.
+      if (isCardCentered && x > boxX && x < boxX + scaledWidth && y > boxY && y < boxY + scaledHeight) {
           const selectedSong = songLibrary[songSelectState.selectedIndex];
           songUrl.value = selectedSong.audioUrl;
 
@@ -913,8 +913,9 @@ const handlePress = (event) => {
 
           audioElement.value.load();
       } else {
+          // Otherwise, start dragging. Restore the original, correct drag logic.
           songSelectState.isDragging = true;
-          songSelectState.dragStartX = x + songSelectState.targetScrollX;
+          songSelectState.dragStartX = x - songSelectState.currentScrollX;
       }
       break;
     }
