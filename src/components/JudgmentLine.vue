@@ -16,6 +16,10 @@ export default {
       type: Number,
       default: 0,
     },
+    alpha: {
+      type: Number,
+      default: 1,
+    },
     flash: {
       type: Boolean,
       default: false,
@@ -30,6 +34,7 @@ export default {
       return {
         top: `${this.y}%`,
         transform: `rotate(${this.rotation}deg)`,
+        opacity: this.alpha,
       };
     },
   },

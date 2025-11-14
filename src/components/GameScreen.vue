@@ -40,7 +40,9 @@
         :lookahead-time="lookaheadTime"
         :viewport-height="viewportHeight"
         :hold-progress="note.holdProgress"
-        :style="{ top: note.y + '%', left: note.x + '%' }"
+        :note-size="settings.noteSize"
+        :shattered="note.shattered"
+        :style="{ top: note.y + '%', left: note.currentX + '%', opacity: note.opacity }"
       />
     </div>
     <hit-effect
@@ -49,10 +51,12 @@
       :x="effect.x"
       :y="effect.y"
       :judgment="effect.judgment"
+      :note-type="effect.noteType"
     />
     <judgment-line
       :y="judgmentLinePosition"
       :rotation="judgmentLineRotation"
+      :alpha="judgmentLineAlpha"
       :flash="lineFlashing"
       :show-shockwave="triggerShockwave"
     />
@@ -93,10 +97,13 @@ export default {
       showSettings: false,
       judgmentLinePosition: 85,
       judgmentLineRotation: 0,
+      judgmentLineAlpha: 1,
       isPlaying: false,
       chartLoaded: false,
       songTime: 0,
       songDuration: 0,
+      isAudioReady: false,
+      gameStartTime: 0,
       score: 0,
       combo: 0,
       maxCombo: 0,
@@ -109,6 +116,16 @@ export default {
     this.viewportHeight = window.innerHeight;
     this.loadChart();
     this.applyVolume(this.settings.volume);
+
+    // Add error listeners for robust audio handling
+    this.$refs.audioPlayer.addEventListener('error', this.handleAudioError);
+    this.$refs.perfectHitSfxPlayer.addEventListener('error', this.handleAudioError);
+    this.$refs.goodHitSfxPlayer.addEventListener('error', this.handleAudioError);
+  },
+  beforeUnmount() {
+    this.$refs.audioPlayer.removeEventListener('error', this.handleAudioError);
+    this.$refs.perfectHitSfxPlayer.removeEventListener('error', this.handleAudioError);
+    this.$refs.goodHitSfxPlayer.removeEventListener('error', this.handleAudioError);
   },
   computed: {
     backgroundStyle() {
@@ -141,23 +158,39 @@ export default {
         }
 
         this.chart = chartJson;
-        this.notes = this.chart.notes.map(note => ({ ...note, judged: false, active: false, holdProgress: 0 }));
+
+        // Ensure backward compatibility for events
         if (this.chart.events && this.chart.events.length > 0) {
+          this.chart.events.forEach(event => {
+            if (!event.transitionType) {
+              event.transitionType = 'linear';
+            }
+            if (typeof event.alpha !== 'number') {
+              event.alpha = 1;
+            }
+          });
           this.judgmentLinePosition = this.chart.events[0].y;
           this.judgmentLineRotation = this.chart.events[0].rotation;
+          this.judgmentLineAlpha = this.chart.events[0].alpha;
         }
+
+        this.notes = this.chart.notes.map(note => ({ ...note, judged: false, active: false, holdProgress: 0, shattered: false }));
         this.$refs.audioPlayer.src = this.chart.audioUrl;
 
+        // Decouple chart loading from audio loading
+        this.chartLoaded = true;
         this.$emit('chartLoaded', { url: this.chartUrl, data: chartJson });
 
       } catch (error) {
-        console.error("Failed to load chart:", error);
+        console.error("Failed to load chart JSON:", error);
+        // Even if the chart fails to load, we might want to stop showing "Loading..."
+        this.chartLoaded = true;
       }
     },
     onSongLoaded() {
       if (this.$refs.audioPlayer) {
         this.songDuration = this.$refs.audioPlayer.duration * 1000;
-        this.chartLoaded = true;
+        this.isAudioReady = true;
       }
     },
     startGame() {
@@ -174,49 +207,61 @@ export default {
         note.active = false;
         note.holdProgress = 0;
       });
-      this.$refs.audioPlayer.currentTime = 0;
-      this.$refs.audioPlayer.play();
+
+      this.gameStartTime = performance.now();
+
+      if (this.isAudioReady) {
+        this.$refs.audioPlayer.currentTime = 0;
+        this.$refs.audioPlayer.play().catch(error => {
+          console.warn(`[Audio Playback Error] Could not play main audio track, continuing in silence. Error: ${error.message}`);
+        });
+      }
+
       requestAnimationFrame(this.gameLoop);
     },
     handleInteractionStart(event) {
       if (!this.isPlaying || this.isPaused) return;
       this.isDragging = true;
-      let closestNote = null;
-      let minTimeDiff = Infinity;
-      this.notes.forEach(note => {
-        if (note.judged || note.active) return;
-        if (note.type !== 'tap' && note.type !== 'hold') return;
+
+      // Find all hittable notes within the timing window
+      const hittableNotes = this.notes.filter(note => {
+        if (note.judged || note.active) return false;
+        if (note.type !== 'tap' && note.type !== 'hold') return false;
         const timingError = Math.abs(note.time - this.songTime);
-        if (timingError <= TIMING_WINDOWS.good) {
-          if (timingError < minTimeDiff) {
-            minTimeDiff = timingError;
-            closestNote = note;
-          }
-        }
+        return timingError <= TIMING_WINDOWS.good;
       });
-      const hittableNote = closestNote;
-      if (hittableNote) {
-        if (hittableNote.type === 'tap') {
-          hittableNote.judged = true;
-        } else if (hittableNote.type === 'hold') {
-          hittableNote.active = true;
-          this.activeHolds[event.pointerId] = hittableNote;
+
+      // If there are hittable notes, sort them by their scheduled time
+      // and pick the one that was supposed to be hit first.
+      if (hittableNotes.length > 0) {
+        hittableNotes.sort((a, b) => a.time - b.time);
+        const targetNote = hittableNotes[0];
+
+        // Mark the note for visual removal and prevent re-judgment
+        targetNote.judged = true;
+        targetNote.shattered = true;
+
+        if (targetNote.type === 'hold') {
+          targetNote.active = true;
+          this.activeHolds[event.pointerId] = targetNote;
         }
+
         this.triggerLineFlash();
-        const timingError = Math.abs(hittableNote.time - this.songTime);
+        const timingError = Math.abs(targetNote.time - this.songTime);
+
         if (timingError <= TIMING_WINDOWS.perfect) {
           this.playHitSound('perfect');
           this.triggerShockwaveEffect();
           this.score += 100;
           this.combo++;
           this.maxCombo = Math.max(this.maxCombo, this.combo);
-          this.spawnHitEffect(hittableNote, 'perfect');
+          this.spawnHitEffect(targetNote, 'perfect');
         } else {
           this.playHitSound('good');
           this.score += 50;
           this.combo++;
           this.maxCombo = Math.max(this.maxCombo, this.combo);
-          this.spawnHitEffect(hittableNote, 'good');
+          this.spawnHitEffect(targetNote, 'good');
         }
       }
     },
@@ -233,7 +278,7 @@ export default {
     handleInteractionMove(event) {
       if (!this.isPlaying || this.isPaused || !this.isDragging) return;
       this.notes.forEach(note => {
-        if ((note.type === 'swipe' || note.type === 'catch') && !note.judged) {
+        if (note.type === 'swipe' && !note.judged) {
           const timingError = Math.abs(note.time - this.songTime);
           if (timingError <= TIMING_WINDOWS.good) {
             note.judged = true;
@@ -287,11 +332,19 @@ export default {
         this.$refs.goodHitSfxPlayer.volume = newVolume;
       }
     },
+    handleAudioError(event) {
+      console.warn(`[Audio Error] Failed to load audio source: ${event.target.src}. Gameplay will continue without this audio.`);
+      // We could set a flag here, e.g., event.target.failedToLoad = true, if needed.
+    },
     playHitSound(judgment) {
       const player = judgment === 'perfect' ? this.$refs.perfectHitSfxPlayer : this.$refs.goodHitSfxPlayer;
-      if (player) {
+      // Play sound only if it has loaded some data and hasn't failed
+      if (player && player.readyState > 0 && !player.error) {
         player.currentTime = 0;
-        player.play();
+        // The play() method itself returns a Promise which can be used for further error handling
+        player.play().catch(error => {
+          console.warn(`[Audio Playback Error] Could not play hit sound: ${error.message}`);
+        });
       }
     },
     triggerLineFlash() {
@@ -306,8 +359,9 @@ export default {
       const newEffect = {
         id: effectIdCounter++,
         x: note.x,
-        y: this.judgmentLinePosition,
-        judgment: judgment
+        y: note.y, // Use the note's current y position
+        judgment: judgment,
+        noteType: note.type,
       };
       this.activeEffects.push(newEffect);
       setTimeout(() => {
@@ -316,6 +370,15 @@ export default {
     },
     lerp(start, end, progress) {
       return start + (end - start) * progress;
+    },
+    easeIn(t) {
+      return t * t;
+    },
+    easeOut(t) {
+      return t * (2 - t);
+    },
+    easeInOut(t) {
+      return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
     },
     updateJudgmentLine() {
       const { events } = this.chart;
@@ -335,17 +398,49 @@ export default {
         }
       }
       if (nextEvent) {
-        const progress = (this.songTime - currentEvent.time) / (nextEvent.time - currentEvent.time);
+        if (nextEvent.transitionType === 'jump') {
+          this.judgmentLinePosition = nextEvent.y;
+          this.judgmentLineRotation = nextEvent.rotation;
+          this.judgmentLineAlpha = nextEvent.alpha;
+          return; // Skip interpolation for jumps
+        }
+
+        let progress = (this.songTime - currentEvent.time) / (nextEvent.time - currentEvent.time);
+
+        // Apply easing based on the transition type of the *next* event
+        switch (nextEvent.transitionType) {
+          case 'easeIn':
+            progress = this.easeIn(progress);
+            break;
+          case 'easeOut':
+            progress = this.easeOut(progress);
+            break;
+          case 'easeInOut':
+            progress = this.easeInOut(progress);
+            break;
+          // 'linear' is the default, no change needed
+        }
+
         this.judgmentLinePosition = this.lerp(currentEvent.y, nextEvent.y, progress);
         this.judgmentLineRotation = this.lerp(currentEvent.rotation, nextEvent.rotation, progress);
+        this.judgmentLineAlpha = this.lerp(currentEvent.alpha, nextEvent.alpha, progress);
       } else {
         this.judgmentLinePosition = currentEvent.y;
         this.judgmentLineRotation = currentEvent.rotation;
+        this.judgmentLineAlpha = currentEvent.alpha;
       }
     },
     gameLoop() {
       if (!this.isPlaying || this.isPaused) return;
-      this.songTime = this.$refs.audioPlayer.currentTime * 1000 + this.settings.audioOffset;
+
+      if (this.isAudioReady) {
+        // Primary, more accurate clock source
+        this.songTime = this.$refs.audioPlayer.currentTime * 1000 + this.settings.audioOffset;
+      } else {
+        // Fallback clock source if audio failed to load
+        this.songTime = (performance.now() - this.gameStartTime) + this.settings.audioOffset;
+      }
+
       for (const pointerId in this.activeHolds) {
         const note = this.activeHolds[pointerId];
         const holdEndTime = note.time + note.duration;
@@ -369,12 +464,70 @@ export default {
           note.judged = true;
           this.combo = 0;
         }
+
+        // New catch note logic: judge if player is holding down while the note is in window
+        if (note.type === 'catch' && !note.judged && this.isDragging) {
+          const timingError = Math.abs(note.time - this.songTime);
+          if (timingError <= TIMING_WINDOWS.good) {
+            note.judged = true;
+            this.triggerLineFlash();
+            if (timingError <= TIMING_WINDOWS.perfect) {
+              this.playHitSound('perfect');
+              this.triggerShockwaveEffect();
+              this.score += 100;
+              this.combo++;
+              this.maxCombo = Math.max(this.maxCombo, this.combo);
+              this.spawnHitEffect(note, 'perfect');
+            } else {
+              this.playHitSound('good');
+              this.score += 50;
+              this.combo++;
+              this.maxCombo = Math.max(this.maxCombo, this.combo);
+              this.spawnHitEffect(note, 'good');
+            }
+          }
+        }
       });
       this.updateJudgmentLine();
+
+      const FADE_IN_DURATION = 200; // ms
+
       this.notes.forEach(note => {
+        // --- Dynamic X Position Calculation ---
+        if (Array.isArray(note.x)) {
+          let currentKeyframe = note.x[0];
+          for (let i = note.x.length - 1; i >= 0; i--) {
+            if (this.songTime >= note.x[i].time) {
+              currentKeyframe = note.x[i];
+              break;
+            }
+          }
+          let nextKeyframe = null;
+          for (let i = 0; i < note.x.length; i++) {
+            if (note.x[i].time > this.songTime) {
+              nextKeyframe = note.x[i];
+              break;
+            }
+          }
+          if (nextKeyframe) {
+            const progress = (this.songTime - currentKeyframe.time) / (nextKeyframe.time - currentKeyframe.time);
+            note.currentX = this.lerp(currentKeyframe.value, nextKeyframe.value, progress);
+          } else {
+            note.currentX = currentKeyframe.value;
+          }
+        } else {
+          note.currentX = note.x;
+        }
+        // --- End Dynamic X ---
+
         const timeUntilHit = note.time - this.songTime;
         const progress = 1 - (timeUntilHit / this.lookaheadTime);
         note.y = this.lerp(0, this.judgmentLinePosition, progress);
+
+        // Calculate fade-in opacity
+        const noteAge = this.songTime - (note.time - this.lookaheadTime);
+        note.opacity = Math.min(1, noteAge / FADE_IN_DURATION);
+
         if (note.type === 'hold' && note.active) {
           const endTimeUntilHit = (note.time + note.duration) - this.songTime;
           const endProgress = 1 - (endTimeUntilHit / this.lookaheadTime);
