@@ -1,5 +1,4 @@
 // src/core/AudioManager.js
-
 export class AudioManager {
   constructor(musicElement) {
     this.musicElement = musicElement;
@@ -18,40 +17,22 @@ export class AudioManager {
     this.sfxGainNode = this.audioContext.createGain();
     this.sfxGainNode.connect(this.audioContext.destination);
 
-    this._loadHitSound();
-    this._loadMissSound();
+    this._loadSound('/hit.wav', 'hitSoundBuffer');
+    this._loadSound('/miss.wav', 'missSoundBuffer');
     this.isInitialized = true;
   }
 
-  async _loadHitSound() {
+  async _loadSound(url, bufferName) {
     try {
-      // A simple, short click sound is often used for rhythm games
-      const response = await fetch('/hit.wav');
+      const response = await fetch(url);
       if (!response.ok) {
-        throw new Error(`Failed to fetch hit sound: ${response.statusText}`);
+        throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
       }
       const arrayBuffer = await response.arrayBuffer();
-      this.hitSoundBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
-      console.log('Hit sound loaded successfully.');
-    } catch (error)
- {
-      console.error('Error loading hit sound:', error);
-    }
-  }
-
-  async _loadMissSound() {
-    try {
-      // TODO: Replace with a real miss sound file when available.
-      const response = await fetch('/hit.wav'); // Using hit.wav as a placeholder
-      if (!response.ok) {
-        throw new Error(`Failed to fetch miss sound: ${response.statusText}`);
-      }
-      const arrayBuffer = await response.arrayBuffer();
-      this.missSoundBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
-      console.log('Miss sound loaded (using placeholder).');
-    } catch (error)
- {
-      console.error('Error loading miss sound:', error);
+      this[bufferName] = await this.audioContext.decodeAudioData(arrayBuffer);
+      console.log(`Sound ${url} loaded successfully into ${bufferName}.`);
+    } catch (error) {
+      console.warn(`Warning: Could not load sound from ${url}. This is expected if the file is missing or corrupt.`, error);
     }
   }
 
@@ -86,8 +67,8 @@ export class AudioManager {
 
   playMusic() {
     this._initializeAudio();
-    if (this.musicElement) {
-      this.musicElement.play().catch(e => console.error("Music play failed:", e));
+    if (this.musicElement && this.musicElement.src) {
+      this.musicElement.play().catch(e => console.warn("Music play failed (this is expected if audio files are missing):", e));
     }
   }
 

@@ -2,12 +2,13 @@
   <div class="game-container">
     <canvas ref="gameCanvas" class="game-canvas"></canvas>
     <!-- The start overlay is now controlled by the 'title' game state -->
-    <audio ref="audioElement" src="/song.mp3" style="display: none;"></audio>
+    <audio ref="audioElement" :src="songUrl" style="display: none;"></audio>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, reactive } from 'vue';
+const songUrl = '';
 import { JudgementLine } from '../core/JudgementLine.js';
 import { NoteManager } from '../core/NoteManager.js';
 import { songLibrary } from '../core/ChartData.js';
@@ -129,13 +130,7 @@ const initializeGame = () => {
   loadSettings();
   gameLoop();
 
-  // Temporary listener for Playwright control
-  window.addEventListener('playwright-control', (e) => {
-    const { action, value } = e.detail;
-    if (action === 'createExplosion') {
-      effectManager.createExplosion(value.x, value.y, value.color);
-    }
-  });
+  // TODO: Future implementation for external controls or testing might go here.
 };
 
 onMounted(initializeGame);
@@ -288,7 +283,8 @@ const updatePlaying = () => {
   effectManager.update();
   dynamicBackground.update();
 
-  if (audioElement.value && audioElement.value.ended) {
+  const isChartFinished = noteManager.isChartFinished();
+  if (isChartFinished) {
     Object.assign(resultsState, {
         animationPhase: 'scoring',
         timer: 0,
@@ -463,9 +459,9 @@ const drawHUD = () => {
     // Progress Bar
     if (audioElement.value && audioElement.value.duration) {
         const progress = audioElement.value.currentTime / audioElement.value.duration;
-        const barWidth = width * 0.6;
+        const barWidth = width * 0.4; // Make it smaller to fit between score and pause
         const barX = (width - barWidth) / 2;
-        const barY = height - 40;
+        const barY = 45; // Move to the top
 
         ctx.strokeStyle = 'white';
         ctx.lineWidth = 2;
@@ -688,6 +684,15 @@ const handlePress = (event) => {
           scoreManager.onHit(dragResult.judgement);
           effectManager.createJudgementText(dragResult.note.x, judgementLine.y - 50, dragResult.judgement, dragResult.note.color);
           audioManager.playHitSound();
+          return;
+      }
+      const catchResult = noteManager.checkCatchHit(gameTime, x, y);
+      if (catchResult) {
+          scoreManager.onHit(catchResult.judgement);
+          effectManager.createExplosion(catchResult.note.x, judgementLine.y, catchResult.note.color);
+          effectManager.createJudgementText(catchResult.note.x, judgementLine.y - 50, catchResult.judgement, catchResult.note.color);
+          audioManager.playHitSound();
+          judgementLine.flash(catchResult.note.color);
       }
       break;
     }

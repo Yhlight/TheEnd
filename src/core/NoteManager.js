@@ -3,6 +3,7 @@ import { TapNote } from './TapNote.js';
 import { HoldNote } from './HoldNote.js';
 import { FlickNote } from './FlickNote.js';
 import { DragNote } from './DragNote.js';
+import { CatchNote } from './CatchNote.js';
 
 const BASE_SCROLL_TIME = 3000;
 
@@ -37,12 +38,13 @@ export class NoteManager {
 
     if (newChart) {
         this.notes = newChart.notes.map(noteData => {
-            const judgementLineY = this.judgementLine.y;
+            const commonArgs = [this.canvas, 0, this.judgementLine.y, this.scrollTime, noteData];
             switch (noteData.type) {
-                case 'hold': return new HoldNote(this.canvas, 0, judgementLineY, this.scrollTime, noteData);
-                case 'flick': return new FlickNote(this.canvas, 0, judgementLineY, this.scrollTime, noteData);
-                case 'drag': return new DragNote(this.canvas, 0, judgementLineY, this.scrollTime, noteData);
-                default: return new TapNote(this.canvas, 0, judgementLineY, this.scrollTime, noteData);
+                case 'hold': return new HoldNote(...commonArgs);
+                case 'flick': return new FlickNote(...commonArgs);
+                case 'drag': return new DragNote(...commonArgs);
+                case 'catch': return new CatchNote(...commonArgs);
+                default: return new TapNote(...commonArgs);
             }
         });
 
@@ -271,5 +273,41 @@ export class NoteManager {
       this.activeDragNote.markAsMissed();
       this.activeDragNote = null;
     }
+  }
+
+  isChartFinished() {
+    return this.notes.length === 0 && this.activeHolds.size === 0 && this.activeDragNote === null;
+  }
+
+  checkCatchHit(gameTime, clickX, clickY) {
+    let closestNote = null;
+    let minTimeDiff = Infinity;
+    const adjustedTime = gameTime - this.settings.offset;
+
+    for (const note of this.notes) {
+      if (note.isMissed || note.type !== 'catch') continue;
+
+      const timeDiff = Math.abs(adjustedTime - note.time);
+
+      if (Math.abs(clickY - this.judgementLine.y) > 100) continue;
+      if (timeDiff > NoteManager.judgementWindows.Bad) continue;
+
+      const notePixelX = this.judgementLine.x + (note.x - 0.5) * this.canvas.width;
+      const distanceX = Math.abs(clickX - notePixelX);
+
+      if (distanceX < note.width / 2 && timeDiff < minTimeDiff) {
+        minTimeDiff = timeDiff;
+        closestNote = note;
+      }
+    }
+
+    if (closestNote) {
+      let judgement = 'Bad';
+      if (minTimeDiff <= NoteManager.judgementWindows.Good) judgement = 'Good';
+      if (minTimeDiff <= NoteManager.judgementWindows.Perfect) judgement = 'Perfect';
+      this.notes = this.notes.filter(note => note !== closestNote);
+      return { note: closestNote, judgement };
+    }
+    return null;
   }
 }
