@@ -8,7 +8,7 @@ import { CatchNote } from './CatchNote.js';
 const BASE_SCROLL_TIME = 3000;
 
 export class NoteManager {
-  constructor(canvas, chart, scoreManager, judgementLine, audioManager, effectManager, settings) {
+  constructor(canvas, chart, scoreManager, judgementLine, audioManager, effectManager, settings, spirit) {
     this.canvas = canvas;
     this.chart = chart;
     this.scoreManager = scoreManager;
@@ -16,6 +16,7 @@ export class NoteManager {
     this.audioManager = audioManager;
     this.effectManager = effectManager;
     this.settings = settings;
+    this.spirit = spirit;
     this.scrollTime = BASE_SCROLL_TIME / this.settings.noteSpeed;
     this.noteSizeMultiplier = this.settings.noteSize || 1;
 
@@ -75,6 +76,7 @@ export class NoteManager {
           this.scoreManager.onMiss();
           note.markAsMissed();
           this.audioManager.playSound('miss');
+          this.spirit.onMiss();
           const missX = this.canvas.width / 2;
           const missY = this.judgementLine.y - 50;
           this.effectManager.createJudgementText(missX, missY, 'Miss', '#FF8080');

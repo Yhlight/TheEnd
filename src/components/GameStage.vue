@@ -17,6 +17,7 @@ import { ScoreManager } from '../core/ScoreManager.js';
 import { AudioManager } from '../core/AudioManager.js';
 import { DynamicBackground } from '../core/DynamicBackground.js';
 import { Easing } from '../core/Easing.js';
+import { Spirit } from '../core/Spirit.js';
 
 // Refs for DOM elements
 const gameCanvas = ref(null);
@@ -56,6 +57,7 @@ let effectManager = null;
 let scoreManager = null;
 let audioManager = null;
 let dynamicBackground = null;
+let spirit = null;
 let titleCrystals = [];
 
 // Song select state
@@ -111,6 +113,7 @@ const initializeGame = () => {
   scoreManager = new ScoreManager(effectManager);
   audioManager = new AudioManager(audioElement.value);
   dynamicBackground = new DynamicBackground(gameCanvas.value.width, gameCanvas.value.height);
+  spirit = new Spirit(judgementLine);
 
   noteManager = new NoteManager(
     gameCanvas.value,
@@ -119,7 +122,8 @@ const initializeGame = () => {
     judgementLine,
     audioManager,
     effectManager,
-    settings
+    settings,
+    spirit
   );
 
   gameCanvas.value.addEventListener('mousedown', handlePress);
@@ -318,8 +322,13 @@ const updatePlaying = () => {
   noteManager.update(gameTime);
   effectManager.update();
 
-  // Update background intensity based on combo
   const combo = scoreManager.getCombo();
+
+  // Update spirit based on combo
+  spirit.setCombo(combo);
+  spirit.update();
+
+  // Update background intensity based on combo
   if (combo < 50) {
     dynamicBackground.setIntensity(0);
   } else if (combo < 100) {
@@ -594,6 +603,7 @@ const drawPlaying = (gameTime) => {
   ctx.fillRect(pb.x + 30, pb.y + 10, 8, 30);
 
   judgementLine.draw();
+  spirit.draw(ctx);
   noteManager.draw(ctx, judgementLine.x);
   effectManager.draw(ctx);
   drawHUD(gameTime);
@@ -941,6 +951,7 @@ const handlePress = (event) => {
       const tapResult = noteManager.checkTapHit(gameTime, x, y);
       if (tapResult) {
           scoreManager.onHit(tapResult.judgement);
+          spirit.onHit(tapResult.note.color);
           effectManager.createExplosion(tapResult.note.x, judgementLine.y, tapResult.note.color, tapResult.judgement);
           effectManager.createJudgementText(tapResult.note.x, judgementLine.y - 50, tapResult.judgement, tapResult.note.color);
           audioManager.playSound(tapResult.note.type);
@@ -954,6 +965,7 @@ const handlePress = (event) => {
       const holdResult = noteManager.checkHoldStart(gameTime, x, y);
       if (holdResult) {
           scoreManager.onHit(holdResult.judgement);
+          spirit.onHit(holdResult.note.color);
           effectManager.createJudgementText(holdResult.note.x, judgementLine.y - 50, holdResult.judgement, holdResult.note.color);
           audioManager.playSound(holdResult.note.type);
           return;
@@ -961,6 +973,7 @@ const handlePress = (event) => {
       const dragResult = noteManager.checkDragStart(gameTime, x, y);
       if (dragResult) {
           scoreManager.onHit(dragResult.judgement);
+          spirit.onHit(dragResult.note.color);
           effectManager.createJudgementText(dragResult.note.x, judgementLine.y - 50, dragResult.judgement, dragResult.note.color);
           audioManager.playSound(dragResult.note.type);
           return;
@@ -968,6 +981,7 @@ const handlePress = (event) => {
       const catchResult = noteManager.checkCatchHit(gameTime, x, y);
       if (catchResult) {
           scoreManager.onHit(catchResult.judgement);
+          spirit.onHit(catchResult.note.color);
           effectManager.createExplosion(catchResult.note.x, judgementLine.y, catchResult.note.color, catchResult.judgement);
           effectManager.createJudgementText(catchResult.note.x, judgementLine.y - 50, catchResult.judgement, catchResult.note.color);
           audioManager.playSound(catchResult.note.type);
@@ -1068,6 +1082,7 @@ const handleRelease = (event) => {
     const flickResult = noteManager.checkFlickHit(gameTime, x, y, pointerState.velocityY);
     if (flickResult) {
         scoreManager.onHit(flickResult.judgement);
+        spirit.onHit(flickResult.note.color);
         effectManager.createFlickEffect(flickResult.note.x, judgementLine.y, flickResult.note.color); // Use the new flick effect
         effectManager.createJudgementText(flickResult.note.x, judgementLine.y - 50, flickResult.judgement, flickResult.note.color);
         audioManager.playSound(flickResult.note.type);
