@@ -7,6 +7,7 @@ export class EffectManager {
   constructor(canvas) {
     this.canvas = canvas;
     this.particles = [];
+    this.particlePool = [];
     this.judgementTexts = [];
     this.shockwaves = [];
   }
@@ -27,7 +28,13 @@ export class EffectManager {
     }
 
     for (let i = 0; i < count; i++) {
-      this.particles.push(new Particle(x, y, color));
+      let p = this.particlePool.pop();
+      if (p) {
+        p.reset(x, y, color);
+      } else {
+        p = new Particle(x, y, color);
+      }
+      this.particles.push(p);
     }
   }
 
@@ -66,10 +73,16 @@ export class EffectManager {
   }
 
   update() {
+    const stillAliveParticles = [];
     for (const particle of this.particles) {
       particle.update();
+      if (particle.isAlive()) {
+        stillAliveParticles.push(particle);
+      } else {
+        this.particlePool.push(particle);
+      }
     }
-    this.particles = this.particles.filter(p => p.isAlive());
+    this.particles = stillAliveParticles;
 
     for (const text of this.judgementTexts) {
       text.update(1/60);

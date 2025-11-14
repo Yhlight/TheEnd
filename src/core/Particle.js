@@ -77,4 +77,24 @@ export class Particle {
   isAlive() {
     return this.life > 0;
   }
+
+  reset(x, y, color) {
+    this.x = x;
+    this.y = y;
+    this.color = color;
+
+    const angle = Math.random() * Math.PI * 2;
+    const speed = Math.random() * 8 + 3;
+    this.vx = Math.cos(angle) * speed;
+    this.vy = Math.sin(angle) * speed;
+
+    this.size = Math.random() * 6 + 3;
+    this.rotation = Math.random() * 360;
+    this.rotationSpeed = (Math.random() - 0.5) * 15;
+
+    this.maxLife = Math.random() * 60 + 40;
+    this.life = this.maxLife;
+
+    this.shape = Math.random() > 0.5 ? 'square' : 'triangle';
+  }
 }

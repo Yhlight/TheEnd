@@ -725,34 +725,73 @@ const drawSettings = () => {
 
 const drawResults = () => {
     dynamicBackground.draw(ctx);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillStyle = 'rgba(10, 10, 20, 0.85)';
     ctx.fillRect(0, 0, gameCanvas.value.width, gameCanvas.value.height);
     const centerX = gameCanvas.value.width / 2;
-    ctx.fillStyle = 'white';
-    ctx.font = '48px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('Results', centerX, 80);
 
-    drawStylizedNumber(ctx, resultsState.displayScore.toString(), centerX + 150, 150, 6, 'white');
+    // --- Title ---
+    ctx.fillStyle = 'white';
+    ctx.shadowColor = 'cyan';
+    ctx.shadowBlur = 20;
+    ctx.font = '60px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('RESULTS', centerX, 80);
+    ctx.shadowBlur = 0;
+
+    // --- Score & Combo Box ---
+    const scoreBoxY = 150;
+    const scoreBoxWidth = 400;
+    const scoreBoxHeight = 120;
+    ctx.strokeStyle = 'cyan';
+    ctx.fillStyle = 'rgba(20, 30, 40, 0.6)';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = 'cyan';
+    ctx.shadowBlur = 15;
+    ctx.strokeRect(centerX - scoreBoxWidth / 2, scoreBoxY, scoreBoxWidth, scoreBoxHeight);
+    ctx.fillRect(centerX - scoreBoxWidth / 2, scoreBoxY, scoreBoxWidth, scoreBoxHeight);
+    ctx.shadowBlur = 0;
+
+    // Score
+    ctx.fillStyle = 'white';
     ctx.font = '24px sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText('Score', centerX - 20, 180);
-    drawStylizedNumber(ctx, scoreManager.getMaxCombo().toString(), centerX + 150, 220, 4, 'white');
-    ctx.textAlign = 'right';
-    ctx.fillText('Max Combo', centerX - 20, 240);
+    ctx.textAlign = 'left';
+    ctx.fillText('SCORE', centerX - scoreBoxWidth / 2 + 20, scoreBoxY + 35);
+    drawStylizedNumber(ctx, resultsState.displayScore.toString().padStart(7, '0'), centerX + scoreBoxWidth / 2 - 20, scoreBoxY + 15, 4, 'white');
+
+    // Max Combo
+    ctx.fillText('MAX COMBO', centerX - scoreBoxWidth / 2 + 20, scoreBoxY + 85);
+    drawStylizedNumber(ctx, scoreManager.getMaxCombo().toString(), centerX + scoreBoxWidth / 2 - 20, scoreBoxY + 65, 4, 'white');
+
+
+    // --- Judgements Box ---
+    const judgementsBoxY = 300;
+    const judgementsBoxWidth = 400;
+    const judgementsBoxHeight = 200;
+    ctx.strokeStyle = 'cyan';
+    ctx.fillStyle = 'rgba(20, 30, 40, 0.6)';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = 'cyan';
+    ctx.shadowBlur = 15;
+    ctx.strokeRect(centerX - judgementsBoxWidth / 2, judgementsBoxY, judgementsBoxWidth, judgementsBoxHeight);
+    ctx.fillRect(centerX - judgementsBoxWidth / 2, judgementsBoxY, judgementsBoxWidth, judgementsBoxHeight);
+    ctx.shadowBlur = 0;
 
     const judgements = scoreManager.getJudgementCounts();
-    const judgementYStart = 300;
+    const judgementYStart = judgementsBoxY + 40;
     Object.entries(judgements).forEach(([key, value], index) => {
         ctx.save();
         ctx.globalAlpha = resultsState.judgementAlpha[index];
+        ctx.fillStyle = 'white';
+        ctx.font = '22px sans-serif';
         ctx.textAlign = 'left';
-        ctx.fillText(key, centerX - 150, judgementYStart + index * 40);
+        ctx.fillText(key.toUpperCase(), centerX - judgementsBoxWidth / 2 + 30, judgementYStart + index * 40);
         ctx.textAlign = 'right';
-        ctx.fillText(value, centerX + 150, judgementYStart + index * 40);
+        ctx.font = 'bold 22px sans-serif';
+        ctx.fillText(value, centerX + judgementsBoxWidth / 2 - 30, judgementYStart + index * 40);
         ctx.restore();
     });
 
+    // --- Grade ---
     const accuracy = scoreManager.getAccuracy();
     let grade = 'D';
     if (accuracy >= 98) grade = 'S';
@@ -762,21 +801,50 @@ const drawResults = () => {
 
     ctx.save();
     ctx.globalAlpha = resultsState.gradeAlpha;
-    const gradeScale = 1 + (1 - resultsState.gradeAlpha) * 0.5;
-    ctx.font = `${80 * gradeScale}px sans-serif`;
+    const gradeScale = 1 + Easing.easeOutElastic(resultsState.gradeAlpha) * 0.2;
+    ctx.font = `bold ${150 * gradeScale}px sans-serif`;
+    ctx.fillStyle = 'white';
+    ctx.shadowColor = 'gold';
+    ctx.shadowBlur = 40;
     ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     ctx.fillText(grade, centerX, gameCanvas.value.height - 200);
     ctx.restore();
 
+    // --- Back Button ---
     if (resultsState.animationPhase === 'done') {
         const backBtn = uiElements.results.backButton;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.fillRect(backBtn.x, backBtn.y, backBtn.width, backBtn.height);
-        ctx.fillStyle = 'black';
+        const isHovered = pointerState.currentX > backBtn.x && pointerState.currentX < backBtn.x + backBtn.width &&
+                          pointerState.currentY > backBtn.y && pointerState.currentY < backBtn.y + backBtn.height;
+
+        ctx.strokeStyle = isHovered ? 'white' : 'cyan';
+        ctx.fillStyle = 'rgba(20, 30, 40, 0.6)';
+        ctx.lineWidth = 2;
+        ctx.shadowColor = isHovered ? 'white' : 'cyan';
+        ctx.shadowBlur = 15;
+
+        const cornerCut = 10;
+        ctx.beginPath();
+        ctx.moveTo(backBtn.x + cornerCut, backBtn.y);
+        ctx.lineTo(backBtn.x + backBtn.width - cornerCut, backBtn.y);
+        ctx.lineTo(backBtn.x + backBtn.width, backBtn.y + cornerCut);
+        ctx.lineTo(backBtn.x + backBtn.width, backBtn.y + backBtn.height - cornerCut);
+        ctx.lineTo(backBtn.x + backBtn.width - cornerCut, backBtn.y + backBtn.height);
+        ctx.lineTo(backBtn.x + cornerCut, backBtn.y + backBtn.height);
+        ctx.lineTo(backBtn.x, backBtn.y + backBtn.height - cornerCut);
+        ctx.lineTo(backBtn.x, backBtn.y + cornerCut);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = isHovered ? 'white' : 'rgba(255, 255, 255, 0.8)';
         ctx.font = '24px sans-serif';
+        ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('Back to Song Select', backBtn.x + backBtn.width / 2, backBtn.y + backBtn.height / 2);
+        ctx.shadowColor = 'transparent';
+        ctx.fillText('BACK TO SELECT', backBtn.x + backBtn.width / 2, backBtn.y + backBtn.height / 2);
     }
+    ctx.shadowBlur = 0;
 };
 
 let activeSlider = null;
