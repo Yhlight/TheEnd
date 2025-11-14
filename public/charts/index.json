@@ -3,12 +3,14 @@
     "id": "sample",
     "title": "Sample Song",
     "artist": "TheEnd Developer",
-    "url": "/charts/sample.json"
+    "url": "/charts/sample.json",
+    "coverUrl": "/covers/placeholder.png"
   },
   {
     "id": "sample2",
     "title": "Another Sample",
     "artist": "TheEnd Developer",
-    "url": "/charts/sample2.json"
+    "url": "/charts/sample2.json",
+    "coverUrl": "/covers/placeholder.png"
   }
 ]
