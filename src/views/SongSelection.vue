@@ -20,6 +20,7 @@
           :key="chart.id"
           class="song-item"
         >
+        <img :src="chart.coverUrl" alt="Chart Cover" class="song-cover">
         <div class="song-info" @click="selectChart(chart)">
           <div class="song-title">{{ chart.title }}</div>
           <div class="song-artist">{{ chart.artist }}</div>
@@ -239,13 +240,21 @@ h1 {
 
 .song-item {
   display: flex;
-  align-items: center;
+  align-items: stretch; /* Stretch items to fill height */
   margin-bottom: 15px;
   border: 2px solid #fff;
   border-radius: 10px;
   background-color: rgba(20, 20, 20, 0.8);
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
   transition: transform 0.2s, box-shadow 0.2s;
+  overflow: hidden; /* Ensure cover image respects border-radius */
+}
+
+.song-cover {
+  width: 100px;
+  height: 100px;
+  object-fit: cover; /* Cover the area, cropping if necessary */
+  border-right: 2px solid #fff;
 }
 
 .song-item:hover {
@@ -254,9 +263,11 @@ h1 {
 
 .song-info {
   flex-grow: 1;
-  padding: 20px;
+  padding: 15px 20px;
   cursor: pointer;
-  border-radius: 8px 0 0 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .song-info:hover {
