@@ -3,11 +3,17 @@ export class AudioManager {
   constructor(musicElement) {
     this.musicElement = musicElement;
     this.audioContext = null;
-    this.hitSoundBuffer = null;
-    this.missSoundBuffer = null;
+    this.soundBuffers = new Map();
     this.sfxVolume = 1.0;
     this.sfxGainNode = null;
     this.isInitialized = false;
+
+    // Define the sound map. Using placeholders since we only have hit.wav for now.
+    this.soundMap = {
+      'Perfect': '/hit.wav',
+      'Good': '/hit.wav',
+      'Miss': '/hit.wav', // Temporarily using hit.wav for Miss as well
+    };
   }
 
   _initializeAudio() {
@@ -17,27 +23,32 @@ export class AudioManager {
     this.sfxGainNode = this.audioContext.createGain();
     this.sfxGainNode.connect(this.audioContext.destination);
 
-    this._loadSound('/hit.wav', 'hitSoundBuffer');
-    this._loadSound('/miss.wav', 'missSoundBuffer');
+    // Load all sounds defined in the soundMap
+    for (const key in this.soundMap) {
+      this._loadSound(this.soundMap[key], key);
+    }
     this.isInitialized = true;
   }
 
-  async _loadSound(url, bufferName) {
+  async _loadSound(url, name) {
     try {
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
       }
       const arrayBuffer = await response.arrayBuffer();
-      this[bufferName] = await this.audioContext.decodeAudioData(arrayBuffer);
-      console.log(`Sound ${url} loaded successfully into ${bufferName}.`);
+      const decodedBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+      this.soundBuffers.set(name, decodedBuffer);
+      console.log(`Sound ${url} loaded successfully as '${name}'.`);
     } catch (error) {
       console.warn(`Warning: Could not load sound from ${url}. This is expected if the file is missing or corrupt.`, error);
     }
   }
 
-  _playSound(buffer) {
+  playSound(judgement) {
+    const buffer = this.soundBuffers.get(judgement);
     if (!buffer) {
+      // Fallback to a default sound or do nothing if a specific sound isn't found
       return;
     }
     this.sfxGainNode.gain.setValueAtTime(this.sfxVolume, this.audioContext.currentTime);
@@ -45,14 +56,6 @@ export class AudioManager {
     source.buffer = buffer;
     source.connect(this.sfxGainNode);
     source.start(0);
-  }
-
-  playHitSound() {
-    this._playSound(this.hitSoundBuffer);
-  }
-
-  playMissSound() {
-    this._playSound(this.missSoundBuffer);
   }
 
   setBgmVolume(volume) {

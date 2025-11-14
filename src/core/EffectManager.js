@@ -11,14 +11,45 @@ export class EffectManager {
     this.shockwaves = [];
   }
 
-  createExplosion(x, y, color, count = 20) {
+  createExplosion(x, y, color, judgement) {
+    let count = 0;
+    switch (judgement) {
+      case 'Perfect':
+        count = 30;
+        break;
+      case 'Good':
+        count = 15;
+        break;
+      // No explosion for 'Miss' or 'Bad'
+      default:
+        count = 0;
+        break;
+    }
+
     for (let i = 0; i < count; i++) {
       this.particles.push(new Particle(x, y, color));
     }
   }
 
   createJudgementText(x, y, text, color) {
-    this.judgementTexts.push(new JudgementText(x, y, text, color));
+    let sizeMultiplier = 1.0;
+    let durationMultiplier = 1.0;
+
+    switch (text) {
+      case 'Perfect':
+        sizeMultiplier = 1.2;
+        durationMultiplier = 1.1;
+        break;
+      case 'Good':
+        sizeMultiplier = 1.0;
+        durationMultiplier = 1.0;
+        break;
+      case 'Miss':
+        sizeMultiplier = 0.8;
+        color = '#FF8080'; // Override color for Miss
+        break;
+    }
+    this.judgementTexts.push(new JudgementText(x, y, text, color, sizeMultiplier, durationMultiplier));
   }
 
   createShockwave(x, y, color) {
