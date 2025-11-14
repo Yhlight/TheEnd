@@ -9,7 +9,7 @@ export const songLibrary = [
     id: 1,
     title: "Orion",
     artist: "A.I. Voice",
-    audioUrl: '/song.mp3',
+    audioUrl: '/hit.wav',
     chart: {
       notes: [
         { time: 1000, x: 0.2, type: 'hold', duration: 1000 },
@@ -41,7 +41,7 @@ export const songLibrary = [
     id: 2,
     title: "Orion (Hard)",
     artist: "A.I. Voice",
-    audioUrl: '/song.mp3',
+    audioUrl: '/hit.wav',
     chart: {
       notes: [
         { time: 1000, x: 0.2, type: 'tap' },
@@ -75,7 +75,7 @@ export const songLibrary = [
     id: 3,
     title: "Catastrophe",
     artist: "A.I. Voice",
-    audioUrl: '/song.mp3',
+    audioUrl: '/hit.wav',
     chart: {
       notes: [
         // Opening sequence
