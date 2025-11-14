@@ -70,5 +70,55 @@ export const songLibrary = [
         { time: 5000, duration: 500, value: { rotation: 0 }, easing: 'easeOutQuad' },
       ]
     }
+  },
+  {
+    id: 3,
+    title: "Catastrophe",
+    artist: "A.I. Voice",
+    audioUrl: '/song.mp3',
+    chart: {
+      notes: [
+        // Opening sequence
+        { time: 1000, x: 0.5, type: 'tap' },
+        { time: 1500, x: 0.2, type: 'tap' },
+        { time: 1750, x: 0.8, type: 'tap' },
+        { time: 2000, x: 0.2, type: 'tap' },
+        { time: 2250, x: 0.8, type: 'tap' },
+        // Fast part with line rotation
+        { time: 3000, x: 0.3, type: 'flick' },
+        { time: 3250, x: 0.7, type: 'flick' },
+        { time: 3500, x: 0.1, type: 'tap' },
+        { time: 3750, x: 0.9, type: 'tap' },
+        // Hold note during line movement
+        { time: 4000, x: 0.5, type: 'hold', duration: 1500 },
+        { time: 4250, x: 0.1, type: 'tap' },
+        { time: 4750, x: 0.9, type: 'tap' },
+        // Drag note across the screen
+        { time: 6000, type: 'drag', duration: 2000, path: [ [0, 0.1], [500, 0.9], [1000, 0.2], [1500, 0.8], [2000, 0.5] ] },
+        // Catch notes while line is transparent
+        { time: 8500, x: 0.2, type: 'catch', duration: 500 },
+        { time: 9500, x: 0.8, type: 'catch', duration: 500 },
+        // Final flick notes
+        { time: 10500, x: 0.5, type: 'flick' },
+        { time: 10750, x: 0.5, type: 'flick' },
+      ],
+      lineEvents: [
+        // Fast rotation at the beginning
+        { time: 2500, duration: 1000, value: { rotation: 90 }, easing: 'easeInOutQuad' },
+        { time: 3500, duration: 500, value: { rotation: 0 }, easing: 'easeOutQuad' },
+        // Move line to the top while holding a note
+        { time: 4000, duration: 1000, value: { y: -200 }, easing: 'easeInOutSine' },
+        { time: 5000, duration: 1000, value: { y: 0 }, easing: 'easeOutBounce' },
+        // Full 360 spin with a drag note
+        { time: 6000, duration: 2000, value: { rotation: 360 }, easing: 'linear' },
+        { time: 8000, duration: 500, value: { rotation: 0 }, easing: 'easeOutQuad' },
+        // Fade out and back in
+        { time: 8250, duration: 500, value: { alpha: 0.1 }, easing: 'easeInQuad' },
+        { time: 9250, duration: 500, value: { alpha: 1.0 }, easing: 'easeOutQuad' },
+        // Final dramatic zoom and shake (using y and small rotation)
+        { time: 10000, duration: 250, value: { y: -50, rotation: 5 }, easing: 'easeOutQuad' },
+        { time: 10250, duration: 500, value: { y: 0, rotation: 0 }, easing: 'easeOutElastic' },
+      ]
+    }
   }
 ];

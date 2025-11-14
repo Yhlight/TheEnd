@@ -589,19 +589,63 @@ const drawPlaying = () => {
 };
 
 const drawPaused = () => {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    // Dim the background
+    ctx.fillStyle = 'rgba(10, 10, 20, 0.75)';
     ctx.fillRect(0, 0, gameCanvas.value.width, gameCanvas.value.height);
+
+    const centerX = gameCanvas.value.width / 2;
+    const centerY = gameCanvas.value.height / 2;
+
+    // --- Paused Title ---
+    ctx.fillStyle = 'white';
+    ctx.shadowColor = 'cyan';
+    ctx.shadowBlur = 20;
+    ctx.font = '60px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('PAUSED', centerX, centerY - 150);
+    ctx.shadowBlur = 0;
+
+    // --- Buttons ---
     const buttons = uiElements.paused;
     Object.entries(buttons).forEach(([key, btn]) => {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.fillRect(btn.x, btn.y, btn.width, btn.height);
-        ctx.fillStyle = 'black';
-        ctx.font = '24px sans-serif';
+        const text = key.replace('Button', '').toUpperCase();
+
+        // Check for hover (using pointerState as a proxy)
+        const isHovered = pointerState.currentX > btn.x && pointerState.currentX < btn.x + btn.width &&
+                          pointerState.currentY > btn.y && pointerState.currentY < btn.y + btn.height;
+
+        // --- Button Shape ---
+        ctx.strokeStyle = isHovered ? 'white' : 'cyan';
+        ctx.fillStyle = 'rgba(20, 30, 40, 0.6)';
+        ctx.lineWidth = 2;
+        ctx.shadowColor = isHovered ? 'white' : 'cyan';
+        ctx.shadowBlur = 15;
+
+        // Draw a stylized rectangle with cut corners
+        const cornerCut = 10;
+        ctx.beginPath();
+        ctx.moveTo(btn.x + cornerCut, btn.y);
+        ctx.lineTo(btn.x + btn.width - cornerCut, btn.y);
+        ctx.lineTo(btn.x + btn.width, btn.y + cornerCut);
+        ctx.lineTo(btn.x + btn.width, btn.y + btn.height - cornerCut);
+        ctx.lineTo(btn.x + btn.width - cornerCut, btn.y + btn.height);
+        ctx.lineTo(btn.x + cornerCut, btn.y + btn.height);
+        ctx.lineTo(btn.x, btn.y + btn.height - cornerCut);
+        ctx.lineTo(btn.x, btn.y + cornerCut);
+        ctx.closePath();
+
+        ctx.fill();
+        ctx.stroke();
+
+        // --- Button Text ---
+        ctx.fillStyle = isHovered ? 'white' : 'rgba(255, 255, 255, 0.8)';
+        ctx.font = '28px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        const text = key.replace('Button', '').toUpperCase();
+        ctx.shadowColor = 'transparent'; // No shadow for text
         ctx.fillText(text, btn.x + btn.width / 2, btn.y + btn.height / 2);
     });
+     ctx.shadowBlur = 0; // Reset shadow for other drawing operations
 };
 
 const drawSettings = () => {
