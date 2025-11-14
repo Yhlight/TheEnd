@@ -41,10 +41,12 @@
              @selectNote="handleSelectNote"
              @updateNote="handleUpdateNote"
              @selectEvent="handleSelectEvent"
+             @updateEvent="handleUpdateEvent"
         />
-      </div>
-      <div v-else>
-        <p>Loading chart data...</p>
+        </div>
+        <div v-else>
+          <p>Loading chart data...</p>
+        </div>
       </div>
     </div>
     <div v-if="localChart" class="editor-sidebar">
@@ -58,6 +60,14 @@
           <label for="chart-artist">Artist</label>
           <input id="chart-artist" type="text" v-model="localChart.artist">
         </div>
+        <div class="property">
+          <label for="chart-audio-url">Audio URL</label>
+          <input id="chart-audio-url" type="text" v-model="localChart.audioUrl">
+        </div>
+        <div class="property">
+          <label for="chart-cover-url">Cover Image URL</label>
+          <input id="chart-cover-url" type="text" v-model="localChart.coverUrl">
+        </div>
       </div>
       <div v-if="selectedNote" class="sidebar-section">
         <h3>Note Properties</h3>
@@ -65,9 +75,26 @@
           <label for="note-time">Time (ms)</label>
           <input id="note-time" type="number" v-model.number="selectedNote.time">
         </div>
-        <div class="property">
+        <div v-if="!isNoteDynamic" class="property">
           <label for="note-x">X Position (%)</label>
           <input id="note-x" type="number" v-model.number="selectedNote.x">
+          <button @click="convertToDynamicNote" class="small-button">Convert to Dynamic</button>
+        </div>
+        <div v-else class="property keyframes-list">
+          <label>X Keyframes</label>
+          <div v-for="(keyframe, index) in selectedNote.x" :key="index" class="keyframe-item">
+            <input type="number" v-model.number="keyframe.time" placeholder="Time (ms)">
+            <input type="number" v-model.number="keyframe.value" placeholder="X (%)">
+            <select v-model="keyframe.transitionType">
+              <option value="linear">Linear</option>
+              <option value="jump">Jump</option>
+              <option value="easeIn">Ease In</option>
+              <option value="easeOut">Ease Out</option>
+              <option value="easeInOut">Ease In Out</option>
+            </select>
+            <button @click="removeNoteKeyframe(index)">Remove</button>
+          </div>
+          <button @click="addNoteKeyframe">Add Keyframe</button>
         </div>
         <div v-if="selectedNote.type === 'hold'" class="property">
           <label for="note-duration">Duration (ms)</label>
@@ -87,6 +114,29 @@
         <div class="property">
           <label for="event-rotation">Rotation (deg)</label>
           <input id="event-rotation" type="number" v-model.number="selectedEvent.rotation">
+        </div>
+        <div class="property">
+          <label for="event-alpha">Alpha (Opacity)</label>
+          <input id="event-alpha" type="range" min="0" max="1" step="0.1" v-model.number="selectedEvent.alpha" />
+          <span>{{ selectedEvent.alpha.toFixed(1) }}</span>
+        </div>
+        <div class="property">
+          <label for="event-bgspeed">BG Scroll Speed</label>
+          <input id="event-bgspeed" type="number" min="0" step="0.1" v-model.number="selectedEvent.bgSpeed" />
+        </div>
+        <div class="property">
+          <label for="event-bgcolor">BG Color</label>
+          <input id="event-bgcolor" type="text" v-model="selectedEvent.bgColor" />
+        </div>
+        <div class="property">
+          <label for="event-transition">Transition Type</label>
+          <select id="event-transition" v-model="selectedEvent.transitionType">
+            <option value="linear">Linear</option>
+            <option value="jump">Jump</option>
+            <option value="easeIn">Ease In</option>
+            <option value="easeOut">Ease Out</option>
+            <option value="easeInOut">Ease In Out</option>
+          </select>
         </div>
       </div>
     </div>
@@ -123,6 +173,16 @@ export default {
     window.removeEventListener('keydown', this.handleKeyDown);
   },
   watch: {
+    'localChart.audioUrl'(newUrl, oldUrl) {
+      if (newUrl && newUrl !== oldUrl) {
+        const audio = this.$refs.audioPlayer;
+        audio.src = newUrl;
+        audio.load();
+        // Reset playback state
+        this.isPlaying = false;
+        this.audioCurrentTime = 0;
+      }
+    },
     audioCurrentTime(newTime) {
       if (this.isPlaying) {
         this.autoscrollTimeline(newTime);
@@ -130,6 +190,9 @@ export default {
     }
   },
   computed: {
+    isNoteDynamic() {
+      return this.selectedNote && Array.isArray(this.selectedNote.x);
+    },
     selectedNote() {
       if (this.selectedNoteId === null || !this.localChart) return null;
       return this.localChart.notes.find(note => note.id === this.selectedNoteId);
@@ -261,6 +324,42 @@ export default {
         Object.assign(note, updatedNote);
       }
     },
+    convertToDynamicNote() {
+      if (this.selectedNote && !this.isNoteDynamic) {
+        this.selectedNote.x = [
+          { time: this.selectedNote.time, value: this.selectedNote.x, transitionType: 'linear' }
+        ];
+      }
+    },
+    addNoteKeyframe() {
+      if (this.selectedNote && Array.isArray(this.selectedNote.x)) {
+        const lastKeyframe = this.selectedNote.x[this.selectedNote.x.length - 1];
+        this.selectedNote.x.push({
+          time: lastKeyframe ? lastKeyframe.time + 100 : this.selectedNote.time,
+          value: lastKeyframe ? lastKeyframe.value : 50,
+          transitionType: 'linear'
+        });
+        this.selectedNote.x.sort((a, b) => a.time - b.time);
+      }
+    },
+    removeNoteKeyframe(index) {
+      if (this.selectedNote && Array.isArray(this.selectedNote.x)) {
+        if (this.selectedNote.x.length > 1) {
+          this.selectedNote.x.splice(index, 1);
+        } else {
+          alert("A dynamic note must have at least one keyframe.");
+        }
+      }
+    },
+    handleUpdateEvent(updatedEvent) {
+      if (!this.localChart) return;
+      const event = this.localChart.events[updatedEvent.index];
+      if (event) {
+        event.time = updatedEvent.time;
+        // The events array might need to be re-sorted if time changes significantly
+        this.localChart.events.sort((a, b) => a.time - b.time);
+      }
+    },
     deleteSelectedNote() {
       if (!this.selectedNoteId) return;
 
@@ -327,8 +426,9 @@ export default {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: #111;
+  background-color: #0d0d0d; /* Slightly darker */
   color: #fff;
+  text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
 }
 
 .audio-controls {
@@ -336,8 +436,9 @@ export default {
   align-items: center;
   gap: 15px;
   padding: 10px 20px;
-  background-color: #1c1c1c;
-  border-bottom: 1px solid #444;
+  background-color: #1a1a1a;
+  border-bottom: 2px solid #00ffff;
+  box-shadow: 0 5px 25px rgba(0, 255, 255, 0.2);
 }
 
 .audio-controls button {
@@ -389,8 +490,13 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 10px 20px;
-  background-color: #222;
-  border-bottom: 2px solid #00ffff;
+  background-color: #111; /* Darker header */
+}
+
+h1 {
+  margin: 0;
+  font-size: 24px;
+  text-shadow: 0 0 10px #fff, 0 0 20px #ff00ff;
 }
 
 .editor-toolbar {
@@ -399,59 +505,56 @@ export default {
   gap: 15px;
 }
 
-.editor-toolbar label {
-  font-weight: bold;
-}
-
-.editor-toolbar select {
-  background-color: #333;
-  color: #fff;
-  border: 1px solid #555;
-  padding: 5px;
-  border-radius: 4px;
-}
-
-h1 {
-  margin: 0;
-  font-size: 24px;
-}
-
-button {
+button, .editor-toolbar select {
   padding: 8px 15px;
-  /* ... standard button styles */
+  background: rgba(0, 0, 0, 0.4);
+  color: white;
+  border: 2px solid white;
+  border-radius: 5px;
+  cursor: pointer;
+  box-shadow: 0 0 10px #fff, 0 0 15px rgba(0, 255, 255, 0.5);
+  transition: all 0.2s;
+  font-family: sans-serif;
+  font-size: 14px;
+}
+
+button:hover, .editor-toolbar select:hover {
+  box-shadow: 0 0 15px #fff, 0 0 25px #00ffff;
+  background-color: rgba(255, 255, 255, 0.2);
 }
 
 .export-button {
-  background-color: #34c759;
-  color: white;
-  border: 1px solid #34c759;
+  border-color: #34c759;
+  box-shadow: 0 0 10px #34c759, 0 0 15px rgba(52, 199, 89, 0.5);
 }
 
 .delete-button {
-  background-color: #ff3b30;
-  color: white;
-  border: 1px solid #ff3b30;
-  margin-right: 10px;
+  border-color: #ff3b30;
+  box-shadow: 0 0 10px #ff3b30, 0 0 15px rgba(255, 59, 48, 0.5);
 }
 
-.delete-button:disabled {
-  background-color: #555;
+button:disabled {
   border-color: #555;
+  color: #777;
+  box-shadow: none;
   cursor: not-allowed;
+  background-color: rgba(30, 30, 30, 0.5);
 }
 
 .editor-content {
   flex-grow: 1;
   padding: 20px;
   overflow-y: auto;
+  background: #000;
 }
 
 .editor-sidebar {
   width: 250px;
   flex-shrink: 0;
   padding: 20px;
-  background-color: #1a1a1a;
+  background-color: #111;
   border-left: 2px solid #00ffff;
+  box-shadow: -5px 0 25px rgba(0, 255, 255, 0.2);
   overflow-y: auto;
 }
 
@@ -459,6 +562,7 @@ button {
   margin-top: 0;
   border-bottom: 1px solid #444;
   padding-bottom: 10px;
+  text-shadow: 0 0 8px #fff;
 }
 
 .sidebar-section {
@@ -482,15 +586,33 @@ button {
   font-size: 14px;
   margin-bottom: 5px;
   color: #aaa;
+  text-shadow: none;
 }
 
 .property input {
   width: 100%;
   padding: 8px;
-  background-color: #333;
+  background-color: #222;
   border: 1px solid #555;
   color: #fff;
   border-radius: 4px;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.property input:focus {
+  outline: none;
+  border-color: #00ffff;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5), 0 0 10px rgba(0, 255, 255, 0.5);
+}
+
+.property input[type="range"] {
+  width: 70%;
+}
+.property span {
+  display: inline-block;
+  width: 25%;
+  text-align: right;
 }
 
 .timeline-container {
@@ -504,9 +626,34 @@ button {
   left: 0;
   top: 0; /* The transform will handle the Y positioning */
   width: 100%;
-  height: 2px;
-  background-color: #ff3b30;
+  height: 3px;
+  background-color: #fff;
+  box-shadow: 0 0 15px #fff, 0 0 25px #ff00ff;
   z-index: 50; /* Ensure it's above notes and events */
   pointer-events: none; /* Make sure it doesn't interfere with clicks */
+}
+
+.small-button {
+  padding: 4px 8px;
+  font-size: 12px;
+  margin-top: 5px;
+  width: 100%;
+}
+
+.keyframes-list {
+  border: 1px solid #444;
+  padding: 10px;
+  border-radius: 5px;
+  background-color: #222;
+}
+
+.keyframe-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px;
+  border-bottom: 1px solid #333;
+}
+.keyframe-item:last-child {
+  border-bottom: none;
 }
 </style>
