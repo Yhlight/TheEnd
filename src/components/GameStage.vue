@@ -882,31 +882,42 @@ const handlePress = (event) => {
     case 'title':
       gameState.current = 'songSelect';
       break;
-    case 'songSelect':
-      if (Math.abs(y - gameCanvas.value.height / 2) < CARD_HEIGHT * SELECTED_CARD_SCALE) {
-        const selectedCard = songSelectState.cards[songSelectState.selectedIndex];
-        const cardRenderX = selectedCard.x - songSelectState.currentScrollX - selectedCard.width / 2;
-        if (x > cardRenderX && x < cardRenderX + selectedCard.width) {
-            const selectedSong = songLibrary[songSelectState.selectedIndex];
-            songUrl.value = selectedSong.audioUrl;
+    case 'songSelect': {
+      // Use the same logic as drawing to determine the selected card's scaled size and position
+      const selectedCard = songSelectState.cards[songSelectState.selectedIndex];
+      const cardCenterX = selectedCard.x - songSelectState.currentScrollX;
 
-            // Wait for the new audio to be ready before playing
-            audioElement.value.addEventListener('canplaythrough', () => {
-                // Deep copy the chart to ensure a fresh state
-                const chartCopy = JSON.parse(JSON.stringify(selectedSong.chart));
-                noteManager.loadChart(chartCopy);
-                audioManager.playMusic();
-                gameState.current = 'playing';
-                gameStartTime = null;
-            }, { once: true }); // Important: use 'once' to avoid multiple listeners
+      let distance = Math.abs(gameCanvas.value.width / 2 - cardCenterX);
+      let distanceFactor = Math.max(0, 1 - distance / (gameCanvas.value.width / 2));
+      let scale = 1 + (SELECTED_CARD_SCALE - 1) * distanceFactor;
 
-            audioElement.value.load(); // Trigger the audio element to load the new source
-        } else {
-            songSelectState.isDragging = true;
-            songSelectState.dragStartX = x - songSelectState.currentScrollX;
-        }
+      const scaledWidth = selectedCard.width * scale;
+      const scaledHeight = selectedCard.height * scale;
+
+      const renderX = cardCenterX - scaledWidth / 2;
+      const renderY = (gameCanvas.value.height - scaledHeight) / 2;
+
+      // Check if the click is within the scaled card's bounds
+      if (x > renderX && x < renderX + scaledWidth && y > renderY && y < renderY + scaledHeight) {
+          const selectedSong = songLibrary[songSelectState.selectedIndex];
+          songUrl.value = selectedSong.audioUrl;
+
+          // Wait for the new audio to be ready before playing
+          audioElement.value.addEventListener('canplaythrough', () => {
+              const chartCopy = JSON.parse(JSON.stringify(selectedSong.chart));
+              noteManager.loadChart(chartCopy);
+              audioManager.playMusic();
+              gameState.current = 'playing';
+              gameStartTime = null;
+          }, { once: true });
+
+          audioElement.value.load();
+      } else {
+          songSelectState.isDragging = true;
+          songSelectState.dragStartX = x + songSelectState.targetScrollX;
       }
       break;
+    }
     case 'playing': {
       const pb = uiElements.pauseButton;
       if (x > pb.x && x < pb.x + pb.width && y > pb.y && y < pb.y + pb.height) {
