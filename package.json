@@ -3,12 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "vite"
+    "dev": "vite --host",
+    "build": "vite build"
   },
   "dependencies": {
+    "@capacitor/android": "^7.4.4",
+    "@capacitor/core": "^7.4.4",
     "vue": "^3.2.13"
   },
   "devDependencies": {
+    "@capacitor/cli": "^7.4.4",
     "@vitejs/plugin-vue": "^6.0.1",
     "vite": "^7.2.2"
   }
