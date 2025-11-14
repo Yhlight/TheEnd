@@ -9,6 +9,7 @@ export const songLibrary = [
     id: 1,
     title: "Orion",
     artist: "A.I. Voice",
+    audioUrl: '/song.mp3',
     chart: {
       notes: [
         { time: 1000, x: 0.2, type: 'hold', duration: 1000 },
@@ -40,6 +41,7 @@ export const songLibrary = [
     id: 2,
     title: "Orion (Hard)",
     artist: "A.I. Voice",
+    audioUrl: '/song.mp3',
     chart: {
       notes: [
         { time: 1000, x: 0.2, type: 'tap' },

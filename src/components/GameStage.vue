@@ -8,7 +8,7 @@
 
 <script setup>
 import { ref, onMounted, reactive } from 'vue';
-const songUrl = '';
+const songUrl = ref('');
 import { JudgementLine } from '../core/JudgementLine.js';
 import { NoteManager } from '../core/NoteManager.js';
 import { songLibrary } from '../core/ChartData.js';
@@ -56,6 +56,7 @@ let effectManager = null;
 let scoreManager = null;
 let audioManager = null;
 let dynamicBackground = null;
+let titleCrystals = [];
 
 // Song select state
 const songSelectState = reactive({
@@ -129,10 +130,28 @@ const initializeGame = () => {
   gameCanvas.value.addEventListener('touchmove', handleMove);
 
   console.log('Game initialized.');
+  initializeTitleCrystals();
   loadSettings();
   gameLoop();
 
   // TODO: Future implementation for external controls or testing might go here.
+};
+
+const initializeTitleCrystals = () => {
+    titleCrystals = [];
+    const crystalCount = 15;
+    for (let i = 0; i < crystalCount; i++) {
+        titleCrystals.push({
+            x: Math.random() * window.innerWidth,
+            y: Math.random() * window.innerHeight,
+            z: Math.random() * 0.5 + 0.5, // Depth for parallax
+            size: Math.random() * 40 + 20, // Larger than background crystals
+            vx: (Math.random() - 0.5) * 0.5,
+            vy: (Math.random() - 0.5) * 0.5,
+            rotation: Math.random() * 360,
+            rotationSpeed: (Math.random() - 0.5) * 0.2,
+        });
+    }
 };
 
 onMounted(initializeGame);
@@ -245,8 +264,20 @@ const drawStylizedNumber = (ctx, text, x, y, squareSize, color) => {
 };
 
 const updateTitle = () => {
-    // This state is mostly static, but we keep the update call for consistency
     dynamicBackground.update();
+    const width = gameCanvas.value.width;
+    const height = gameCanvas.value.height;
+
+    // Update foreground crystals
+    for (const crystal of titleCrystals) {
+        crystal.x += crystal.vx;
+        crystal.y += crystal.vy;
+        crystal.rotation += crystal.rotationSpeed;
+
+        // Bounce off edges
+        if (crystal.x < 0 || crystal.x > width) crystal.vx *= -1;
+        if (crystal.y < 0 || crystal.y > height) crystal.vy *= -1;
+    }
 };
 
 const updateSongSelect = () => {
@@ -337,26 +368,59 @@ const updateResults = () => {
 
 const drawTitle = () => {
     dynamicBackground.draw(ctx);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillStyle = 'rgba(10, 10, 20, 0.7)'; // Slightly bluer overlay
     ctx.fillRect(0, 0, gameCanvas.value.width, gameCanvas.value.height);
 
-    const centerX = gameCanvas.value.width / 2;
-    const centerY = gameCanvas.value.height / 2;
+    const width = gameCanvas.value.width;
+    const height = gameCanvas.value.height;
+    const centerX = width / 2;
+    const centerY = height / 2;
 
-    // Stylized Title
+    // --- Draw Foreground Crystals with Parallax ---
+    const parallaxStrength = 40;
+    const mouseX = pointerState.currentX - centerX;
+    const mouseY = pointerState.currentY - centerY;
+
+    for (const crystal of titleCrystals) {
+        const parallaxX = (mouseX / centerX) * parallaxStrength * crystal.z;
+        const parallaxY = (mouseY / centerY) * parallaxStrength * crystal.z;
+
+        ctx.save();
+        ctx.translate(crystal.x + parallaxX, crystal.y + parallaxY);
+        ctx.rotate(crystal.rotation * Math.PI / 180);
+
+        ctx.strokeStyle = `rgba(0, 255, 255, ${0.4 * crystal.z})`;
+        ctx.fillStyle = `rgba(0, 50, 70, ${0.2 * crystal.z})`;
+        ctx.lineWidth = 2;
+        ctx.shadowColor = 'cyan';
+        ctx.shadowBlur = 15;
+
+        ctx.beginPath();
+        ctx.moveTo(0, -crystal.size); // Top point
+        ctx.lineTo(crystal.size * 0.8, 0); // Right point
+        ctx.lineTo(0, crystal.size); // Bottom point
+        ctx.lineTo(-crystal.size * 0.8, 0); // Left point
+        ctx.closePath();
+
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // --- Stylized Title ---
     ctx.fillStyle = 'white';
     ctx.shadowColor = 'cyan';
-    ctx.shadowBlur = 20;
-    ctx.font = '80px sans-serif';
+    ctx.shadowBlur = 30; // Increased glow
+    ctx.font = '100px sans-serif'; // Larger font
     ctx.textAlign = 'center';
-    ctx.fillText('TheEnd', centerX, centerY - 40);
+    ctx.fillText('TheEnd', centerX, centerY - 50);
     ctx.shadowBlur = 0;
 
-    // "Click to Start" with flashing animation
-    const flash = Math.abs(Math.sin(performance.now() * 0.002));
-    ctx.fillStyle = `rgba(255, 255, 255, ${0.5 + flash * 0.5})`;
-    ctx.font = '24px sans-serif';
-    ctx.fillText('Click to Start', centerX, centerY + 40);
+    // --- "Click to Start" with smoother flashing animation ---
+    const flash = (Math.sin(performance.now() * 0.0015) + 1) / 2; // Smoother sine wave
+    ctx.fillStyle = `rgba(255, 255, 255, ${0.6 + flash * 0.4})`;
+    ctx.font = '28px sans-serif';
+    ctx.fillText('Click anywhere to begin', centerX, centerY + 50);
 };
 
 const drawSongSelect = () => {
@@ -380,51 +444,71 @@ const drawSongSelect = () => {
         ctx.save();
         ctx.globalAlpha = 0.3 + 0.7 * distanceFactor;
 
-        // Draw card base
-        ctx.strokeStyle = 'white';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(renderX, renderY, scaledWidth, scaledHeight);
+        // --- Redesigned Card ---
+        // Base shape
+        ctx.fillStyle = `rgba(20, 30, 40, ${0.5 + 0.3 * distanceFactor})`;
+        ctx.strokeStyle = `rgba(0, 255, 255, ${0.3 + 0.5 * distanceFactor})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(renderX + 10, renderY);
+        ctx.lineTo(renderX + scaledWidth - 10, renderY);
+        ctx.lineTo(renderX + scaledWidth, renderY + 10);
+        ctx.lineTo(renderX + scaledWidth, renderY + scaledHeight - 10);
+        ctx.lineTo(renderX + scaledWidth - 10, renderY + scaledHeight);
+        ctx.lineTo(renderX + 10, renderY + scaledHeight);
+        ctx.lineTo(renderX, renderY + scaledHeight - 10);
+        ctx.lineTo(renderX, renderY + 10);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
 
-        // Draw title
+        // Title
         ctx.fillStyle = 'white';
-        ctx.font = `${32 * scale}px sans-serif`;
+        ctx.font = `bold ${30 * scale}px sans-serif`;
         ctx.textAlign = 'center';
-        ctx.fillText(card.song.title, cardRenderX, renderY + scaledHeight * 0.4);
+        ctx.fillText(card.song.title, cardRenderX, renderY + scaledHeight * 0.45);
 
-        // Draw artist
-        ctx.font = `${20 * scale}px sans-serif`;
-        ctx.fillText(card.song.artist, cardRenderX, renderY + scaledHeight * 0.6);
+        // Artist
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.font = `italic ${18 * scale}px sans-serif`;
+        ctx.fillText(card.song.artist, cardRenderX, renderY + scaledHeight * 0.65);
+
+        // Decorative lines
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(renderX + 20, renderY + scaledHeight * 0.8);
+        ctx.lineTo(renderX + scaledWidth - 20, renderY + scaledHeight * 0.8);
+        ctx.stroke();
+
 
         if (index === songSelectState.selectedIndex) {
             ctx.strokeStyle = 'cyan';
-            ctx.lineWidth = 4;
+            ctx.lineWidth = 3;
             ctx.shadowColor = 'cyan';
-            ctx.shadowBlur = 20;
-            ctx.strokeRect(renderX, renderY, scaledWidth, scaledHeight);
+            ctx.shadowBlur = 25; // Increased glow for selected
 
-            // Animated corner brackets
-            const animProgress = (Math.sin(performance.now() * 0.002) + 1) / 2;
-            const bracketLength = 30 * scale;
-            const bracketOffset = 10 * scale + animProgress * 5 * scale;
-
-            ctx.beginPath();
-            // Top-left
-            ctx.moveTo(renderX - bracketOffset, renderY - bracketOffset + bracketLength);
-            ctx.lineTo(renderX - bracketOffset, renderY - bracketOffset);
-            ctx.lineTo(renderX - bracketOffset + bracketLength, renderY - bracketOffset);
-            // Top-right
-            ctx.moveTo(renderX + scaledWidth + bracketOffset - bracketLength, renderY - bracketOffset);
-            ctx.lineTo(renderX + scaledWidth + bracketOffset, renderY - bracketOffset);
-            ctx.lineTo(renderX + scaledWidth + bracketOffset, renderY - bracketOffset + bracketLength);
-            // Bottom-left
-            ctx.moveTo(renderX - bracketOffset, renderY + scaledHeight + bracketOffset - bracketLength);
-            ctx.lineTo(renderX - bracketOffset, renderY + scaledHeight + bracketOffset);
-            ctx.lineTo(renderX - bracketOffset + bracketLength, renderY + scaledHeight + bracketOffset);
-             // Bottom-right
-            ctx.moveTo(renderX + scaledWidth + bracketOffset - bracketLength, renderY + scaledHeight + bracketOffset);
-            ctx.lineTo(renderX + scaledWidth + bracketOffset, renderY + scaledHeight + bracketOffset);
-            ctx.lineTo(renderX + scaledWidth + bracketOffset, renderY + scaledHeight + bracketOffset - bracketLength);
+            ctx.beginPath(); // Redraw border with glow
+            ctx.moveTo(renderX + 10, renderY);
+            ctx.lineTo(renderX + scaledWidth - 10, renderY);
+            ctx.lineTo(renderX + scaledWidth, renderY + 10);
+            ctx.lineTo(renderX + scaledWidth, renderY + scaledHeight - 10);
+            ctx.lineTo(renderX + scaledWidth - 10, renderY + scaledHeight);
+            ctx.lineTo(renderX + 10, renderY + scaledHeight);
+            ctx.lineTo(renderX, renderY + scaledHeight - 10);
+            ctx.lineTo(renderX, renderY + 10);
+            ctx.closePath();
             ctx.stroke();
+
+            // Animated selection indicator
+            const animProgress = (performance.now() * 0.001) % 1;
+            const indicatorLength = scaledWidth / 2;
+            const indicatorX = renderX + (scaledWidth - indicatorLength) / 2 + (animProgress * indicatorLength) - (indicatorLength/2);
+
+            ctx.fillStyle = 'cyan';
+            ctx.globalAlpha = (Math.sin(performance.now() * 0.005) + 1) / 2 * 0.8;
+            ctx.fillRect(indicatorX, renderY + scaledHeight - 5, indicatorLength, 2);
+
         }
 
         ctx.restore();
@@ -521,31 +605,77 @@ const drawPaused = () => {
 };
 
 const drawSettings = () => {
-    ctx.fillStyle = '#1a1a1a';
+    // Use the dynamic background
+    dynamicBackground.draw(ctx);
+    ctx.fillStyle = 'rgba(10, 10, 20, 0.85)'; // Consistent overlay
     ctx.fillRect(0, 0, gameCanvas.value.width, gameCanvas.value.height);
+
+    const centerX = gameCanvas.value.width / 2;
+
+    // --- Redesigned Back Button ---
     const backBtn = uiElements.settings.backButton;
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-    ctx.fillRect(backBtn.x, backBtn.y, backBtn.width, backBtn.height);
-    ctx.fillStyle = 'black';
+    ctx.strokeStyle = 'cyan';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = 'cyan';
+    ctx.shadowBlur = 15;
+    ctx.strokeRect(backBtn.x, backBtn.y, backBtn.width, backBtn.height);
+    ctx.fillStyle = 'white';
     ctx.font = '20px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('Back', backBtn.x + backBtn.width / 2, backBtn.y + backBtn.height / 2);
+    ctx.shadowBlur = 0;
 
+    // --- Title ---
+    ctx.fillStyle = 'white';
+    ctx.font = '48px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Settings', centerX, 80);
+
+    // --- Redesigned Sliders ---
     Object.entries(uiElements.settings).forEach(([key, slider]) => {
         if (!slider.label) return;
-        ctx.fillStyle = 'white';
-        ctx.font = '20px sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText(slider.label, slider.x, slider.y - 15);
-        ctx.fillStyle = '#555';
-        ctx.fillRect(slider.x, slider.y, slider.width, slider.height);
+
         const valueRatio = (settings[key] - slider.min) / (slider.max - slider.min);
         const handleX = slider.x + valueRatio * slider.width;
-        ctx.fillStyle = 'cyan';
-        ctx.fillRect(handleX - 10, slider.y - 5, 20, slider.height + 10);
+
+        // Label and Value
+        ctx.fillStyle = 'white';
+        ctx.font = '22px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(slider.label, slider.x, slider.y - 25);
         ctx.textAlign = 'right';
-        ctx.fillText(settings[key].toFixed(1), slider.x + slider.width, slider.y - 15);
+        ctx.font = 'bold 22px sans-serif';
+        ctx.fillText(settings[key].toFixed(2), slider.x + slider.width, slider.y - 25);
+
+        // Slider Track
+        ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(slider.x, slider.y);
+        ctx.lineTo(slider.x + slider.width, slider.y);
+        ctx.stroke();
+
+        // Slider Progress
+        ctx.strokeStyle = 'cyan';
+        ctx.lineWidth = 4;
+        ctx.shadowColor = 'cyan';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.moveTo(slider.x, slider.y);
+        ctx.lineTo(handleX, slider.y);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Slider Handle (Rhombus)
+        ctx.save();
+        ctx.translate(handleX, slider.y);
+        ctx.rotate(45 * Math.PI / 180);
+        ctx.fillStyle = activeSlider === key ? '#FFFFFF' : 'cyan';
+        ctx.shadowColor = activeSlider === key ? '#FFFFFF' : 'cyan';
+        ctx.shadowBlur = 15;
+        ctx.fillRect(-12, -12, 24, 24);
+        ctx.restore();
     });
 };
 
@@ -616,6 +746,8 @@ const pointerState = {
     lastTime: 0,
     velocityX: 0,
     velocityY: 0,
+    currentX: window.innerWidth / 2, // For parallax
+    currentY: window.innerHeight / 2, // For parallax
 };
 
 const handlePress = (event) => {
@@ -644,12 +776,19 @@ const handlePress = (event) => {
         const cardRenderX = selectedCard.x - songSelectState.currentScrollX - selectedCard.width / 2;
         if (x > cardRenderX && x < cardRenderX + selectedCard.width) {
             const selectedSong = songLibrary[songSelectState.selectedIndex];
-            // Deep copy the chart to ensure a fresh state
-            const chartCopy = JSON.parse(JSON.stringify(selectedSong.chart));
-            noteManager.loadChart(chartCopy);
-            audioManager.playMusic();
-            gameState.current = 'playing';
-            gameStartTime = null;
+            songUrl.value = selectedSong.audioUrl;
+
+            // Wait for the new audio to be ready before playing
+            audioElement.value.addEventListener('canplaythrough', () => {
+                // Deep copy the chart to ensure a fresh state
+                const chartCopy = JSON.parse(JSON.stringify(selectedSong.chart));
+                noteManager.loadChart(chartCopy);
+                audioManager.playMusic();
+                gameState.current = 'playing';
+                gameStartTime = null;
+            }, { once: true }); // Important: use 'once' to avoid multiple listeners
+
+            audioElement.value.load(); // Trigger the audio element to load the new source
         } else {
             songSelectState.isDragging = true;
             songSelectState.dragStartX = x - songSelectState.currentScrollX;
@@ -747,6 +886,9 @@ const handleMove = (event) => {
     const rect = gameCanvas.value.getBoundingClientRect();
     const x = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
     const y = (event.touches ? event.touches[0].clientY : event.clientY) - rect.top;
+
+    pointerState.currentX = x;
+    pointerState.currentY = y;
 
     if (!pointerState.isDown) return;
 
