@@ -319,8 +319,8 @@ const updatePlaying = () => {
   effectManager.update();
   dynamicBackground.update();
 
-  const isChartFinished = noteManager.isChartFinished();
-  if (isChartFinished) {
+  const currentChart = noteManager.getCurrentChart();
+  if (currentChart && gameTime >= currentChart.duration) {
     Object.assign(resultsState, {
         animationPhase: 'scoring',
         timer: 0,
@@ -517,7 +517,7 @@ const drawSongSelect = () => {
     ctx.restore();
 };
 
-const drawHUD = () => {
+const drawHUD = (gameTime) => {
     const width = gameCanvas.value.width;
     const height = gameCanvas.value.height;
 
@@ -546,11 +546,12 @@ const drawHUD = () => {
     }
 
     // Progress Bar
-    if (audioElement.value && audioElement.value.duration) {
-        const progress = audioElement.value.currentTime / audioElement.value.duration;
-        const barWidth = width * 0.4; // Make it smaller to fit between score and pause
+    const currentChart = noteManager.getCurrentChart();
+    if (currentChart && currentChart.duration > 0) {
+        const progress = Math.min(gameTime / currentChart.duration, 1.0);
+        const barWidth = width * 0.4;
         const barX = (width - barWidth) / 2;
-        const barY = 45; // Move to the top
+        const barY = 45;
 
         ctx.strokeStyle = 'white';
         ctx.lineWidth = 2;
@@ -570,7 +571,7 @@ const drawHUD = () => {
     }
 };
 
-const drawPlaying = () => {
+const drawPlaying = (gameTime) => {
   dynamicBackground.draw(ctx);
 
   // Pause Button
@@ -585,7 +586,7 @@ const drawPlaying = () => {
   judgementLine.draw();
   noteManager.draw(ctx, judgementLine.x);
   effectManager.draw(ctx);
-  drawHUD();
+  drawHUD(gameTime);
 };
 
 const drawPaused = () => {
@@ -1091,12 +1092,20 @@ const gameLoop = () => {
   }
 
   ctx.clearRect(0, 0, gameCanvas.value.width, gameCanvas.value.height);
+
+  // This part remains outside the update switch to ensure gameTime is always available for paused draw
+  let gameTime = audioElement.value.currentTime * 1000;
+  if (audioElement.value.paused && gameTime === 0) {
+    if (gameStartTime === null) { gameStartTime = performance.now(); }
+    gameTime = performance.now() - gameStartTime;
+  }
+
   switch (gameState.current) {
     case 'title': drawTitle(); break;
     case 'songSelect': drawSongSelect(); break;
-    case 'playing': drawPlaying(); break;
+    case 'playing': drawPlaying(gameTime); break;
     case 'paused':
-        drawPlaying();
+        drawPlaying(gameTime);
         drawPaused();
         break;
     case 'settings': drawSettings(); break;

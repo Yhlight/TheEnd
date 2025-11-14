@@ -288,6 +288,10 @@ export class NoteManager {
     return this.notes.length === 0 && this.activeHolds.size === 0 && this.activeDragNote === null;
   }
 
+  getCurrentChart() {
+    return this.chart;
+  }
+
   checkCatchHit(gameTime, clickX, clickY) {
     let closestNote = null;
     let minTimeDiff = Infinity;

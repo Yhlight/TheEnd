@@ -11,6 +11,7 @@ export const songLibrary = [
     artist: "A.I. Voice",
     audioUrl: '/hit.wav',
     chart: {
+      duration: 10000, // Explicitly set chart duration in milliseconds
       notes: [
         { time: 1000, x: 0.2, type: 'hold', duration: 1000 },
         { time: 1500, x: 0.8, type: 'tap' },
@@ -43,6 +44,7 @@ export const songLibrary = [
     artist: "A.I. Voice",
     audioUrl: '/hit.wav',
     chart: {
+      duration: 7000, // Explicitly set chart duration in milliseconds
       notes: [
         { time: 1000, x: 0.2, type: 'tap' },
         { time: 1250, x: 0.8, type: 'tap' },
@@ -77,6 +79,7 @@ export const songLibrary = [
     artist: "A.I. Voice",
     audioUrl: '/hit.wav',
     chart: {
+      duration: 12000, // Explicitly set chart duration in milliseconds
       notes: [
         // Opening sequence
         { time: 1000, x: 0.5, type: 'tap' },
