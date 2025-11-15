@@ -13,9 +13,11 @@
 <script setup>
 import ChartEditor from './ChartEditor.vue';
 import { ref, onMounted, reactive } from 'vue';
+import { Device } from '@capacitor/device';
 const songUrl = ref('');
 const screenShake = ref(0);
 const screenFlash = ref(0);
+const isMobile = ref(false);
 import { JudgementLine } from '../core/JudgementLine.js';
 import { NoteManager } from '../core/NoteManager.js';
 import { songLibrary } from '../core/songLibrary.js';
@@ -151,6 +153,12 @@ const initializeGame = () => {
   gameLoop();
 
   // TODO: Future implementation for external controls or testing might go here.
+  const checkDevice = async () => {
+    const info = await Device.getInfo();
+    // 'web' is the platform when running in a browser
+    isMobile.value = info.platform !== 'web';
+  };
+  checkDevice();
 };
 
 const initializeTitleCrystals = () => {
@@ -550,7 +558,7 @@ const drawSongSelect = () => {
         }
 
         // --- Draw Edit Button for Selected Card ---
-        if (index === songSelectState.selectedIndex) {
+        if (index === songSelectState.selectedIndex && !isMobile.value) {
             const editBtn = uiElements.songSelect.editButton;
             // Position it below the selected card
             editBtn.x = cardRenderX - editBtn.width / 2;
@@ -986,11 +994,13 @@ const handlePress = (event) => {
       const centerX = gameCanvas.value.width / 2;
       const centerY = gameCanvas.value.height / 2;
 
-      // Check for edit button click first
-      const editBtn = uiElements.songSelect.editButton;
-      if (x > editBtn.x && x < editBtn.x + editBtn.width && y > editBtn.y && y < editBtn.y + editBtn.height) {
-        gameState.current = 'editor';
-        return; // Stop further processing
+      // Check for edit button click first (only if not on mobile)
+      if (!isMobile.value) {
+        const editBtn = uiElements.songSelect.editButton;
+        if (x > editBtn.x && x < editBtn.x + editBtn.width && y > editBtn.y && y < editBtn.y + editBtn.height) {
+            gameState.current = 'editor';
+            return; // Stop further processing
+        }
       }
 
       // Define the hitbox for the selected, scaled-up card which is always in the center.
