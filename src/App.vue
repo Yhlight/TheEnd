@@ -15,7 +15,12 @@
       @settingsChange="updateSettings"
       @chartLoaded="cacheChart"
     />
-    <ResultsScreen v-if="currentView === 'results'" :results="gameResults" @exit="handleExit" />
+    <ResultsScreen
+      v-if="currentView === 'results'"
+      :results="gameResults"
+      @exit="handleExit"
+      @retry="handleRetry"
+    />
     <ChartEditor
       v-if="currentView === 'editor'"
       :chartUrl="selectedChartUrl"
@@ -51,6 +56,7 @@ export default {
         noteSpeed: 5,
         backgroundBrightness: 100,
         audioOffset: 0,
+        noteSize: 100,
       },
       chartCache: {},
     };
@@ -80,6 +86,10 @@ export default {
     handleSongFinished(results) {
       this.gameResults = results;
       this.currentView = 'results';
+    },
+    handleRetry() {
+      // Re-select the same chart to restart the game
+      this.handleChartSelected(this.selectedChartUrl, this.selectedChartData);
     },
     handleExit() {
       this.currentView = 'songSelection';
