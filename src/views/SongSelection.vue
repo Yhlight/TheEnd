@@ -11,8 +11,7 @@
     <div class="content">
       <h1>Select a Song</h1>
       <div class="actions-bar">
-        <label for="import-chart-input" class="import-button">Import Chart</label>
-        <input id="import-chart-input" type="file" @change="handleChartImport" accept=".json" style="display: none;">
+        <button class="import-button" @click="handleChartImport">Import Chart</button>
       </div>
       <ul class="song-list" v-if="charts.length > 0">
         <li
@@ -20,6 +19,7 @@
           :key="chart.id"
           class="song-item"
         >
+        <img :src="chart.coverUrl" alt="Chart Cover" class="song-cover">
         <div class="song-info" @click="selectChart(chart)">
           <div class="song-title">{{ chart.title }}</div>
           <div class="song-artist">{{ chart.artist }}</div>
@@ -36,6 +36,9 @@
 </template>
 
 <script>
+import { Capacitor } from '@capacitor/core';
+import { FilePicker } from '@capawesome/capacitor-file-picker';
+
 export default {
   name: 'SongSelection',
   emits: ['chartSelected', 'chartEditSelected'],
@@ -99,43 +102,58 @@ export default {
         this.$emit('chartEditSelected', chart.url);
       }
     },
-    handleChartImport(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
+    async handleChartImport() {
+      if (Capacitor.isNativePlatform()) {
         try {
-          const chartData = JSON.parse(e.target.result);
-
-          // Basic validation
-          if (!chartData.title || !chartData.artist || !chartData.notes) {
-            alert('Invalid chart file. Missing required properties.');
-            return;
-          }
-
-          const customCharts = JSON.parse(localStorage.getItem('customCharts') || '[]');
-
-          // Use a unique ID for the custom chart
-          const newChartId = `custom_${Date.now()}`;
-          chartData.id = newChartId;
-          chartData.isCustom = true;
-
-          customCharts.push(chartData);
-          localStorage.setItem('customCharts', JSON.stringify(customCharts));
-
-          // Reload charts to display the new one
-          this.loadCharts();
-
+          const result = await FilePicker.pickFiles({
+            types: ['application/json'],
+            readData: true, // Read file content as base64 data
+          });
+          const file = result.files[0];
+          if (!file) return;
+          // Capacitor provides data as base64, so we need to decode it
+          const fileContent = atob(file.data);
+          this.processFileContent(fileContent);
         } catch (error) {
-          console.error("Error parsing imported chart:", error);
-          alert('Failed to parse the chart file. Please ensure it is a valid JSON file.');
+          console.error("Error picking file on native:", error);
         }
-      };
-      reader.readAsText(file);
+      } else {
+        // Web implementation (unchanged)
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = (event) => {
+          const file = event.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (e) => this.processFileContent(e.target.result);
+          reader.readAsText(file);
+        };
+        input.click();
+      }
+    },
+    processFileContent(content) {
+      try {
+        const chartData = JSON.parse(content);
 
-      // Reset file input to allow importing the same file again
-      event.target.value = '';
+        // Basic validation
+        if (!chartData.title || !chartData.artist || !chartData.notes) {
+          alert('Invalid chart file. Missing required properties.');
+          return;
+        }
+
+        const customCharts = JSON.parse(localStorage.getItem('customCharts') || '[]');
+        const newChartId = `custom_${Date.now()}`;
+        chartData.id = newChartId;
+        chartData.isCustom = true;
+
+        customCharts.push(chartData);
+        localStorage.setItem('customCharts', JSON.stringify(customCharts));
+        this.loadCharts();
+      } catch (error) {
+        console.error("Error processing imported chart:", error);
+        alert('Failed to parse the chart file. Please ensure it is a valid JSON file.');
+      }
     },
     deleteCustomChart(chartId) {
       if (window.confirm('Are you sure you want to delete this custom chart? This action cannot be undone.')) {
@@ -239,13 +257,21 @@ h1 {
 
 .song-item {
   display: flex;
-  align-items: center;
+  align-items: stretch; /* Stretch items to fill height */
   margin-bottom: 15px;
   border: 2px solid #fff;
   border-radius: 10px;
   background-color: rgba(20, 20, 20, 0.8);
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
   transition: transform 0.2s, box-shadow 0.2s;
+  overflow: hidden; /* Ensure cover image respects border-radius */
+}
+
+.song-cover {
+  width: 100px;
+  height: 100px;
+  object-fit: cover; /* Cover the area, cropping if necessary */
+  border-right: 2px solid #fff;
 }
 
 .song-item:hover {
@@ -254,9 +280,11 @@ h1 {
 
 .song-info {
   flex-grow: 1;
-  padding: 20px;
+  padding: 15px 20px;
   cursor: pointer;
-  border-radius: 8px 0 0 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .song-info:hover {
