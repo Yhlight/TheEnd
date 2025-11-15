@@ -41,6 +41,19 @@
           <span>{{ localSettings.backgroundBrightness }}%</span>
         </div>
         <div class="setting-item">
+          <label for="noteSize">Note Size</label>
+           <input
+            type="range"
+            id="noteSize"
+            min="50"
+            max="150"
+            step="10"
+            v-model.number="localSettings.noteSize"
+            @input="updateSettings"
+          />
+          <span>{{ localSettings.noteSize }}%</span>
+        </div>
+        <div class="setting-item">
           <label for="audioOffset">Audio Offset</label>
           <div class="offset-control">
             <button @click="adjustOffset(-5)">-</button>
