@@ -84,6 +84,15 @@ export class ScoreManager {
     return accuracy;
   }
 
+  getGrade() {
+    const accuracy = this.getAccuracy();
+    if (accuracy >= 98) return 'S';
+    if (accuracy >= 94) return 'A';
+    if (accuracy >= 90) return 'B';
+    if (accuracy >= 80) return 'C';
+    return 'D';
+  }
+
   reset() {
     this.score = 0;
     this.combo = 0;

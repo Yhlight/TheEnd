@@ -35,6 +35,10 @@ export const songLibrary = [
         { time: 3000, duration: 500, value: { y: 150, rotation: -15 }, easing: 'easeOutQuad' },
         // At 4s, return to the default position (y=0, rotation=0) over 1s
         { time: 4000, duration: 1000, value: { y: 0, rotation: 0 }, easing: 'easeInOutQuad' },
+        // At 5s, turn the line gold and make it glow intensely
+        { time: 5000, duration: 500, value: { color: '#FFD700', glow: 40 }, easing: 'easeInQuad' },
+        // At 6s, return to normal
+        { time: 6000, duration: 1000, value: { color: '#FFFFFF', glow: 10 }, easing: 'easeOutQuad' },
       ]
     }
   },

@@ -32,7 +32,9 @@ const gameState = reactive({
 
 // UI element definitions (for hit detection)
 const uiElements = {
-  pauseButton: { x: 10, y: 10, width: 50, height: 50 },
+  playing: {
+    pauseButton: { x: 0, y: 0, width: 60, height: 60 }, // Position calculated in drawHUD
+  },
   paused: {
       resumeButton: { x: 0, y: 0, width: 200, height: 50 }, // Positions will be calculated
       retryButton: { x: 0, y: 0, width: 200, height: 50 },
@@ -582,6 +584,18 @@ const drawHUD = (gameTime) => {
     ctx.font = 'italic 16px sans-serif';
     ctx.fillText(selectedSong.artist, 22, topBarHeight / 2 + 15);
 
+    // --- Pause Button (Top Center) ---
+    const pb = uiElements.playing.pauseButton;
+    pb.x = (width - pb.width) / 2;
+    pb.y = (topBarHeight - pb.height) / 2;
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(pb.x, pb.y, pb.width, pb.height);
+    // Draw pause icon
+    ctx.fillStyle = 'white';
+    ctx.fillRect(pb.x + 20, pb.y + 15, 8, 30);
+    ctx.fillRect(pb.x + 32, pb.y + 15, 8, 30);
+
 
     // --- Score (Top Right) ---
     drawStylizedNumber(ctx, scoreManager.getScore().toString().padStart(8, '0'), width - 20, topBarHeight / 2 - 15, 5, 'white');
@@ -851,12 +865,7 @@ const drawResults = () => {
     });
 
     // --- Grade ---
-    const accuracy = scoreManager.getAccuracy();
-    let grade = 'D';
-    if (accuracy >= 98) grade = 'S';
-    else if (accuracy >= 94) grade = 'A';
-    else if (accuracy >= 90) grade = 'B';
-    else if (accuracy >= 80) grade = 'C';
+    const grade = scoreManager.getGrade();
 
     ctx.save();
     ctx.globalAlpha = resultsState.gradeAlpha;
@@ -979,9 +988,9 @@ const handlePress = (event) => {
       break;
     }
     case 'playing': {
-      const pb = uiElements.pauseButton;
+      const pb = uiElements.playing.pauseButton;
       if (x > pb.x && x < pb.x + pb.width && y > pb.y && y < pb.y + pb.height) {
-        audioElement.value.pause();
+        audioManager.pauseMusic();
         gameState.current = 'paused';
         return;
       }
@@ -993,7 +1002,7 @@ const handlePress = (event) => {
           effectManager.createHitEffect(tapResult.note.x, judgementLine.y, tapResult.note.color, tapResult.judgement);
           effectManager.createJudgementText(tapResult.note.x, judgementLine.y - 50, tapResult.judgement, tapResult.note.color);
           audioManager.playSound(tapResult.note.type);
-          judgementLine.flash(tapResult.note.color);
+          judgementLine.flash(gameTime, tapResult.note.color);
           dynamicBackground.triggerEffect();
           if (tapResult.judgement === 'Perfect') {
             effectManager.createShockwave(tapResult.note.x, judgementLine.y, tapResult.note.color);
@@ -1025,7 +1034,7 @@ const handlePress = (event) => {
           effectManager.createHitEffect(catchResult.note.x, judgementLine.y, catchResult.note.color, catchResult.judgement);
           effectManager.createJudgementText(catchResult.note.x, judgementLine.y - 50, catchResult.judgement, catchResult.note.color);
           audioManager.playSound(catchResult.note.type);
-          judgementLine.flash(catchResult.note.color);
+          judgementLine.flash(gameTime, catchResult.note.color);
           if (catchResult.judgement === 'Perfect') {
             screenShake.value = 8; // Slightly less shake for catch notes
             screenFlash.value = 0.4;
@@ -1130,7 +1139,7 @@ const handleRelease = (event) => {
         effectManager.createFlickEffect(flickResult.note.x, judgementLine.y, flickResult.note.color); // Use the new flick effect
         effectManager.createJudgementText(flickResult.note.x, judgementLine.y - 50, flickResult.judgement, flickResult.note.color);
         audioManager.playSound(flickResult.note.type);
-        judgementLine.flash(flickResult.note.color);
+        judgementLine.flash(gameTime, flickResult.note.color);
         dynamicBackground.triggerEffect();
         if (flickResult.judgement === 'Perfect') {
             effectManager.createShockwave(flickResult.note.x, judgementLine.y, flickResult.note.color);
