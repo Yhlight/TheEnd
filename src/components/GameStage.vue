@@ -1270,5 +1270,11 @@ const gameLoop = () => {
 
 <style scoped>
 .game-container { position: relative; width: 100vw; height: 100vh; }
-.game-canvas { display: block; background-color: #1a1a1a; }
+.game-canvas {
+  display: block;
+  background-color: #1a1a1a;
+  touch-action: none; /* Prevents browser from handling touch events (like scrolling) */
+  user-select: none; /* Prevents text selection */
+  -webkit-touch-callout: none; /* Disables callouts on long press */
+}
 </style>

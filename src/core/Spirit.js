@@ -1,43 +1,44 @@
 // src/core/Spirit.js
 import { Easing } from './Easing.js';
 
+// --- Debris Particle ---
+// Represents the orbiting geometric shapes around the core.
 class Debris {
-    constructor(spiritX, spiritY, spiritSize) {
-        // Initial position relative to the core
+    constructor(spiritSize) {
+        // Kinematics
         this.angle = Math.random() * Math.PI * 2;
-        this.distance = spiritSize * 1.5 + Math.random() * spiritSize * 2.5; // More spread out
-        this.targetDistance = this.distance;
+        this.orbitalSpeed = (Math.random() - 0.5) * 0.02 + 0.005; // Slow, majestic orbit
+        this.rotationSpeed = (Math.random() - 0.5) * 0.015;
 
-        // Visual properties
+        // Position & Size
+        this.baseDistance = spiritSize * 1.8 + Math.random() * spiritSize * 3;
+        this.distance = this.baseDistance;
         this.rotation = Math.random() * Math.PI * 2;
-        this.size = Math.random() * 6 + 3; // Shards are a bit larger
-        this.shape = Math.random() > 0.5 ? 'triangle' : 'line'; // More variety
+        this.size = Math.random() * 8 + 4; // Range of sizes for variety
 
-        // Movement properties
-        this.speed = (Math.random() - 0.5) * 0.03 + 0.01; // Slower, more majestic orbital speed
-        this.rotationSpeed = (Math.random() - 0.5) * 0.02;
-
-        // Lifecycle properties
+        // Shape & Appearance
+        this.shape = Math.random() > 0.6 ? 'square' : 'line'; // Prioritize lines
         this.alpha = 0;
-        this.targetAlpha = Math.random() * 0.6 + 0.3; // Brighter shards
-        this.life = 0;
+        this.targetAlpha = Math.random() * 0.5 + 0.2; // Base transparency
+        this.life = Math.random() * 100; // Start at a random life point for variety
     }
 
     update(dt, combo) {
         this.life += dt;
-        this.angle += this.speed;
+        this.angle += this.orbitalSpeed;
         this.rotation += this.rotationSpeed;
 
-        // Breathing effect for distance
-        this.distance = this.targetDistance + Math.sin(this.life * 2 + this.angle) * 3;
+        // Breathing effect: distance oscillates around the base distance
+        this.distance = this.baseDistance + Math.sin(this.life * 1.5 + this.angle) * 5;
 
-        // Fade in
+        // Fade in when created
         if (this.alpha < this.targetAlpha) {
-            this.alpha = Math.min(this.targetAlpha, this.alpha + 0.05);
+            this.alpha = Math.min(this.targetAlpha, this.alpha + 0.03);
         }
     }
 
     draw(ctx, spiritX, spiritY) {
+        // Calculate world position
         const x = spiritX + Math.cos(this.angle) * this.distance;
         const y = spiritY + Math.sin(this.angle) * this.distance;
 
@@ -48,17 +49,12 @@ class Debris {
         ctx.strokeStyle = `rgba(255, 255, 255, ${this.alpha})`;
         ctx.lineWidth = 1.5;
 
-        if (this.shape === 'triangle') {
-            ctx.beginPath();
-            ctx.moveTo(0, -this.size);
-            ctx.lineTo(this.size / 2, this.size / 2);
-            ctx.lineTo(-this.size / 2, this.size / 2);
-            ctx.closePath();
-            ctx.stroke();
+        if (this.shape === 'square') {
+            ctx.strokeRect(-this.size / 2, -this.size / 2, this.size, this.size);
         } else { // 'line'
             ctx.beginPath();
-            ctx.moveTo(0, -this.size);
-            ctx.lineTo(0, this.size);
+            ctx.moveTo(0, -this.size / 1.5);
+            ctx.lineTo(0, this.size / 1.5);
             ctx.stroke();
         }
 
@@ -67,173 +63,174 @@ class Debris {
 }
 
 
+// --- Spirit Core ---
+// The central visual element on the judgement line.
 export class Spirit {
     constructor(judgementLine) {
         this.judgementLine = judgementLine;
 
-        // Base properties
-        this.baseSize = 20; // Slightly smaller base
+        // Core properties
+        this.baseSize = 18;
         this.rotation = 0;
+        this.pulseTimer = Math.random() * Math.PI * 2;
 
-        // State properties affected by animations
+        // State properties
         this.size = this.baseSize;
         this.glow = 10;
-        this.colorAlpha = 0;
         this.hitColor = 'white';
+        this.colorAlpha = 0;
 
-        // Animation timers and states
-        this.pulseTimer = Math.random() * Math.PI * 2; // Random start phase
-        this.hitAnimation = { timer: 0, scale: 1 }; // More complex hit animation object
+        // Animation states
+        this.hitAnimation = { timer: 0, scale: 1, rings: [] };
         this.missAnimationTimer = 0;
 
-        // Combo related properties
+        // Combo-driven elements
         this.combo = 0;
         this.debris = [];
     }
 
     setCombo(combo) {
-        if (this.combo > combo) { // Combo break
+        if (this.combo > combo && combo === 0) { // Combo break
             this.onMiss();
         }
         this.combo = combo;
     }
 
     onHit(noteColor) {
-        this.hitAnimation.timer = 1; // Start hit animation (1 second duration)
-        this.hitAnimation.scale = 1.8; // Initial scale burst
+        this.hitAnimation.timer = 1;
+        this.hitAnimation.scale = 1.6;
         this.hitColor = noteColor || 'white';
         this.colorAlpha = 1;
+        // Create an expanding ring for the hit effect
+        this.hitAnimation.rings.push({ life: 0, alpha: 1 });
     }
 
     onMiss() {
-        this.missAnimationTimer = 1; // Start miss animation
-        this.debris.forEach(d => d.targetAlpha = 0); // Make debris fade out
-        // Instead of clearing immediately, let them fade
+        this.missAnimationTimer = 1;
+        // On miss, make debris fade out
+        this.debris.forEach(d => d.targetAlpha = 0);
+        // Clear them after they've had a chance to fade
         setTimeout(() => this.debris = [], 500);
     }
 
-    update(dt = 1/60) {
+    update(dt = 1 / 60) {
         this.pulseTimer += dt;
-        this.rotation += dt * 0.1; // Slow constant rotation of the core
+        this.rotation += dt * 0.15; // Slightly faster base rotation
 
-        // --- Handle Hit Animation ---
+        // --- Hit Animation ---
         if (this.hitAnimation.timer > 0) {
-            this.hitAnimation.timer -= dt * 3; // Faster decay
-            // Animate scale back down with an easing function
-            this.hitAnimation.scale = 1 + Easing.easeOutCubic(this.hitAnimation.timer) * 0.8;
-            this.colorAlpha = Easing.easeOutCubic(this.hitAnimation.timer);
+            this.hitAnimation.timer -= dt * 2.5;
+            this.hitAnimation.scale = 1 + Easing.easeOutCubic(this.hitAnimation.timer) * 0.6;
+            this.colorAlpha = Easing.easeOutQuint(this.hitAnimation.timer);
         } else {
             this.hitAnimation.scale = 1;
             this.colorAlpha = 0;
         }
 
-        // --- Handle Miss Animation ---
+        // Update hit rings
+        for (let i = this.hitAnimation.rings.length - 1; i >= 0; i--) {
+            const ring = this.hitAnimation.rings[i];
+            ring.life += dt * 5; // Ring expansion speed
+            ring.alpha = 1 - ring.life;
+            if (ring.alpha <= 0) {
+                this.hitAnimation.rings.splice(i, 1);
+            }
+        }
+
+        // --- Miss Animation ---
         if (this.missAnimationTimer > 0) {
-            this.missAnimationTimer -= dt * 3;
+            this.missAnimationTimer -= dt * 2;
         }
 
-        // --- Handle Combo Effects ---
+        // --- Combo Effects ---
         let targetSize = this.baseSize;
-        let coreBrightness = 0.8;
-        if (this.combo >= 100) {
-            targetSize = this.baseSize * 1.5;
-            coreBrightness = 1.0;
-        } else if (this.combo >= 50) {
-            targetSize = this.baseSize * 1.2;
-            coreBrightness = 0.9;
-        }
+        if (this.combo >= 50) targetSize = this.baseSize * 1.25;
+        if (this.combo >= 100) targetSize = this.baseSize * 1.5;
 
-        // Add debris based on combo, up to a max
-        const maxDebris = 12;
-        const debrisCount = Math.min(maxDebris, Math.floor(this.combo / 10)); // One piece every 10 combo
+        // Manage debris based on combo
+        const maxDebris = 15;
+        const debrisCount = Math.min(maxDebris, Math.floor(this.combo / 8));
         if (this.debris.length < debrisCount) {
-            this.debris.push(new Debris(this.judgementLine.x, this.judgementLine.y, this.size));
-        } else if (this.debris.length > debrisCount && this.combo === 0) {
-             // Only remove if combo is 0 to prevent flickering on combo break
-             this.debris.pop();
+            this.debris.push(new Debris(this.size));
+        } else if (this.combo === 0 && this.debris.length > 0) {
+            this.debris.forEach(d => d.targetAlpha = 0);
+            setTimeout(() => this.debris = [], 500);
         }
 
         this.debris.forEach(d => d.update(dt, this.combo));
 
-        // --- Apply pulsing (idle animation) and combo size ---
-        const pulse = Math.sin(this.pulseTimer * 1.5) * 2; // Slower, deeper breath
-        this.size += (targetSize + pulse - this.size) * 0.1; // Smoothly interpolate to target size
-
-        this.glow = 15 + (this.size - this.baseSize) * 2.5 + this.combo / 10;
-        this.coreBrightness = coreBrightness;
+        // --- Final Size Calculation (Idle Pulse + Combo Size) ---
+        const pulse = Math.sin(this.pulseTimer * 2) * 1.5; // Deeper pulse
+        this.size += (targetSize + pulse - this.size) * 0.08; // Smoother interpolation
+        this.glow = 15 + (this.size - this.baseSize) * 2 + this.combo / 10;
     }
 
     draw(ctx) {
         const x = this.judgementLine.x;
         const y = this.judgementLine.y;
 
-        // --- Draw Debris ---
+        // --- 1. Debris (Background) ---
         this.debris.forEach(d => d.draw(ctx, x, y));
 
         ctx.save();
+        ctx.translate(x, y);
 
         // --- Miss/Glitch Effect ---
         if (this.missAnimationTimer > 0) {
-            const glitchAmount = Easing.easeOutQuad(this.missAnimationTimer) * 20;
-            ctx.translate((Math.random() - 0.5) * glitchAmount, (Math.random() - 0.5) * glitchAmount);
+            const glitch = Easing.easeOutExpo(this.missAnimationTimer) * 15;
+            ctx.translate((Math.random() - 0.5) * glitch, (Math.random() - 0.5) * glitch);
+            ctx.rotate((Math.random() - 0.5) * glitch * 0.02);
         }
 
-        ctx.translate(x, y);
-
-        // --- Draw Core ---
         const finalSize = this.size * this.hitAnimation.scale;
 
-        // Outer Glow (influenced by hit)
+        // --- 2. Glows ---
         ctx.shadowColor = this.hitColor;
-        ctx.shadowBlur = this.glow * this.hitAnimation.scale;
+        ctx.shadowBlur = this.glow + this.colorAlpha * 30; // Hit makes glow pulse intensely
 
-        // 1. Hit Color Layer (drawn first, underneath)
-        if (this.colorAlpha > 0) {
-            ctx.globalAlpha = this.colorAlpha * 0.8;
-            ctx.strokeStyle = this.hitColor;
-            ctx.lineWidth = 3;
+        // --- 3. Hit Rings ---
+        ctx.strokeStyle = `rgba(255, 255, 255, ${this.colorAlpha * 0.8})`;
+        this.hitAnimation.rings.forEach(ring => {
+            ctx.lineWidth = 3 * ring.alpha;
+            ctx.globalAlpha = ring.alpha;
             ctx.beginPath();
-            for (let i = 0; i < 4; i++) {
-                const angle = this.rotation + i * Math.PI / 2;
-                const size = finalSize * 1.2; // Slightly larger
-                ctx.moveTo(0,0);
-                ctx.lineTo(Math.cos(angle) * size, Math.sin(angle) * size);
-            }
+            ctx.arc(0, 0, finalSize + ring.life * 50, 0, Math.PI * 2);
             ctx.stroke();
-        }
+        });
         ctx.globalAlpha = 1;
 
 
-        // 2. Main Body (Rhombus/Crystal)
-        ctx.save();
-        ctx.rotate(this.rotation + 45 * Math.PI / 180);
-
-        // Outer stroked rhombus
-        ctx.strokeStyle = `rgba(255, 255, 255, ${this.coreBrightness})`;
+        // --- 4. Core Structure (Multi-layered Rhombus) ---
         ctx.lineWidth = 2;
-        ctx.strokeRect(-finalSize / 2, -finalSize / 2, finalSize, finalSize);
 
-        // Inner filled rhombus (creates hollow effect)
-        const innerSize = finalSize * 0.6;
-        ctx.fillStyle = `rgba(255, 255, 255, ${this.coreBrightness * 0.7})`;
-        ctx.fillRect(-innerSize / 2, -innerSize / 2, innerSize, innerSize);
+        const layers = 3;
+        for (let i = 0; i < layers; i++) {
+            const layerSize = finalSize * (1 - i * 0.2);
+            const layerAlpha = 0.8 - i * 0.2;
+            const layerRotation = this.rotation * (i % 2 === 0 ? 1 : -1) * (1 + i * 0.1);
 
-        ctx.restore();
+            ctx.save();
+            ctx.rotate(layerRotation + 45 * Math.PI / 180);
+            ctx.strokeStyle = `rgba(255, 255, 255, ${layerAlpha})`;
+            ctx.strokeRect(-layerSize / 2, -layerSize / 2, layerSize, layerSize);
+            ctx.restore();
+        }
 
-        // 3. Inner cross shape
-        ctx.save();
-        ctx.rotate(this.rotation);
-        ctx.strokeStyle = `rgba(255, 255, 255, ${this.coreBrightness * 0.8})`;
+        // --- 5. Inner Cross/Star ---
         ctx.lineWidth = 1.5;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+        const starSize = finalSize * 0.9;
+
+        ctx.save();
+        ctx.rotate(-this.rotation * 1.5); // Counter-rotation for dynamic feel
         ctx.beginPath();
-        ctx.moveTo(-finalSize * 0.8, 0);
-        ctx.lineTo(finalSize * 0.8, 0);
-        ctx.moveTo(0, -finalSize * 0.8);
-        ctx.lineTo(0, finalSize * 0.8);
+        ctx.moveTo(-starSize, 0);
+        ctx.lineTo(starSize, 0);
+        ctx.moveTo(0, -starSize);
+        ctx.lineTo(0, starSize);
         ctx.stroke();
         ctx.restore();
 
-
-        ctx.restore(); // Restore from main translate
+        ctx.restore();
     }
 }
