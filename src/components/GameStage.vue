@@ -46,6 +46,7 @@ const uiElements = {
       resumeButton: { x: 0, y: 0, width: 200, height: 50 }, // Positions will be calculated
       retryButton: { x: 0, y: 0, width: 200, height: 50 },
       settingsButton: { x: 0, y: 0, width: 200, height: 50 },
+      exitButton: { x: 0, y: 0, width: 200, height: 50 },
   },
   songSelect: {
       editButton: { x: 0, y: 0, width: 120, height: 40 }, // Position calculated dynamically
@@ -206,6 +207,7 @@ const applySettings = () => {
 
 const retryCurrentSong = () => {
     scoreManager.reset();
+    effectManager.reset(); // Clear any leftover visual effects
     const selectedSong = songLibrary[songSelectState.selectedIndex];
     // Deep copy the chart to ensure a fresh state
     const chartCopy = JSON.parse(JSON.stringify(selectedSong.chart));
@@ -213,6 +215,7 @@ const retryCurrentSong = () => {
     audioManager.resetMusic();
     audioManager.playMusic();
     gameState.current = 'playing';
+    gameStartTime = null; // Reset the game start time
 };
 
 const calculateCardPositions = () => {
@@ -235,14 +238,20 @@ const calculatePausedMenuPositions = () => {
     const centerX = gameCanvas.value.width / 2;
     const centerY = gameCanvas.value.height / 2;
     const buttonHeight = uiElements.paused.resumeButton.height;
-    const buttonMargin = 20;
+    const buttonMargin = 15;
+    const totalHeight = 4 * buttonHeight + 3 * buttonMargin;
 
     uiElements.paused.resumeButton.x = centerX - uiElements.paused.resumeButton.width / 2;
-    uiElements.paused.resumeButton.y = centerY - buttonHeight - buttonMargin;
+    uiElements.paused.resumeButton.y = centerY - totalHeight / 2;
+
     uiElements.paused.retryButton.x = centerX - uiElements.paused.retryButton.width / 2;
-    uiElements.paused.retryButton.y = centerY;
+    uiElements.paused.retryButton.y = centerY - totalHeight / 2 + (buttonHeight + buttonMargin);
+
     uiElements.paused.settingsButton.x = centerX - uiElements.paused.settingsButton.width / 2;
-    uiElements.paused.settingsButton.y = centerY + buttonHeight + buttonMargin;
+    uiElements.paused.settingsButton.y = centerY - totalHeight / 2 + 2 * (buttonHeight + buttonMargin);
+
+    uiElements.paused.exitButton.x = centerX - uiElements.paused.exitButton.width / 2;
+    uiElements.paused.exitButton.y = centerY - totalHeight / 2 + 3 * (buttonHeight + buttonMargin);
 };
 
 const calculateSettingsMenuPositions = () => {
@@ -1092,7 +1101,7 @@ const handlePress = (event) => {
       break;
     }
     case 'paused': {
-        const { resumeButton, retryButton, settingsButton } = uiElements.paused;
+        const { resumeButton, retryButton, settingsButton, exitButton } = uiElements.paused;
         if (x > resumeButton.x && x < resumeButton.x + resumeButton.width && y > resumeButton.y && y < resumeButton.y + resumeButton.height) {
             audioElement.value.play();
             gameState.current = 'playing';
@@ -1100,6 +1109,13 @@ const handlePress = (event) => {
             retryCurrentSong();
         } else if (x > settingsButton.x && x < settingsButton.x + settingsButton.width && y > settingsButton.y && y < settingsButton.y + settingsButton.height) {
             gameState.current = 'settings';
+        } else if (x > exitButton.x && x < exitButton.x + exitButton.width && y > exitButton.y && y < exitButton.y + exitButton.height) {
+            // Reset managers and go back to song select
+            audioManager.stopMusic();
+            scoreManager.reset();
+            effectManager.reset();
+            noteManager.loadChart(null);
+            gameState.current = 'songSelect';
         }
         break;
     }

@@ -173,4 +173,11 @@ export class EffectManager {
         wave.draw(ctx);
     }
   }
+
+  reset() {
+    this.particles = [];
+    this.judgementTexts = [];
+    this.shockwaves = [];
+    // Note: We keep the particlePool intact for reuse.
+  }
 }
