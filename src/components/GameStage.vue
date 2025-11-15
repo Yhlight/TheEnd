@@ -1,12 +1,17 @@
 <template>
   <div class="game-container">
-    <canvas ref="gameCanvas" class="game-canvas"></canvas>
-    <!-- The start overlay is now controlled by the 'title' game state -->
+    <canvas ref="gameCanvas" class="game-canvas" v-show="gameState.current !== 'editor'"></canvas>
+    <ChartEditor
+      v-if="gameState.current === 'editor'"
+      :songData="songLibrary[songSelectState.selectedIndex]"
+      @exit="gameState.current = 'songSelect'"
+    />
     <audio ref="audioElement" :src="songUrl" style="display: none;"></audio>
   </div>
 </template>
 
 <script setup>
+import ChartEditor from './ChartEditor.vue';
 import { ref, onMounted, reactive } from 'vue';
 const songUrl = ref('');
 const screenShake = ref(0);
@@ -39,6 +44,9 @@ const uiElements = {
       resumeButton: { x: 0, y: 0, width: 200, height: 50 }, // Positions will be calculated
       retryButton: { x: 0, y: 0, width: 200, height: 50 },
       settingsButton: { x: 0, y: 0, width: 200, height: 50 },
+  },
+  songSelect: {
+      editButton: { x: 0, y: 0, width: 120, height: 40 }, // Position calculated dynamically
   },
   settings: {
       backButton: { x: 10, y: 10, width: 100, height: 40 },
@@ -541,6 +549,30 @@ const drawSongSelect = () => {
 
         }
 
+        // --- Draw Edit Button for Selected Card ---
+        if (index === songSelectState.selectedIndex) {
+            const editBtn = uiElements.songSelect.editButton;
+            // Position it below the selected card
+            editBtn.x = cardRenderX - editBtn.width / 2;
+            editBtn.y = renderY + scaledHeight + 20;
+
+            ctx.save();
+            ctx.globalAlpha = 1; // Make it fully visible
+            ctx.strokeStyle = 'gold';
+            ctx.lineWidth = 2;
+            ctx.fillStyle = 'rgba(50, 40, 20, 0.7)';
+
+            ctx.strokeRect(editBtn.x, editBtn.y, editBtn.width, editBtn.height);
+            ctx.fillRect(editBtn.x, editBtn.y, editBtn.width, editBtn.height);
+
+            ctx.fillStyle = 'gold';
+            ctx.font = 'bold 20px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('EDIT', editBtn.x + editBtn.width / 2, editBtn.y + editBtn.height / 2);
+            ctx.restore();
+        }
+
         ctx.restore();
     });
 
@@ -953,6 +985,13 @@ const handlePress = (event) => {
     case 'songSelect': {
       const centerX = gameCanvas.value.width / 2;
       const centerY = gameCanvas.value.height / 2;
+
+      // Check for edit button click first
+      const editBtn = uiElements.songSelect.editButton;
+      if (x > editBtn.x && x < editBtn.x + editBtn.width && y > editBtn.y && y < editBtn.y + editBtn.height) {
+        gameState.current = 'editor';
+        return; // Stop further processing
+      }
 
       // Define the hitbox for the selected, scaled-up card which is always in the center.
       const scaledWidth = CARD_WIDTH * SELECTED_CARD_SCALE;
