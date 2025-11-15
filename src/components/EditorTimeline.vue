@@ -25,9 +25,23 @@
       class="timeline-item event"
       :class="{ selected: index === selectedEventIndex }"
       :style="getItemStyle(event)"
-      @click="selectEvent(index)"
+      @click.stop="selectEvent(index)"
+      @mousedown.prevent="startEventDrag(index, $event)"
     >
       Event: y={{ event.y }}, rot={{ event.rotation }}
+    </div>
+
+    <!-- Render Camera Events -->
+    <div
+      v-for="(event, index) in chart.cameraEvents"
+      :key="'camera-event-' + index"
+      class="timeline-item camera-event"
+      :class="{ selected: index === selectedCameraEventIndex }"
+      :style="getItemStyle(event)"
+      @click.stop="selectCameraEvent(index)"
+      @mousedown.prevent="startCameraEventDrag(index, $event)"
+    >
+      &#x25C6;
     </div>
   </div>
 </template>
@@ -39,8 +53,9 @@ export default {
     chart: { type: Object, required: true },
     selectedNoteId: { type: [Number, null], default: null },
     selectedEventIndex: { type: [Number, null], default: null },
+    selectedCameraEventIndex: { type: [Number, null], default: null },
   },
-  emits: ['addNote', 'selectNote', 'updateNote', 'selectEvent'],
+  emits: ['addNote', 'selectNote', 'updateNote', 'selectEvent', 'updateEvent', 'selectCameraEvent', 'updateCameraEvent'],
   data() {
     return {
       pixelsPerSecond: 100, // 100px represents 1 second
@@ -49,6 +64,8 @@ export default {
       dragStartY: 0,
       resizingNote: null,
       resizeStartY: 0,
+      draggingEvent: null,
+      draggingCameraEvent: null,
     };
   },
   computed: {
@@ -56,7 +73,8 @@ export default {
       // Find the time of the last note or event to determine total duration
       const lastNoteTime = this.chart.notes.reduce((max, n) => Math.max(max, n.time + (n.duration || 0)), 0);
       const lastEventTime = this.chart.events.reduce((max, e) => Math.max(max, e.time), 0);
-      return Math.max(lastNoteTime, lastEventTime);
+      const lastCameraEventTime = this.chart.cameraEvents?.reduce((max, e) => Math.max(max, e.time), 0) || 0;
+      return Math.max(lastNoteTime, lastEventTime, lastCameraEventTime);
     },
     timelineHeight() {
       return (this.songDurationMs / 1000) * this.pixelsPerSecond;
@@ -148,12 +166,75 @@ export default {
       this.resizingNote = null;
     },
     selectEvent(index) {
-      this.$emit('selectEvent', index);
+      if (!this.draggingEvent) {
+        this.$emit('selectEvent', index);
+      }
+    },
+    startEventDrag(index, event) {
+      this.draggingEvent = {
+        index: index,
+        initialTime: this.chart.events[index].time,
+        dragStartY: event.clientY,
+      };
+      window.addEventListener('mousemove', this.onEventDrag);
+      window.addEventListener('mouseup', this.stopEventDrag);
+    },
+    onEventDrag(event) {
+      if (!this.draggingEvent) return;
+
+      const timeOffset = (event.clientY - this.draggingEvent.dragStartY) / this.pixelsPerSecond * 1000;
+      const newTime = this.draggingEvent.initialTime + timeOffset;
+
+      this.$emit('updateEvent', {
+        index: this.draggingEvent.index,
+        time: Math.max(0, Math.round(newTime)), // Prevent negative time
+      });
+    },
+    stopEventDrag() {
+      window.removeEventListener('mousemove', this.onEventDrag);
+      window.removeEventListener('mouseup', this.stopEventDrag);
+      setTimeout(() => {
+        this.draggingEvent = null;
+      }, 10);
+    },
+    selectCameraEvent(index) {
+      if (!this.draggingCameraEvent) {
+        this.$emit('selectCameraEvent', index);
+      }
+    },
+    startCameraEventDrag(index, event) {
+      this.draggingCameraEvent = {
+        index: index,
+        initialTime: this.chart.cameraEvents[index].time,
+        dragStartY: event.clientY,
+      };
+      window.addEventListener('mousemove', this.onCameraEventDrag);
+      window.addEventListener('mouseup', this.stopCameraEventDrag);
+    },
+    onCameraEventDrag(event) {
+      if (!this.draggingCameraEvent) return;
+
+      const timeOffset = (event.clientY - this.draggingCameraEvent.dragStartY) / this.pixelsPerSecond * 1000;
+      const newTime = this.draggingCameraEvent.initialTime + timeOffset;
+
+      this.$emit('updateCameraEvent', {
+        index: this.draggingCameraEvent.index,
+        time: Math.max(0, Math.round(newTime)),
+      });
+    },
+    stopCameraEventDrag() {
+      window.removeEventListener('mousemove', this.onCameraEventDrag);
+      window.removeEventListener('mouseup', this.stopCameraEventDrag);
+      setTimeout(() => {
+        this.draggingCameraEvent = null;
+      }, 10);
     },
     handleClick(event) {
-      // If the click is on the timeline background, deselect any selected note
-      if (event.target === event.currentTarget && !this.draggingNote) {
+      // If the click is on the timeline background, deselect everything
+      if (event.target === event.currentTarget && !this.draggingNote && !this.draggingEvent && !this.draggingCameraEvent) {
         this.$emit('selectNote', null);
+        this.$emit('selectEvent', null);
+        this.$emit('selectCameraEvent', null);
 
         // Also proceed to add a new note
         const rect = event.currentTarget.getBoundingClientRect();
@@ -187,14 +268,27 @@ export default {
 .note {
   border: 1px solid;
 }
-.note.tap { background-color: rgba(0, 255, 255, 0.3); border-color: #00ffff; }
-.note.hold { background-color: rgba(255, 0, 255, 0.3); border-color: #ff00ff; }
-.note.swipe { background-color: rgba(255, 255, 0, 0.3); border-color: #ffff00; }
-.note.catch { background-color: rgba(0, 255, 0, 0.3); border-color: #00ff00; width: 100px; height: 4px; }
+.note {
+  border: 1px solid #fff;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  text-shadow: 0 0 5px #fff;
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+  transition: all 0.2s;
+}
+.note.tap, .note.swipe, .note.hold { width: 80px; }
+.note.catch { width: 120px; height: 4px; }
+.note.hold { background-color: rgba(255, 255, 255, 0.05); }
+
+.note:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.7);
+}
 
 .note.selected {
-  border: 2px solid #ff0000;
-  box-shadow: 0 0 10px #ff0000;
+  border: 2px solid #ff3b30;
+  background-color: rgba(255, 59, 48, 0.3);
+  box-shadow: 0 0 15px #ff3b30, 0 0 25px #ff3b30;
   z-index: 10;
 }
 
@@ -211,21 +305,46 @@ export default {
 .event {
   width: 95%;
   left: 2.5%;
-  background-color: rgba(255, 165, 0, 0.2);
-  border-top: 1px dashed orange;
-  color: orange;
+  background-color: rgba(0, 255, 255, 0.1);
+  border-top: 1px dashed #00ffff;
+  color: #00ffff;
+  text-shadow: 0 0 5px #00ffff;
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
   z-index: 5;
   text-align: right;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
 }
 
 .event:hover {
-  background-color: rgba(255, 165, 0, 0.4);
+  background-color: rgba(0, 255, 255, 0.2);
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.7);
 }
 
 .event.selected {
-  border-top: 2px solid #ff0000;
-  box-shadow: 0 0 10px #ff0000;
+  border-top: 2px solid #ff3b30;
+  background-color: rgba(255, 59, 48, 0.3);
+  box-shadow: 0 0 15px #ff3b30, 0 0 25px #ff3b30;
+}
+
+.camera-event {
+  width: 20px;
+  height: 20px;
+  left: 5px; /* Position on the left side of the timeline */
+  transform: translateX(0);
+  background-color: transparent;
+  color: #ff9500; /* Orange color */
+  font-size: 20px;
+  text-shadow: 0 0 5px #ff9500;
+  cursor: pointer;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.camera-event.selected {
+  color: #ff3b30;
+  text-shadow: 0 0 10px #ff3b30;
 }
 </style>
