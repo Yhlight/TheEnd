@@ -3,18 +3,35 @@ import { Easing } from './Easing.js';
 
 class Debris {
     constructor(spiritX, spiritY, spiritSize) {
+        // Initial position relative to the core
         this.angle = Math.random() * Math.PI * 2;
-        this.distance = spiritSize * 1.5 + Math.random() * spiritSize * 2;
-        this.rotation = this.angle;
-        this.size = Math.random() * 4 + 2;
-        this.speed = (Math.random() - 0.5) * 0.05 + 0.01; // Orbital speed
+        this.distance = spiritSize * 1.5 + Math.random() * spiritSize * 2.5; // More spread out
+        this.targetDistance = this.distance;
+
+        // Visual properties
+        this.rotation = Math.random() * Math.PI * 2;
+        this.size = Math.random() * 6 + 3; // Shards are a bit larger
+        this.shape = Math.random() > 0.5 ? 'triangle' : 'line'; // More variety
+
+        // Movement properties
+        this.speed = (Math.random() - 0.5) * 0.03 + 0.01; // Slower, more majestic orbital speed
+        this.rotationSpeed = (Math.random() - 0.5) * 0.02;
+
+        // Lifecycle properties
         this.alpha = 0;
-        this.targetAlpha = Math.random() * 0.5 + 0.2;
+        this.targetAlpha = Math.random() * 0.6 + 0.3; // Brighter shards
+        this.life = 0;
     }
 
-    update(dt) {
+    update(dt, combo) {
+        this.life += dt;
         this.angle += this.speed;
-        this.rotation += this.speed * 2;
+        this.rotation += this.rotationSpeed;
+
+        // Breathing effect for distance
+        this.distance = this.targetDistance + Math.sin(this.life * 2 + this.angle) * 3;
+
+        // Fade in
         if (this.alpha < this.targetAlpha) {
             this.alpha = Math.min(this.targetAlpha, this.alpha + 0.05);
         }
@@ -27,8 +44,24 @@ class Debris {
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(this.rotation);
-        ctx.fillStyle = `rgba(255, 255, 255, ${this.alpha})`;
-        ctx.fillRect(-this.size/2, -this.size/2, this.size, this.size);
+
+        ctx.strokeStyle = `rgba(255, 255, 255, ${this.alpha})`;
+        ctx.lineWidth = 1.5;
+
+        if (this.shape === 'triangle') {
+            ctx.beginPath();
+            ctx.moveTo(0, -this.size);
+            ctx.lineTo(this.size / 2, this.size / 2);
+            ctx.lineTo(-this.size / 2, this.size / 2);
+            ctx.closePath();
+            ctx.stroke();
+        } else { // 'line'
+            ctx.beginPath();
+            ctx.moveTo(0, -this.size);
+            ctx.lineTo(0, this.size);
+            ctx.stroke();
+        }
+
         ctx.restore();
     }
 }
@@ -39,7 +72,7 @@ export class Spirit {
         this.judgementLine = judgementLine;
 
         // Base properties
-        this.baseSize = 25;
+        this.baseSize = 20; // Slightly smaller base
         this.rotation = 0;
 
         // State properties affected by animations
@@ -49,8 +82,8 @@ export class Spirit {
         this.hitColor = 'white';
 
         // Animation timers and states
-        this.pulseTimer = 0;
-        this.hitAnimationTimer = 0;
+        this.pulseTimer = Math.random() * Math.PI * 2; // Random start phase
+        this.hitAnimation = { timer: 0, scale: 1 }; // More complex hit animation object
         this.missAnimationTimer = 0;
 
         // Combo related properties
@@ -59,27 +92,39 @@ export class Spirit {
     }
 
     setCombo(combo) {
+        if (this.combo > combo) { // Combo break
+            this.onMiss();
+        }
         this.combo = combo;
     }
 
     onHit(noteColor) {
-        this.hitAnimationTimer = 1; // Start hit animation
+        this.hitAnimation.timer = 1; // Start hit animation (1 second duration)
+        this.hitAnimation.scale = 1.8; // Initial scale burst
         this.hitColor = noteColor || 'white';
         this.colorAlpha = 1;
     }
 
     onMiss() {
         this.missAnimationTimer = 1; // Start miss animation
-        this.debris = []; // Clear all debris on miss
+        this.debris.forEach(d => d.targetAlpha = 0); // Make debris fade out
+        // Instead of clearing immediately, let them fade
+        setTimeout(() => this.debris = [], 500);
     }
 
     update(dt = 1/60) {
         this.pulseTimer += dt;
+        this.rotation += dt * 0.1; // Slow constant rotation of the core
 
         // --- Handle Hit Animation ---
-        if (this.hitAnimationTimer > 0) {
-            this.hitAnimationTimer -= dt * 2;
-            this.colorAlpha = Math.max(0, this.hitAnimationTimer);
+        if (this.hitAnimation.timer > 0) {
+            this.hitAnimation.timer -= dt * 3; // Faster decay
+            // Animate scale back down with an easing function
+            this.hitAnimation.scale = 1 + Easing.easeOutCubic(this.hitAnimation.timer) * 0.8;
+            this.colorAlpha = Easing.easeOutCubic(this.hitAnimation.timer);
+        } else {
+            this.hitAnimation.scale = 1;
+            this.colorAlpha = 0;
         }
 
         // --- Handle Miss Animation ---
@@ -89,27 +134,33 @@ export class Spirit {
 
         // --- Handle Combo Effects ---
         let targetSize = this.baseSize;
+        let coreBrightness = 0.8;
         if (this.combo >= 100) {
-            targetSize = this.baseSize * 1.4;
+            targetSize = this.baseSize * 1.5;
+            coreBrightness = 1.0;
         } else if (this.combo >= 50) {
             targetSize = this.baseSize * 1.2;
+            coreBrightness = 0.9;
         }
 
-        // Add debris based on combo
-        const debrisCount = Math.floor(this.combo / 25); // One piece of debris every 25 combo
+        // Add debris based on combo, up to a max
+        const maxDebris = 12;
+        const debrisCount = Math.min(maxDebris, Math.floor(this.combo / 10)); // One piece every 10 combo
         if (this.debris.length < debrisCount) {
             this.debris.push(new Debris(this.judgementLine.x, this.judgementLine.y, this.size));
-        } else if (this.debris.length > debrisCount) {
-            this.debris.pop();
+        } else if (this.debris.length > debrisCount && this.combo === 0) {
+             // Only remove if combo is 0 to prevent flickering on combo break
+             this.debris.pop();
         }
 
-        this.debris.forEach(d => d.update(dt));
+        this.debris.forEach(d => d.update(dt, this.combo));
 
-        // --- Apply pulsing and combo size ---
-        const pulse = Math.sin(this.pulseTimer * 2) * 2;
+        // --- Apply pulsing (idle animation) and combo size ---
+        const pulse = Math.sin(this.pulseTimer * 1.5) * 2; // Slower, deeper breath
         this.size += (targetSize + pulse - this.size) * 0.1; // Smoothly interpolate to target size
 
-        this.glow = 10 + (this.size - this.baseSize) * 2;
+        this.glow = 15 + (this.size - this.baseSize) * 2.5 + this.combo / 10;
+        this.coreBrightness = coreBrightness;
     }
 
     draw(ctx) {
@@ -128,23 +179,61 @@ export class Spirit {
         }
 
         ctx.translate(x, y);
-        ctx.rotate(45 * Math.PI / 180); // Rotate to be a rhombus
 
-        // --- Draw Main Body ---
-        ctx.fillStyle = '#FFFFFF';
-        ctx.shadowColor = '#FFFFFF';
-        ctx.shadowBlur = this.glow;
-        ctx.fillRect(-this.size / 2, -this.size / 2, this.size, this.size);
+        // --- Draw Core ---
+        const finalSize = this.size * this.hitAnimation.scale;
 
-        // --- Draw Hit Color Overlay ---
+        // Outer Glow (influenced by hit)
+        ctx.shadowColor = this.hitColor;
+        ctx.shadowBlur = this.glow * this.hitAnimation.scale;
+
+        // 1. Hit Color Layer (drawn first, underneath)
         if (this.colorAlpha > 0) {
-            ctx.globalAlpha = this.colorAlpha;
-            ctx.fillStyle = this.hitColor;
-            ctx.shadowColor = this.hitColor;
-            const hitSize = this.size * (1 + (1 - Easing.easeOutQuad(this.hitAnimationTimer)) * 0.5);
-            ctx.fillRect(-hitSize / 2, -hitSize / 2, hitSize, hitSize);
+            ctx.globalAlpha = this.colorAlpha * 0.8;
+            ctx.strokeStyle = this.hitColor;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            for (let i = 0; i < 4; i++) {
+                const angle = this.rotation + i * Math.PI / 2;
+                const size = finalSize * 1.2; // Slightly larger
+                ctx.moveTo(0,0);
+                ctx.lineTo(Math.cos(angle) * size, Math.sin(angle) * size);
+            }
+            ctx.stroke();
         }
+        ctx.globalAlpha = 1;
+
+
+        // 2. Main Body (Rhombus/Crystal)
+        ctx.save();
+        ctx.rotate(this.rotation + 45 * Math.PI / 180);
+
+        // Outer stroked rhombus
+        ctx.strokeStyle = `rgba(255, 255, 255, ${this.coreBrightness})`;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-finalSize / 2, -finalSize / 2, finalSize, finalSize);
+
+        // Inner filled rhombus (creates hollow effect)
+        const innerSize = finalSize * 0.6;
+        ctx.fillStyle = `rgba(255, 255, 255, ${this.coreBrightness * 0.7})`;
+        ctx.fillRect(-innerSize / 2, -innerSize / 2, innerSize, innerSize);
 
         ctx.restore();
+
+        // 3. Inner cross shape
+        ctx.save();
+        ctx.rotate(this.rotation);
+        ctx.strokeStyle = `rgba(255, 255, 255, ${this.coreBrightness * 0.8})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(-finalSize * 0.8, 0);
+        ctx.lineTo(finalSize * 0.8, 0);
+        ctx.moveTo(0, -finalSize * 0.8);
+        ctx.lineTo(0, finalSize * 0.8);
+        ctx.stroke();
+        ctx.restore();
+
+
+        ctx.restore(); // Restore from main translate
     }
 }
