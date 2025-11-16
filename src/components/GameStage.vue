@@ -952,7 +952,10 @@ const handlePress = (event) => {
     case 'title': {
       const centerX = gameCanvas.value.width / 2;
       const centerY = gameCanvas.value.height / 2;
-      const spiritHitboxRadius = spirit.size * 1.5; // Make the hitbox generous
+      // Recalculate the title size directly to ensure hitbox is correct
+      // as this runs before the spirit's update loop.
+      const titleSize = spirit.baseSize * 2.5;
+      const spiritHitboxRadius = titleSize * 1.5; // Make the hitbox generous
 
       const dx = x - centerX;
       const dy = y - (centerY + spirit.yOffset); // Account for the floating animation
