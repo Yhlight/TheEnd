@@ -932,11 +932,33 @@ const pointerState = {
     currentY: window.innerHeight / 2, // For parallax
 };
 
+const getCanvasCoordinates = (event) => {
+    const rect = gameCanvas.value.getBoundingClientRect();
+    const scaleX = gameCanvas.value.width / rect.width;
+    const scaleY = gameCanvas.value.height / rect.height;
+
+    // Determine the correct event source for coordinates
+    let clientX, clientY;
+    if (event.touches && event.touches.length > 0) {
+        clientX = event.touches[0].clientX;
+        clientY = event.touches[0].clientY;
+    } else if (event.changedTouches && event.changedTouches.length > 0) {
+        clientX = event.changedTouches[0].clientX;
+        clientY = event.changedTouches[0].clientY;
+    } else {
+        clientX = event.clientX;
+        clientY = event.clientY;
+    }
+
+    const x = (clientX - rect.left) * scaleX;
+    const y = (clientY - rect.top) * scaleY;
+
+    return { x, y };
+}
+
 const handlePress = (event) => {
   event.preventDefault();
-  const rect = gameCanvas.value.getBoundingClientRect();
-  const x = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
-  const y = (event.touches ? event.touches[0].clientY : event.clientY) - rect.top;
+  const { x, y } = getCanvasCoordinates(event);
 
   pointerState.isDown = true;
   pointerState.startX = x;
@@ -1120,9 +1142,7 @@ const handlePress = (event) => {
 
 const handleMove = (event) => {
     event.preventDefault();
-    const rect = gameCanvas.value.getBoundingClientRect();
-    const x = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
-    const y = (event.touches ? event.touches[0].clientY : event.clientY) - rect.top;
+    const { x, y } = getCanvasCoordinates(event);
 
     pointerState.currentX = x;
     pointerState.currentY = y;
@@ -1160,9 +1180,7 @@ const updateSlider = (x) => {
 
 const handleRelease = (event) => {
   event.preventDefault();
-  const rect = gameCanvas.value.getBoundingClientRect();
-  const x = (event.changedTouches ? event.changedTouches[0].clientX : event.clientX) - rect.left;
-  const y = (event.changedTouches ? event.changedTouches[0].clientY : event.clientY) - rect.top;
+  const { x, y } = getCanvasCoordinates(event);
   pointerState.isDown = false;
 
   if (gameState.current === 'playing' && noteManager) {
