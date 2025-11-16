@@ -1196,13 +1196,13 @@ const gameLoop = (timestamp) => {
   if (!lastTimeForDt) {
     lastTimeForDt = timestamp;
   }
-  const dt = (timestamp - lastTimeForDt) / 1000;
+  let dt = (timestamp - lastTimeForDt) / 1000;
   lastTimeForDt = timestamp;
 
   // A simple guard against massive dt values on the first frame or after lag
   if (dt > 0.5) {
       console.warn(`Large delta time: ${dt}s. Clamping to 1/60s.`);
-      return; // Skip this frame entirely to prevent instability
+      dt = 1/60;
   }
 
   switch (gameState.current) {
@@ -1251,8 +1251,8 @@ const gameLoop = (timestamp) => {
 <style scoped>
 .game-container {
   position: relative;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   overflow: hidden; /* Ensure nothing spills out */
 }
 .game-canvas {
@@ -1263,7 +1263,6 @@ const gameLoop = (timestamp) => {
   height: 100%;
   display: block;
   background-color: #1a1a1a;
-  touch-action: none;
   user-select: none;
   -webkit-touch-callout: none;
 }
