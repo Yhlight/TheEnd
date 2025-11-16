@@ -151,7 +151,7 @@ const initializeGame = () => {
   console.log('Game initialized.');
   initializeTitleCrystals();
   loadSettings();
-  gameLoop();
+  requestAnimationFrame(gameLoop); // Correctly start the game loop
 
   // TODO: Future implementation for external controls or testing might go here.
   const checkDevice = async () => {
@@ -1194,10 +1194,16 @@ const gameLoop = (timestamp) => {
   if (!ctx || !gameCanvas.value) return;
 
   if (!lastTimeForDt) {
-      lastTimeForDt = timestamp;
+    lastTimeForDt = timestamp;
   }
   const dt = (timestamp - lastTimeForDt) / 1000;
   lastTimeForDt = timestamp;
+
+  // A simple guard against massive dt values on the first frame or after lag
+  if (dt > 0.5) {
+      console.warn(`Large delta time: ${dt}s. Clamping to 1/60s.`);
+      return; // Skip this frame entirely to prevent instability
+  }
 
   switch (gameState.current) {
     case 'title': updateTitle(dt); break;
@@ -1243,12 +1249,22 @@ const gameLoop = (timestamp) => {
 </script>
 
 <style scoped>
-.game-container { position: relative; width: 100vw; height: 100vh; }
+.game-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden; /* Ensure nothing spills out */
+}
 .game-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   display: block;
   background-color: #1a1a1a;
-  touch-action: none; /* Prevents browser from handling touch events (like scrolling) */
-  user-select: none; /* Prevents text selection */
-  -webkit-touch-callout: none; /* Disables callouts on long press */
+  touch-action: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 </style>
