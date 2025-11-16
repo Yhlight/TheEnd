@@ -936,8 +936,13 @@ const pointerState = {
 const handlePress = (event) => {
   event.preventDefault();
   const rect = gameCanvas.value.getBoundingClientRect();
-  const x = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
-  const y = (event.touches ? event.touches[0].clientY : event.clientY) - rect.top;
+  const canvas = gameCanvas.value;
+
+  // Apply scaling to correct for resolution mismatch
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const x = ((event.touches ? event.touches[0].clientX : event.clientX) - rect.left) * scaleX;
+  const y = ((event.touches ? event.touches[0].clientY : event.clientY) - rect.top) * scaleY;
 
   pointerState.isDown = true;
   pointerState.startX = x;
@@ -1122,8 +1127,11 @@ const handlePress = (event) => {
 const handleMove = (event) => {
     event.preventDefault();
     const rect = gameCanvas.value.getBoundingClientRect();
-    const x = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
-    const y = (event.touches ? event.touches[0].clientY : event.clientY) - rect.top;
+    const canvas = gameCanvas.value;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = ((event.touches ? event.touches[0].clientX : event.clientX) - rect.left) * scaleX;
+    const y = ((event.touches ? event.touches[0].clientY : event.clientY) - rect.top) * scaleY;
 
     pointerState.currentX = x;
     pointerState.currentY = y;
@@ -1162,8 +1170,11 @@ const updateSlider = (x) => {
 const handleRelease = (event) => {
   event.preventDefault();
   const rect = gameCanvas.value.getBoundingClientRect();
-  const x = (event.changedTouches ? event.changedTouches[0].clientX : event.clientX) - rect.left;
-  const y = (event.changedTouches ? event.changedTouches[0].clientY : event.clientY) - rect.top;
+  const canvas = gameCanvas.value;
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const x = ((event.changedTouches ? event.changedTouches[0].clientX : event.clientX) - rect.left) * scaleX;
+  const y = ((event.changedTouches ? event.changedTouches[0].clientY : event.clientY) - rect.top) * scaleY;
   pointerState.isDown = false;
 
   if (gameState.current === 'playing' && noteManager) {
