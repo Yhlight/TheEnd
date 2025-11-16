@@ -143,8 +143,9 @@ export class NoteManager {
             return null; // Click was too far vertically from the line
         }
 
-        const notePixelX = (this.canvas.width / 2) + this.judgementLine.x + (closestNote.x - 0.5) * this.canvas.width;
+        const notePixelX = (this.canvas.width / 2) + (closestNote.x - 0.5) * this.canvas.width;
         const xTolerance = closestNote.width / 2;
+
         if (Math.abs(clickX - notePixelX) > xTolerance) {
             return null; // Click was too far horizontally from the note's center
         }
@@ -163,7 +164,7 @@ export class NoteManager {
   }
 
   checkTapHit(gameTime, clickX, clickY) {
-    const result = this._findClosestNote(gameTime, clickX, this.judgementLine.y, 'tap');
+    const result = this._findClosestNote(gameTime, clickX, clickY, 'tap');
     if (result) {
       const judgement = this._getJudgement(result.timeDiff);
       this.notes = this.notes.filter(note => note !== result.note);

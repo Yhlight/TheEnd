@@ -335,12 +335,21 @@ const updateSongSelect = () => {
 };
 
 let gameStartTime = null;
-const updatePlaying = () => {
+
+const getGameTime = () => {
   let gameTime = audioElement.value.currentTime * 1000;
+  // Fallback for when audio is not yet playing at the start of the game
   if (audioElement.value.paused && gameTime === 0) {
-    if (gameStartTime === null) { gameStartTime = performance.now(); }
-    gameTime = performance.now() - gameStartTime;
+      if (gameStartTime === null) {
+          gameStartTime = performance.now();
+      }
+      gameTime = performance.now() - gameStartTime;
   }
+  return gameTime;
+}
+
+const updatePlaying = () => {
+  const gameTime = getGameTime();
   judgementLine.update(gameTime);
   noteManager.update(gameTime);
   effectManager.update();
@@ -1024,7 +1033,7 @@ const handlePress = (event) => {
         gameState.current = 'paused';
         return;
       }
-      const gameTime = audioElement.value.currentTime * 1000;
+      const gameTime = getGameTime();
       const tapResult = noteManager.checkTapHit(gameTime, x, y);
       if (tapResult) {
           scoreManager.onHit(tapResult.judgement);
