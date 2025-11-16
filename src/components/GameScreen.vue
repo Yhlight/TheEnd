@@ -30,10 +30,13 @@
       class="game-area"
       :style="gameAreaStyle"
       :class="{ 'shake-active': isShaking }"
-      @pointerdown.stop="handleInteractionStart"
-      @pointerup.stop="handleInteractionEnd"
-      @pointerleave.stop="handleInteractionEnd"
-      @pointermove.stop="handleInteractionMove"
+      @mousedown.stop="handleInteractionStart"
+      @mouseup.stop="handleInteractionEnd"
+      @mouseleave.stop="handleInteractionEnd"
+      @mousemove.stop="handleInteractionMove"
+      @touchstart.prevent.stop="handleInteractionStart"
+      @touchend.prevent.stop="handleInteractionEnd"
+      @touchmove.prevent.stop="handleInteractionMove"
     >
       <div class="notes-container">
         <geometric-note
@@ -270,57 +273,78 @@ export default {
       if (!this.isPlaying || this.isPaused) return;
       this.isDragging = true;
 
-      // Find all hittable notes within the timing window
-      const hittableNotes = this.notes.filter(note => {
-        if (note.judged || note.active) return false;
-        if (note.type !== 'tap' && note.type !== 'hold') return false;
-        const timingError = Math.abs(note.time - this.songTime);
-        return timingError <= TIMING_WINDOWS.good;
-      });
+      const processInteraction = (pointerId) => {
+        const hittableNotes = this.notes.filter(note => {
+          if (note.judged || note.active) return false;
+          if (note.type !== 'tap' && note.type !== 'hold') return false;
+          const timingError = Math.abs(note.time - this.songTime);
+          return timingError <= TIMING_WINDOWS.good;
+        });
 
-      // If there are hittable notes, sort them by their scheduled time
-      // and pick the one that was supposed to be hit first.
-      if (hittableNotes.length > 0) {
-        hittableNotes.sort((a, b) => a.time - b.time);
-        const targetNote = hittableNotes[0];
+        if (hittableNotes.length > 0) {
+          hittableNotes.sort((a, b) => a.time - b.time);
+          const targetNote = hittableNotes[0];
 
-        // Mark the note for visual removal and prevent re-judgment
-        targetNote.judged = true;
-        targetNote.shattered = true;
+          targetNote.judged = true;
+          targetNote.shattered = true;
 
-        if (targetNote.type === 'hold') {
-          targetNote.active = true;
-          this.activeHolds[event.pointerId] = targetNote;
+          if (targetNote.type === 'hold') {
+            targetNote.active = true;
+            this.activeHolds[pointerId] = targetNote;
+          }
+
+          this.triggerLineFlash();
+          const timingError = Math.abs(targetNote.time - this.songTime);
+
+          if (timingError <= TIMING_WINDOWS.perfect) {
+            this.playHitSound('perfect');
+            this.triggerShockwaveEffect();
+            this.triggerScreenShake();
+            this.score += 100;
+            this.combo++;
+            this.maxCombo = Math.max(this.maxCombo, this.combo);
+            this.spawnHitEffect(targetNote, 'perfect');
+          } else {
+            this.playHitSound('good');
+            this.score += 50;
+            this.combo++;
+            this.maxCombo = Math.max(this.maxCombo, this.combo);
+            this.spawnHitEffect(targetNote, 'good');
+          }
         }
+      };
 
-        this.triggerLineFlash();
-        const timingError = Math.abs(targetNote.time - this.songTime);
-
-        if (timingError <= TIMING_WINDOWS.perfect) {
-          this.playHitSound('perfect');
-          this.triggerShockwaveEffect();
-          this.triggerScreenShake();
-          this.score += 100;
-          this.combo++;
-          this.maxCombo = Math.max(this.maxCombo, this.combo);
-          this.spawnHitEffect(targetNote, 'perfect');
-        } else {
-          this.playHitSound('good');
-          this.score += 50;
-          this.combo++;
-          this.maxCombo = Math.max(this.maxCombo, this.combo);
-          this.spawnHitEffect(targetNote, 'good');
+      if (event.touches) {
+        for (let i = 0; i < event.touches.length; i++) {
+          processInteraction(event.touches[i].identifier);
         }
+      } else {
+        // Use a consistent ID for mouse interactions
+        processInteraction('mouse');
       }
     },
     handleInteractionEnd(event) {
       this.isDragging = false;
-      const activeHold = this.activeHolds[event.pointerId];
-      if (activeHold) {
-        activeHold.active = false;
-        activeHold.judged = true;
-        this.combo = 0;
-        delete this.activeHolds[event.pointerId];
+      // For touch events, we need to check all changed touches
+      if (event.changedTouches) {
+        for (let i = 0; i < event.changedTouches.length; i++) {
+          const touch = event.changedTouches[i];
+          const activeHold = this.activeHolds[touch.identifier];
+          if (activeHold) {
+            activeHold.active = false;
+            activeHold.judged = true;
+            this.combo = 0; // Or handle scoring differently for early release
+            delete this.activeHolds[touch.identifier];
+          }
+        }
+      } else { // For mouse events
+        const activeHold = this.activeHolds['mouse'];
+        if (activeHold) {
+          activeHold.active = false;
+          activeHold.judged = true;
+          this.combo = 0;
+          delete this.activeHolds['mouse'];
+        }
       }
     },
     handleInteractionMove(event) {
