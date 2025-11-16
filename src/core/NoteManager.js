@@ -163,7 +163,7 @@ export class NoteManager {
   }
 
   checkTapHit(gameTime, clickX, clickY) {
-    const result = this._findClosestNote(gameTime, clickX, clickY, 'tap');
+    const result = this._findClosestNote(gameTime, clickX, this.judgementLine.y, 'tap');
     if (result) {
       const judgement = this._getJudgement(result.timeDiff);
       this.notes = this.notes.filter(note => note !== result.note);
@@ -250,11 +250,26 @@ export class NoteManager {
   }
 
   checkCatchHit(gameTime, clickX, clickY) {
-    const result = this._findClosestNote(gameTime, clickX, clickY, 'catch');
-    if (result) {
-      const judgement = this._getJudgement(result.timeDiff);
-      this.notes = this.notes.filter(note => note !== result.note);
-      return { note: result.note, judgement };
+    // For catch notes, we only care about the time, not the position.
+    const adjustedTime = gameTime - this.settings.offset;
+    let closestNote = null;
+    let minTimeDiff = Infinity;
+
+    for (const note of this.notes) {
+        if (note.isMissed || note.type !== 'catch') continue;
+
+        const timeDiff = Math.abs(adjustedTime - note.time);
+
+        if (timeDiff < NoteManager.judgementWindows.Bad && timeDiff < minTimeDiff) {
+            minTimeDiff = timeDiff;
+            closestNote = note;
+        }
+    }
+
+    if (closestNote) {
+      const judgement = this._getJudgement(minTimeDiff);
+      this.notes = this.notes.filter(note => note !== closestNote);
+      return { note: closestNote, judgement };
     }
     return null;
   }
