@@ -73,6 +73,7 @@ export class Spirit {
         this.baseSize = 18;
         this.rotation = 0;
         this.pulseTimer = Math.random() * Math.PI * 2;
+        this.yOffset = 0; // For title screen floating
 
         // State properties
         this.size = this.baseSize;
@@ -87,7 +88,30 @@ export class Spirit {
         // Combo-driven elements
         this.combo = 0;
         this.debris = [];
+
+        // Initialize with some debris for the title screen aesthetic
+        for (let i = 0; i < 5; i++) {
+            this.debris.push(new Debris(this.baseSize * 2.5));
+        }
     }
+
+    // Animation loop specifically for the title screen
+    updateForTitle(dt = 1 / 60) {
+        this.pulseTimer += dt;
+        this.rotation += dt * 0.25; // Gentle rotation
+
+        // Vertical floating animation
+        this.yOffset = Math.sin(this.pulseTimer * 1.5) * 8;
+
+        // Breathing/pulsing animation
+        const pulse = Math.sin(this.pulseTimer * 2) * 2;
+        this.size = (this.baseSize * 2.5) + pulse; // Larger on title screen
+        this.glow = 20 + pulse * 2;
+
+        // Update debris particles
+        this.debris.forEach(d => d.update(dt, 0));
+    }
+
 
     setCombo(combo) {
         if (this.combo > combo && combo === 0) { // Combo break
@@ -165,9 +189,10 @@ export class Spirit {
         this.glow = 15 + (this.size - this.baseSize) * 2 + this.combo / 10;
     }
 
-    draw(ctx) {
-        const x = this.judgementLine.x;
-        const y = this.judgementLine.y;
+    draw(ctx, centerX, centerY) {
+        const x = centerX !== undefined ? centerX : this.judgementLine.x;
+        const y = (centerY !== undefined ? centerY : this.judgementLine.y) + this.yOffset;
+
 
         // --- 1. Debris (Background) ---
         this.debris.forEach(d => d.draw(ctx, x, y));
@@ -177,7 +202,7 @@ export class Spirit {
 
         // --- Miss/Glitch Effect ---
         if (this.missAnimationTimer > 0) {
-            const glitch = Easing.easeOutExpo(this.missAnimationTimer) * 15;
+            const glitch = Easing.easeOutCubic(this.missAnimationTimer) * 15;
             ctx.translate((Math.random() - 0.5) * glitch, (Math.random() - 0.5) * glitch);
             ctx.rotate((Math.random() - 0.5) * glitch * 0.02);
         }
@@ -202,6 +227,7 @@ export class Spirit {
 
         // --- 4. Core Structure (Multi-layered Rhombus) ---
         ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'; // Reset stroke style to prevent alpha inheritance
 
         const layers = 3;
         for (let i = 0; i < layers; i++) {

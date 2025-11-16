@@ -296,20 +296,10 @@ const drawStylizedNumber = (ctx, text, x, y, squareSize, color) => {
   }
 };
 
-const updateTitle = () => {
-    dynamicBackground.update();
-    const width = gameCanvas.value.width;
-    const height = gameCanvas.value.height;
-
-    // Update foreground crystals
-    for (const crystal of titleCrystals) {
-        crystal.x += crystal.vx;
-        crystal.y += crystal.vy;
-        crystal.rotation += crystal.rotationSpeed;
-
-        // Bounce off edges
-        if (crystal.x < 0 || crystal.x > width) crystal.vx *= -1;
-        if (crystal.y < 0 || crystal.y > height) crystal.vy *= -1;
+const updateTitle = (dt) => {
+    dynamicBackground.update(dt);
+    if (spirit) {
+        spirit.updateForTitle(dt);
     }
 };
 
@@ -423,59 +413,22 @@ const updateResults = () => {
 
 const drawTitle = () => {
     dynamicBackground.draw(ctx);
-    ctx.fillStyle = 'rgba(10, 10, 20, 0.7)'; // Slightly bluer overlay
+    ctx.fillStyle = 'rgba(10, 10, 20, 0.7)';
     ctx.fillRect(0, 0, gameCanvas.value.width, gameCanvas.value.height);
 
-    const width = gameCanvas.value.width;
-    const height = gameCanvas.value.height;
-    const centerX = width / 2;
-    const centerY = height / 2;
+    const centerX = gameCanvas.value.width / 2;
+    const centerY = gameCanvas.value.height / 2;
 
-    // --- Draw Foreground Crystals with Parallax ---
-    const parallaxStrength = 40;
-    const mouseX = pointerState.currentX - centerX;
-    const mouseY = pointerState.currentY - centerY;
-
-    for (const crystal of titleCrystals) {
-        const parallaxX = (mouseX / centerX) * parallaxStrength * crystal.z;
-        const parallaxY = (mouseY / centerY) * parallaxStrength * crystal.z;
-
-        ctx.save();
-        ctx.translate(crystal.x + parallaxX, crystal.y + parallaxY);
-        ctx.rotate(crystal.rotation * Math.PI / 180);
-
-        ctx.strokeStyle = `rgba(0, 255, 255, ${0.4 * crystal.z})`;
-        ctx.fillStyle = `rgba(0, 50, 70, ${0.2 * crystal.z})`;
-        ctx.lineWidth = 2;
-        ctx.shadowColor = 'cyan';
-        ctx.shadowBlur = 15;
-
-        ctx.beginPath();
-        ctx.moveTo(0, -crystal.size); // Top point
-        ctx.lineTo(crystal.size * 0.8, 0); // Right point
-        ctx.lineTo(0, crystal.size); // Bottom point
-        ctx.lineTo(-crystal.size * 0.8, 0); // Left point
-        ctx.closePath();
-
-        ctx.fill();
-        ctx.stroke();
-        ctx.restore();
+    if (spirit) {
+        spirit.draw(ctx, centerX, centerY);
     }
 
-    // --- Stylized Title ---
-    ctx.fillStyle = 'white';
-    ctx.shadowColor = 'cyan';
-    ctx.shadowBlur = 30; // Increased glow
-    ctx.font = '100px sans-serif'; // Larger font
-    ctx.textAlign = 'center';
-    ctx.fillText('TheEnd', centerX, centerY - 50);
-    ctx.shadowBlur = 0;
-
     // --- "Click to Start" with smoother flashing animation ---
-    const flash = (Math.sin(performance.now() * 0.0015) + 1) / 2; // Smoother sine wave
+    const flash = (Math.sin(performance.now() * 0.0015) + 1) / 2;
     ctx.fillStyle = `rgba(255, 255, 255, ${0.6 + flash * 0.4})`;
     ctx.font = '28px sans-serif';
-    ctx.fillText('Click anywhere to begin', centerX, centerY + 50);
+    ctx.textAlign = 'center';
+    ctx.fillText('Click the Core to begin', centerX, centerY + 150);
 };
 
 const drawSongSelect = () => {
@@ -996,9 +949,23 @@ const handlePress = (event) => {
   pointerState.velocityY = 0;
 
   switch (gameState.current) {
-    case 'title':
-      gameState.current = 'songSelect';
+    case 'title': {
+      const centerX = gameCanvas.value.width / 2;
+      const centerY = gameCanvas.value.height / 2;
+      const spiritHitboxRadius = spirit.size * 1.5; // Make the hitbox generous
+
+      const dx = x - centerX;
+      const dy = y - (centerY + spirit.yOffset); // Account for the floating animation
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance < spiritHitboxRadius) {
+        // Create a visual feedback effect
+        effectManager.createShockwave(centerX, centerY + spirit.yOffset, 'cyan', 0.8);
+        audioManager.playSound('tap'); // Use a generic tap sound for UI feedback
+        gameState.current = 'songSelect';
+      }
       break;
+    }
     case 'songSelect': {
       const centerX = gameCanvas.value.width / 2;
       const centerY = gameCanvas.value.height / 2;
@@ -1111,7 +1078,7 @@ const handlePress = (event) => {
             gameState.current = 'settings';
         } else if (x > exitButton.x && x < exitButton.x + exitButton.width && y > exitButton.y && y < exitButton.y + exitButton.height) {
             // Reset managers and go back to song select
-            audioManager.stopMusic();
+            audioManager.resetMusic();
             scoreManager.reset();
             effectManager.reset();
             noteManager.loadChart(null);
@@ -1222,11 +1189,18 @@ const handleRelease = (event) => {
   }
 };
 
-const gameLoop = () => {
+let lastTimeForDt = 0;
+const gameLoop = (timestamp) => {
   if (!ctx || !gameCanvas.value) return;
 
+  if (!lastTimeForDt) {
+      lastTimeForDt = timestamp;
+  }
+  const dt = (timestamp - lastTimeForDt) / 1000;
+  lastTimeForDt = timestamp;
+
   switch (gameState.current) {
-    case 'title': updateTitle(); break;
+    case 'title': updateTitle(dt); break;
     case 'songSelect': updateSongSelect(); break;
     case 'playing': updatePlaying(); break;
     case 'paused': break;
