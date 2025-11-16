@@ -1,11 +1,5 @@
 <template>
-  <div
-    class="game-screen"
-    @pointerdown="handleInteractionStart"
-    @pointerup="handleInteractionEnd"
-    @pointerleave="handleInteractionEnd"
-    @pointermove="handleInteractionMove"
-  >
+  <div class="game-screen">
     <div class="grid-background" :style="backgroundStyle"></div>
     <progress-bar :song-time="songTime" :song-duration="songDuration" v-if="isPlaying" />
     <HUD :score="score" :combo="combo" v-if="isPlaying" @pause="togglePause" />
@@ -32,7 +26,15 @@
       <button @click.stop="startGame">Play</button>
     </div>
 
-    <div class="game-area" :style="gameAreaStyle" :class="{ 'shake-active': isShaking }">
+    <div
+      class="game-area"
+      :style="gameAreaStyle"
+      :class="{ 'shake-active': isShaking }"
+      @pointerdown.stop="handleInteractionStart"
+      @pointerup.stop="handleInteractionEnd"
+      @pointerleave.stop="handleInteractionEnd"
+      @pointermove.stop="handleInteractionMove"
+    >
       <div class="notes-container">
         <geometric-note
           v-for="note in visibleNotes"
@@ -815,6 +817,7 @@ export default {
 }
 .grid-background {
   position: absolute;
+  z-index: 0;
   width: 100%;
   height: 100%;
   background-size: 50px 50px;
@@ -836,7 +839,7 @@ export default {
   align-items: center;
   position: absolute;
   top: 0; left: 0; width: 100%; height: 100%;
-  z-index: 10;
+  z-index: 50;
   color: #fff;
 }
 .play-button-container button {
@@ -863,6 +866,7 @@ export default {
   transition: transform 0.1s linear; /* Smooths out tiny interpolation steps */
   transform: scale(var(--camera-zoom, 1)) rotate(var(--camera-rotation, 0deg));
   transform-origin: 50% 50%;
+  z-index: 2;
 }
 
 .notes-container {
