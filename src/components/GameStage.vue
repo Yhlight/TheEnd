@@ -348,10 +348,10 @@ const getGameTime = () => {
   return gameTime;
 }
 
-const updatePlaying = () => {
+const updatePlaying = (dt) => {
   const gameTime = getGameTime();
   judgementLine.update(gameTime);
-  noteManager.update(gameTime);
+  noteManager.update(gameTime, dt);
   effectManager.update();
 
   if (screenShake.value > 0) {
@@ -1222,7 +1222,7 @@ const gameLoop = (timestamp) => {
   switch (gameState.current) {
     case 'title': updateTitle(dt); break;
     case 'songSelect': updateSongSelect(); break;
-    case 'playing': updatePlaying(); break;
+    case 'playing': updatePlaying(dt); break;
     case 'paused': break;
     case 'settings': break;
     case 'results': updateResults(); break;

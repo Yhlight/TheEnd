@@ -66,11 +66,11 @@ export class NoteManager {
     }
   }
 
-  update(gameTime) {
+  update(gameTime, dt) {
     if (!this.chart) return;
 
     for (const note of this.notes) {
-      note.update(gameTime);
+      note.update(gameTime, dt);
       const missThreshold = this.judgementLine.y + 100;
       if (!note.isMissed && !note.isBeingHeld && note.y > missThreshold) {
           this.scoreManager.onMiss();
@@ -165,9 +165,11 @@ export class NoteManager {
 
   checkTapHit(gameTime, clickX, clickY) {
     const result = this._findClosestNote(gameTime, clickX, clickY, 'tap');
-    if (result) {
+    if (result && result.note.hit) { // Check if the note has a 'hit' method
+      result.note.hit(); // Mark the note as hit to trigger its animation
       const judgement = this._getJudgement(result.timeDiff);
-      this.notes = this.notes.filter(note => note !== result.note);
+      // The note is not removed from this.notes here.
+      // It will be removed naturally when its isAlive() returns false after the animation.
       return { note: result.note, judgement };
     }
     return null;

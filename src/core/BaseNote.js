@@ -29,7 +29,7 @@ export class BaseNote {
     this.scale = 0.5;
   }
 
-  update(gameTime) {
+  update(gameTime, dt) {
     const timeUntilJudgement = this.time - gameTime;
     const progress = 1 - (timeUntilJudgement / this.scrollTime);
 
