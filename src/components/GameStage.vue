@@ -1,6 +1,6 @@
 <template>
   <div class="game-container">
-    <canvas ref="gameCanvas" class="game-canvas" v-show="gameState.current !== 'editor'"></canvas>
+    <canvas ref="gameCanvas" class="game-canvas" v-if="gameState.current !== 'editor'"></canvas>
     <ChartEditor
       v-if="gameState.current === 'editor'"
       :songData="songLibrary[songSelectState.selectedIndex]"
@@ -219,8 +219,12 @@ const retryCurrentSong = () => {
 };
 
 const calculateCardPositions = () => {
-    const totalWidth = songLibrary.length * (CARD_WIDTH + CARD_MARGIN) - CARD_MARGIN;
-    const startX = (gameCanvas.value.width - totalWidth) / 2;
+    // Let's make the card container a bit wider than the screen to allow for smooth scrolling
+    const containerWidth = gameCanvas.value.width * 1.5;
+    const totalContentWidth = songLibrary.length * (CARD_WIDTH + CARD_MARGIN) - CARD_MARGIN;
+
+    // Center the content within our virtual container
+    const startX = (containerWidth - totalContentWidth) / 2;
     const y = (gameCanvas.value.height - CARD_HEIGHT) / 2;
 
     songSelectState.cards = songLibrary.map((song, index) => {

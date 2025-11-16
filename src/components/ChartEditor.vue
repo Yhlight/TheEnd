@@ -417,6 +417,7 @@ const draw = () => {
   width: 100vw;
   height: 100vh;
   background-color: #1a202c;
+  z-index: 100;
   color: white;
   display: flex;
   flex-direction: column;
