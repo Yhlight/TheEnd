@@ -143,7 +143,7 @@ export class NoteManager {
             return null; // Click was too far vertically from the line
         }
 
-        const notePixelX = this.judgementLine.x + (closestNote.x - 0.5) * this.canvas.width;
+        const notePixelX = (this.canvas.width / 2) + this.judgementLine.x + (closestNote.x - 0.5) * this.canvas.width;
         const xTolerance = closestNote.width / 2;
         if (Math.abs(clickX - notePixelX) > xTolerance) {
             return null; // Click was too far horizontally from the note's center
@@ -221,7 +221,7 @@ export class NoteManager {
   checkDragUpdate(pointerX) {
     if (!this.activeDragNote) return;
 
-    const notePixelX = this.judgementLine.x + (this.activeDragNote.x - 0.5) * this.canvas.width;
+    const notePixelX = (this.canvas.width / 2) + this.judgementLine.x + (this.activeDragNote.x - 0.5) * this.canvas.width;
     const hitBoxWidth = this.activeDragNote.width * 2;
 
     if (Math.abs(pointerX - notePixelX) > hitBoxWidth / 2) {

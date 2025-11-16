@@ -932,17 +932,11 @@ const pointerState = {
     currentY: window.innerHeight / 2, // For parallax
 };
 
-
 const handlePress = (event) => {
   event.preventDefault();
   const rect = gameCanvas.value.getBoundingClientRect();
-  const canvas = gameCanvas.value;
-
-  // Apply scaling to correct for resolution mismatch
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-  const x = ((event.touches ? event.touches[0].clientX : event.clientX) - rect.left) * scaleX;
-  const y = ((event.touches ? event.touches[0].clientY : event.clientY) - rect.top) * scaleY;
+  const x = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
+  const y = (event.touches ? event.touches[0].clientY : event.clientY) - rect.top;
 
   pointerState.isDown = true;
   pointerState.startX = x;
@@ -958,10 +952,8 @@ const handlePress = (event) => {
     case 'title': {
       const centerX = gameCanvas.value.width / 2;
       const centerY = gameCanvas.value.height / 2;
-      // Recalculate the title size directly to ensure hitbox is correct
-      // as this runs before the spirit's update loop.
-      const titleSize = spirit.baseSize * 2.5;
-      const spiritHitboxRadius = titleSize * 1.5; // Make the hitbox generous
+      // Use the stable baseSize for the hitbox, not the animated size.
+      const spiritHitboxRadius = spirit.baseSize * 1.5;
 
       const dx = x - centerX;
       const dy = y - (centerY + spirit.yOffset); // Account for the floating animation
@@ -1127,11 +1119,8 @@ const handlePress = (event) => {
 const handleMove = (event) => {
     event.preventDefault();
     const rect = gameCanvas.value.getBoundingClientRect();
-    const canvas = gameCanvas.value;
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const x = ((event.touches ? event.touches[0].clientX : event.clientX) - rect.left) * scaleX;
-    const y = ((event.touches ? event.touches[0].clientY : event.clientY) - rect.top) * scaleY;
+    const x = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
+    const y = (event.touches ? event.touches[0].clientY : event.clientY) - rect.top;
 
     pointerState.currentX = x;
     pointerState.currentY = y;
@@ -1170,11 +1159,8 @@ const updateSlider = (x) => {
 const handleRelease = (event) => {
   event.preventDefault();
   const rect = gameCanvas.value.getBoundingClientRect();
-  const canvas = gameCanvas.value;
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-  const x = ((event.changedTouches ? event.changedTouches[0].clientX : event.clientX) - rect.left) * scaleX;
-  const y = ((event.changedTouches ? event.changedTouches[0].clientY : event.clientY) - rect.top) * scaleY;
+  const x = (event.changedTouches ? event.changedTouches[0].clientX : event.clientX) - rect.left;
+  const y = (event.changedTouches ? event.changedTouches[0].clientY : event.clientY) - rect.top;
   pointerState.isDown = false;
 
   if (gameState.current === 'playing' && noteManager) {
@@ -1211,13 +1197,13 @@ const gameLoop = (timestamp) => {
   if (!lastTimeForDt) {
     lastTimeForDt = timestamp;
   }
-  let dt = (timestamp - lastTimeForDt) / 1000;
+  const dt = (timestamp - lastTimeForDt) / 1000;
   lastTimeForDt = timestamp;
 
   // A simple guard against massive dt values on the first frame or after lag
   if (dt > 0.5) {
       console.warn(`Large delta time: ${dt}s. Clamping to 1/60s.`);
-      dt = 1/60;
+      return; // Skip this frame entirely to prevent instability
   }
 
   switch (gameState.current) {
@@ -1266,8 +1252,8 @@ const gameLoop = (timestamp) => {
 <style scoped>
 .game-container {
   position: relative;
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
   overflow: hidden; /* Ensure nothing spills out */
 }
 .game-canvas {
@@ -1278,6 +1264,7 @@ const gameLoop = (timestamp) => {
   height: 100%;
   display: block;
   background-color: #1a1a1a;
+  touch-action: none;
   user-select: none;
   -webkit-touch-callout: none;
 }
