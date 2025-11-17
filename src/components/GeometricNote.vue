@@ -1,5 +1,5 @@
 <template>
-  <div :class="['note', note.type]" :style="noteStyle">
+  <div v-if="!shattered" :class="['note', note.type]" :style="noteStyle">
     <div v-if="note.type === 'hold'" class="hold-progress" :style="{ height: holdProgressPercentage }"></div>
   </div>
 </template>
@@ -11,19 +11,32 @@ export default {
     note: { type: Object, required: true },
     lookaheadTime: { type: Number, required: true },
     viewportHeight: { type: Number, required: true },
-    holdProgress: { type: Number, default: 0 } // 0 to 1
+    holdProgress: { type: Number, default: 0 }, // 0 to 1
+    shattered: { type: Boolean, default: false },
+    currentRotation: { type: Number, default: 0 },
+    currentSize: { type: Number, default: 100 }
   },
   computed: {
     noteStyle() {
+      const scale = this.currentSize / 100;
+      let rotation = this.currentRotation;
+
+      if (this.note.type === 'swipe') {
+        rotation += 45;
+      }
+
+      let style = {
+        transform: `rotate(${rotation}deg) scale(${scale})`
+      };
+
       if (this.note.type === 'hold' && this.note.duration > 0) {
         const noteSpeed = (this.viewportHeight * 0.85) / this.lookaheadTime;
         const lengthInPixels = this.note.duration * noteSpeed;
-        return {
-          height: `${lengthInPixels}px`,
-          transform: `translateY(${-lengthInPixels}px)`
-        };
+        style.height = `${lengthInPixels}px`;
+        style.transform = `translateY(${-lengthInPixels}px) ${style.transform}`;
       }
-      return {};
+
+      return style;
     },
     holdProgressPercentage() {
       return `${this.holdProgress * 100}%`;
@@ -61,7 +74,6 @@ export default {
   /* Default shape */
 }
 .swipe {
-  transform: rotate(45deg);
   /* box-shadow doesn't work well with rotated elements, use filter */
   filter: drop-shadow(0 0 5px #fff) drop-shadow(0 0 15px #ff00ff);
   /* Reset box-shadow and border for swipe to avoid visual glitches */
