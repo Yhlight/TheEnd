@@ -34,7 +34,7 @@ const audioElement = ref(null);
 
 // Game state management
 const gameState = reactive({
-  current: 'title', // 'title', 'songSelect', 'playing', 'paused', 'settings', 'results'
+  current: 'title',
 });
 
 // UI element definitions (for hit detection)
@@ -74,6 +74,7 @@ let audioManager = null;
 let dynamicBackground = null;
 let spirit = null;
 let titleCrystals = [];
+let currentGameTime = 0;
 
 // Song select state
 const songSelectState = reactive({
@@ -149,11 +150,11 @@ const initializeGame = () => {
   gameCanvas.value.addEventListener('touchmove', handleMove);
 
   console.log('Game initialized.');
+
   initializeTitleCrystals();
   loadSettings();
   requestAnimationFrame(gameLoop); // Correctly start the game loop
 
-  // TODO: Future implementation for external controls or testing might go here.
   const checkDevice = async () => {
     const info = await Device.getInfo();
     // 'web' is the platform when running in a browser
@@ -332,13 +333,9 @@ const updateSongSelect = () => {
 
 let gameStartTime = null;
 const updatePlaying = () => {
-  let gameTime = audioElement.value.currentTime * 1000;
-  if (audioElement.value.paused && gameTime === 0) {
-    if (gameStartTime === null) { gameStartTime = performance.now(); }
-    gameTime = performance.now() - gameStartTime;
-  }
-  judgementLine.update(gameTime);
-  noteManager.update(gameTime);
+  // gameTime is now calculated once per frame in gameLoop and stored in currentGameTime
+  judgementLine.update(currentGameTime);
+  noteManager.update(currentGameTime);
   effectManager.update();
 
   if (screenShake.value > 0) {
@@ -365,7 +362,7 @@ const updatePlaying = () => {
   dynamicBackground.update();
 
   const currentChart = noteManager.getCurrentChart();
-  if (currentChart && gameTime >= currentChart.duration) {
+  if (currentChart && currentGameTime >= currentChart.duration) {
     Object.assign(resultsState, {
         animationPhase: 'scoring',
         timer: 0,
@@ -1020,15 +1017,15 @@ const handlePress = (event) => {
         gameState.current = 'paused';
         return;
       }
-      const gameTime = audioElement.value.currentTime * 1000;
-      const tapResult = noteManager.checkTapHit(gameTime, x, y);
+      // const gameTime = audioElement.value.currentTime * 1000; // Replaced with currentGameTime
+      const tapResult = noteManager.checkTapHit(currentGameTime, x, y);
       if (tapResult) {
           scoreManager.onHit(tapResult.judgement);
           spirit.onHit(tapResult.note.color);
           effectManager.createHitEffect(tapResult.note.x, judgementLine.y, tapResult.note.color, tapResult.judgement);
           effectManager.createJudgementText(tapResult.note.x, judgementLine.y - 50, tapResult.judgement, tapResult.note.color);
           audioManager.playSound(tapResult.note.type);
-          judgementLine.flash(gameTime, tapResult.note.color);
+          judgementLine.flash(currentGameTime, tapResult.note.color);
           dynamicBackground.triggerEffect();
           if (tapResult.judgement === 'Perfect') {
             effectManager.createShockwave(tapResult.note.x, judgementLine.y, tapResult.note.color);
@@ -1037,7 +1034,7 @@ const handlePress = (event) => {
           }
           return;
       }
-      const holdResult = noteManager.checkHoldStart(gameTime, x, y);
+      const holdResult = noteManager.checkHoldStart(currentGameTime, x, y);
       if (holdResult) {
           scoreManager.onHit(holdResult.judgement);
           spirit.onHit(holdResult.note.color);
@@ -1045,7 +1042,7 @@ const handlePress = (event) => {
           audioManager.playSound(holdResult.note.type);
           return;
       }
-      const dragResult = noteManager.checkDragStart(gameTime, x, y);
+      const dragResult = noteManager.checkDragStart(currentGameTime, x, y);
       if (dragResult) {
           scoreManager.onHit(dragResult.judgement);
           spirit.onHit(dragResult.note.color);
@@ -1053,14 +1050,14 @@ const handlePress = (event) => {
           audioManager.playSound(dragResult.note.type);
           return;
       }
-      const catchResult = noteManager.checkCatchHit(gameTime, x, y);
+      const catchResult = noteManager.checkCatchHit(currentGameTime, x, y);
       if (catchResult) {
           scoreManager.onHit(catchResult.judgement);
           spirit.onHit(catchResult.note.color);
           effectManager.createHitEffect(catchResult.note.x, judgementLine.y, catchResult.note.color, catchResult.judgement);
           effectManager.createJudgementText(catchResult.note.x, judgementLine.y - 50, catchResult.judgement, catchResult.note.color);
           audioManager.playSound(catchResult.note.type);
-          judgementLine.flash(gameTime, catchResult.note.color);
+          judgementLine.flash(currentGameTime, catchResult.note.color);
           if (catchResult.judgement === 'Perfect') {
             screenShake.value = 8; // Slightly less shake for catch notes
             screenFlash.value = 0.4;
@@ -1164,15 +1161,15 @@ const handleRelease = (event) => {
   pointerState.isDown = false;
 
   if (gameState.current === 'playing' && noteManager) {
-    const gameTime = audioElement.value.currentTime * 1000;
-    const flickResult = noteManager.checkFlickHit(gameTime, x, y, pointerState.velocityY);
+    // const gameTime = audioElement.value.currentTime * 1000; // Replaced with currentGameTime
+    const flickResult = noteManager.checkFlickHit(currentGameTime, x, y, pointerState.velocityY);
     if (flickResult) {
         scoreManager.onHit(flickResult.judgement);
         spirit.onHit(flickResult.note.color);
         effectManager.createFlickEffect(flickResult.note.x, judgementLine.y, flickResult.note.color); // Use the new flick effect
         effectManager.createJudgementText(flickResult.note.x, judgementLine.y - 50, flickResult.judgement, flickResult.note.color);
         audioManager.playSound(flickResult.note.type);
-        judgementLine.flash(gameTime, flickResult.note.color);
+        judgementLine.flash(currentGameTime, flickResult.note.color);
         dynamicBackground.triggerEffect();
         if (flickResult.judgement === 'Perfect') {
             effectManager.createShockwave(flickResult.note.x, judgementLine.y, flickResult.note.color);
@@ -1206,6 +1203,21 @@ const gameLoop = (timestamp) => {
       return; // Skip this frame entirely to prevent instability
   }
 
+  // --- SINGLE SOURCE OF TRUTH FOR GAME TIME ---
+  if (gameState.current === 'playing' || gameState.current === 'paused') {
+    let time = audioElement.value.currentTime * 1000;
+    // Fallback to performance.now() if audio hasn't started
+    if (audioElement.value.paused && time < 1) { // use < 1 to avoid floating point issues
+        if (gameStartTime === null) { gameStartTime = performance.now(); }
+        time = performance.now() - gameStartTime;
+    }
+    currentGameTime = time;
+  } else {
+    gameStartTime = null; // Reset start time when not playing
+    currentGameTime = 0;
+  }
+
+
   switch (gameState.current) {
     case 'title': updateTitle(dt); break;
     case 'songSelect': updateSongSelect(); break;
@@ -1224,19 +1236,13 @@ const gameLoop = (timestamp) => {
     ctx.translate(dx, dy);
   }
 
-  // This part remains outside the update switch to ensure gameTime is always available for paused draw
-  let gameTime = audioElement.value.currentTime * 1000;
-  if (audioElement.value.paused && gameTime === 0) {
-    if (gameStartTime === null) { gameStartTime = performance.now(); }
-    gameTime = performance.now() - gameStartTime;
-  }
-
+  // gameTime is now calculated once at the top of the loop and stored in currentGameTime
   switch (gameState.current) {
     case 'title': drawTitle(); break;
     case 'songSelect': drawSongSelect(); break;
-    case 'playing': drawPlaying(gameTime); break;
+    case 'playing': drawPlaying(currentGameTime); break;
     case 'paused':
-        drawPlaying(gameTime);
+        drawPlaying(currentGameTime);
         drawPaused();
         break;
     case 'settings': drawSettings(); break;
