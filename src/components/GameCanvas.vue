@@ -5,6 +5,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { Application } from 'pixi.js';
+import { drawSquare } from '../core/graphics.js';
 
 const canvasContainer = ref(null);
 const app = new Application();
@@ -18,6 +19,16 @@ onMounted(() => {
         backgroundColor: 0x1a1a1a,
       });
       canvasContainer.value.appendChild(app.canvas);
+
+      // --- Render a test square ---
+      const testSquare = drawSquare(
+        app.screen.width / 2,  // Center X
+        app.screen.height / 2, // Center Y
+        100,                   // Size
+        0xFFFFFF               // Color (white)
+      );
+      app.stage.addChild(testSquare);
+      // -------------------------
     }
   });
 });
