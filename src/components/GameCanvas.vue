@@ -6,6 +6,7 @@
 import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { Application } from 'pixi.js';
 import { drawSquare } from '../core/graphics.js';
+import { AdvancedBloomFilter } from '@pixi/filter-advanced-bloom';
 
 const canvasContainer = ref(null);
 const app = new Application();
@@ -22,12 +23,21 @@ onMounted(() => {
 
       // --- Render a test square ---
       const testSquare = drawSquare(
-        app.screen.width / 2,  // Center X
-        app.screen.height / 2, // Center Y
-        100,                   // Size
-        0xFFFFFF               // Color (white)
+        app.screen.width / 2,
+        app.screen.height / 2,
+        100,
+        0xFFFFFF
       );
       app.stage.addChild(testSquare);
+      // -------------------------
+
+      // --- Apply a glow effect ---
+      const bloomFilter = new AdvancedBloomFilter({
+        threshold: 0.5,
+        bloomScale: 1.5,
+        quality: 8,
+      });
+      testSquare.filters = [bloomFilter];
       // -------------------------
     }
   });
