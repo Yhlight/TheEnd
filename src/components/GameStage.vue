@@ -6,7 +6,7 @@
       :songData="songLibrary[songSelectState.selectedIndex]"
       @exit="gameState.current = 'songSelect'"
     />
-    <audio ref="audioElement" :src="songUrl" style="display: none;"></audio>
+    <audio v-if="songUrl" ref="audioElement" :src="songUrl" style="display: none;" @error="handleAudioError"></audio>
   </div>
 </template>
 

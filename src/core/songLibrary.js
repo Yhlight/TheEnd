@@ -9,7 +9,7 @@ export const songLibrary = [
     id: 1,
     title: "Intergalactic Odyssey",
     artist: "Patrick de Arteaga",
-    audioUrl: 'https://patrickdearteaga.com/audio/Intergalactic%20Odyssey.ogg',
+    audioUrl: '/audio/Intergalactic_Odyssey.ogg',
     chart: {
       duration: 90000, // approx 1:30
       notes: [
@@ -46,7 +46,7 @@ export const songLibrary = [
     id: 2,
     title: "Intergalactic Odyssey (Hard)",
     artist: "Patrick de Arteaga",
-    audioUrl: 'https://patrickdearteaga.com/audio/Intergalactic%20Odyssey.ogg',
+    audioUrl: '/audio/Intergalactic_Odyssey.ogg',
     chart: {
       duration: 90000,
       notes: [
@@ -81,7 +81,7 @@ export const songLibrary = [
     id: 3,
     title: "Electronic Fantasy",
     artist: "Patrick de Arteaga",
-    audioUrl: 'https://patrickdearteaga.com/audio/Electronic%20Fantasy.ogg',
+    audioUrl: '/audio/Electronic_Fantasy.ogg',
     chart: {
       duration: 120000, // approx 2:00
       notes: [
