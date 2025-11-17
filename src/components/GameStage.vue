@@ -219,12 +219,8 @@ const retryCurrentSong = () => {
 };
 
 const calculateCardPositions = () => {
-    // Let's make the card container a bit wider than the screen to allow for smooth scrolling
-    const containerWidth = gameCanvas.value.width * 1.5;
-    const totalContentWidth = songLibrary.length * (CARD_WIDTH + CARD_MARGIN) - CARD_MARGIN;
-
-    // Center the content within our virtual container
-    const startX = (containerWidth - totalContentWidth) / 2;
+    const totalWidth = songLibrary.length * (CARD_WIDTH + CARD_MARGIN) - CARD_MARGIN;
+    const startX = (gameCanvas.value.width - totalWidth) / 2;
     const y = (gameCanvas.value.height - CARD_HEIGHT) / 2;
 
     songSelectState.cards = songLibrary.map((song, index) => {
