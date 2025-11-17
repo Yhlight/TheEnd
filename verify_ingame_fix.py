@@ -32,26 +32,19 @@ async def main():
 
             # --- Wait for Gameplay ---
             # Wait a few seconds for the song to start and notes to appear
-            await asyncio.sleep(3.5)
+            await asyncio.sleep(1.5)
             await page.screenshot(path='/home/jules/verification/ingame_01_first_note_approach.png')
             print("Screenshot: First note approaching.")
 
             # --- Attempt to Hit Notes ---
+            note_x = viewport_size['width'] * 0.8
             judgement_line_y = viewport_size['height'] * 0.8
 
-            # Click for the first note
-            await page.mouse.click(center_x, judgement_line_y)
-            await asyncio.sleep(0.2) # Wait for judgement text
+            await page.mouse.click(note_x, judgement_line_y)
+            # Wait a very short time to capture the animation
+            await asyncio.sleep(0.05)
             await page.screenshot(path='/home/jules/verification/ingame_02_first_note_hit.png')
             print("Screenshot: First note hit registered.")
-
-            # The next note in the default chart is slightly offset in time
-            await asyncio.sleep(0.3)
-            await page.mouse.click(center_x, judgement_line_y)
-            await asyncio.sleep(0.2)
-            await page.screenshot(path='/home/jules/verification/ingame_03_second_note_hit.png')
-            print("Screenshot: Second note hit registered.")
-
 
             print("\nVerification script completed successfully.")
 

@@ -17,6 +17,8 @@ export class TapNote extends BaseNote {
 
   hit() {
     this.isHit = true;
+    // Lock the position to the judgement line for the animation
+    this.y = this.judgementLineY;
   }
 
   update(gameTime, dt) {
