@@ -166,7 +166,7 @@ export class NoteManager {
     const result = this._findClosestNote(gameTime, clickX, clickY, 'tap');
     if (result) {
       const judgement = this._getJudgement(result.timeDiff);
-      this.notes = this.notes.filter(note => note !== result.note);
+      result.note.markAsHit();
       return { note: result.note, judgement };
     }
     return null;
@@ -178,7 +178,7 @@ export class NoteManager {
 
     if (result && Math.abs(velocity) > FLICK_VELOCITY_THRESHOLD) {
         const judgement = this._getJudgement(result.timeDiff);
-        this.notes = this.notes.filter(note => note !== result.note);
+        result.note.markAsHit();
         return { note: result.note, judgement };
     }
     return null;
@@ -253,7 +253,7 @@ export class NoteManager {
     const result = this._findClosestNote(gameTime, clickX, clickY, 'catch');
     if (result) {
       const judgement = this._getJudgement(result.timeDiff);
-      this.notes = this.notes.filter(note => note !== result.note);
+      result.note.markAsHit();
       return { note: result.note, judgement };
     }
     return null;

@@ -52,6 +52,12 @@ export class BaseNote {
     this.isMissed = true;
   }
 
+  markAsHit() {
+    // By setting isMissed to true, we ensure the note is removed by the isAlive() check.
+    // This is a bit of a misnomer, but it's the simplest way to hook into the existing removal logic.
+    this.isMissed = true;
+  }
+
   isAlive() {
     return !this.isMissed;
   }
