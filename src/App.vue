@@ -46,48 +46,63 @@ export default {
     GameStage, // Register the new component
   },
   data() {
+    // Load settings from localStorage or use defaults
+    const savedSettings = localStorage.getItem('gameSettings');
+    const defaultSettings = {
+      volume: 80,
+      noteSpeed: 7,
+      backgroundBrightness: 40,
+      audioOffset: 0,
+      noteSize: 100,
+    };
+
     return {
       currentView: 'songSelection',
-      selectedChartUrl: '', // This will now primarily be for the editor
-      selectedChartData: null, // This will be the main way to pass data to the game
+      selectedChartUrl: '',
+      selectedChartData: null,
       gameResults: null,
-      settings: {
-        volume: 80,
-        noteSpeed: 7,
-        backgroundBrightness: 40,
-        audioOffset: 0,
-        noteSize: 100, // Default size
-      },
-      // Remove chartCache as GameStage will handle loading internally
+      settings: savedSettings ? { ...defaultSettings, ...JSON.parse(savedSettings) } : defaultSettings,
     };
   },
   methods: {
-    async handleChartSelected(chartUrl) {
-      try {
-        const response = await fetch(chartUrl);
-        const chartData = await response.json();
-        // Add a unique ID to the chart data if it doesn't have one
-        if (!chartData.id) {
-          chartData.id = chartUrl;
-        }
+    async handleChartSelected(chartUrl, chartData = null) {
+      if (chartData) {
+        // Handle custom chart passed as an object
         this.selectedChartData = chartData;
-        this.selectedChartUrl = chartUrl; // Keep for retry logic
+        this.selectedChartUrl = chartData.id; // Use ID for potential retry
         this.gameResults = null;
         this.currentView = 'game';
-      } catch (error) {
-        console.error("Failed to load and parse chart:", error);
-        // Handle error, e.g., show a message to the user
+      } else if (chartUrl) {
+        // Handle default chart passed as a URL
+        try {
+          const response = await fetch(chartUrl);
+          const loadedChartData = await response.json();
+          if (!loadedChartData.id) {
+            loadedChartData.id = chartUrl;
+          }
+          this.selectedChartData = loadedChartData;
+          this.selectedChartUrl = chartUrl;
+          this.gameResults = null;
+          this.currentView = 'game';
+        } catch (error) {
+          console.error("Failed to load and parse chart:", error);
+        }
       }
     },
-    async handleChartEditSelected(chartUrl) {
-      // Logic for editor remains similar
-      try {
-        const response = await fetch(chartUrl);
-        this.selectedChartData = await response.json();
-        this.selectedChartUrl = chartUrl;
+    async handleChartEditSelected(chartUrl, chartData = null) {
+      if (chartData) {
+        this.selectedChartData = chartData;
+        this.selectedChartUrl = chartData.id;
         this.currentView = 'editor';
-      } catch (error) {
-        console.error("Failed to load chart for editor:", error);
+      } else if (chartUrl) {
+        try {
+          const response = await fetch(chartUrl);
+          this.selectedChartData = await response.json();
+          this.selectedChartUrl = chartUrl;
+          this.currentView = 'editor';
+        } catch (error) {
+          console.error("Failed to load chart for editor:", error);
+        }
       }
     },
     handleSongFinished(results) {
@@ -106,6 +121,8 @@ export default {
     },
     updateSettings(newSettings) {
       this.settings = { ...this.settings, ...newSettings };
+      // Save settings to localStorage whenever they are updated
+      localStorage.setItem('gameSettings', JSON.stringify(this.settings));
     },
   },
 };

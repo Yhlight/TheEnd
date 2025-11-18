@@ -78,7 +78,7 @@ export class NoteManager {
     // Remove notes that are no longer alive
     this.notes = this.notes.filter(note => note.isAlive(gameTime, TIMING_WINDOWS.miss));
 
-    return missedJudgements;
+    return processedJudgements;
   }
 
   /**
