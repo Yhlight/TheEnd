@@ -1,0 +1,39 @@
+{
+  "metadata": {
+    "title": "Sample Song",
+    "artist": "Jules",
+    "bpm": 120
+  },
+  "notes": [
+    {
+      "type": "tap",
+      "time": 1.0,
+      "x": 0.5,
+      "y": 0.5
+    },
+    {
+      "type": "tap",
+      "time": 2.0,
+      "x": 0.25,
+      "y": 0.75
+    },
+    {
+      "type": "hold",
+      "time": 3.0,
+      "duration": 1.0,
+      "x": 0.75,
+      "y": 0.25
+    }
+  ],
+  "events": [
+    {
+      "type": "lineMove",
+      "time": 0.0,
+      "duration": 4.0,
+      "startX": 0.1,
+      "endX": 0.9,
+      "startY": 0.5,
+      "endY": 0.5
+    }
+  ]
+}

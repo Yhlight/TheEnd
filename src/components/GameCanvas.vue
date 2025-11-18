@@ -5,8 +5,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { Application } from 'pixi.js';
-import { drawSquare } from '../core/graphics.js';
-import { AdvancedBloomFilter } from '@pixi/filter-advanced-bloom';
+import chartManager from '../core/chartManager.js';
 
 const canvasContainer = ref(null);
 const app = new Application();
@@ -21,24 +20,14 @@ onMounted(() => {
       });
       canvasContainer.value.appendChild(app.canvas);
 
-      // --- Render a test square ---
-      const testSquare = drawSquare(
-        app.screen.width / 2,
-        app.screen.height / 2,
-        100,
-        0xFFFFFF
-      );
-      app.stage.addChild(testSquare);
-      // -------------------------
-
-      // --- Apply a glow effect ---
-      const bloomFilter = new AdvancedBloomFilter({
-        threshold: 0.5,
-        bloomScale: 1.5,
-        quality: 8,
-      });
-      testSquare.filters = [bloomFilter];
-      // -------------------------
+      // --- Load and verify the sample chart ---
+      try {
+        const chartData = await chartManager.loadChart('sample.json');
+        console.log('Chart loaded successfully:', JSON.stringify(chartData));
+      } catch (error) {
+        console.error('Failed to load chart in component:', error);
+      }
+      // ------------------------------------
     }
   });
 });
