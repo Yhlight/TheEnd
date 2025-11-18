@@ -12,7 +12,7 @@
 
 <script setup>
 import ChartEditor from './ChartEditor.vue';
-import { ref, onMounted, reactive } from 'vue';
+import { ref, onMounted, reactive, nextTick } from 'vue';
 import { Device } from '@capacitor/device';
 const songUrl = ref('');
 const screenShake = ref(0);
@@ -993,16 +993,23 @@ const handlePress = (event) => {
           const selectedSong = songLibrary[songSelectState.selectedIndex];
           songUrl.value = selectedSong.audioUrl;
 
-          // Wait for the new audio to be ready before playing
-          audioElement.value.addEventListener('canplaythrough', () => {
-              const chartCopy = JSON.parse(JSON.stringify(selectedSong.chart));
-              noteManager.loadChart(chartCopy);
-              audioManager.playMusic();
-              gameState.current = 'playing';
-              gameStartTime = null;
-          }, { once: true });
+          // Wait for Vue to update the DOM and render the audio element
+          nextTick(() => {
+            if (audioElement.value) {
+                // Wait for the new audio to be ready before playing
+                audioElement.value.addEventListener('canplaythrough', () => {
+                    const chartCopy = JSON.parse(JSON.stringify(selectedSong.chart));
+                    noteManager.loadChart(chartCopy);
+                    audioManager.playMusic();
+                    gameState.current = 'playing';
+                    gameStartTime = null;
+                }, { once: true });
 
-          audioElement.value.load();
+                audioElement.value.load();
+            } else {
+                console.error("Critical error: audioElement is null after nextTick. Audio cannot be played.");
+            }
+          });
       } else {
           // Otherwise, start dragging. Restore the original, correct drag logic.
           songSelectState.isDragging = true;
