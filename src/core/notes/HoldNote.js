@@ -43,8 +43,10 @@ export class HoldNote extends BaseNote {
     const endY = this.endRenderY;
 
     // --- Draw the connecting beam ---
+    const color = '#FFFF00';
+    this.applyGlow(ctx, color);
     ctx.fillStyle = 'rgba(255, 255, 0, 0.5)';
-    ctx.strokeStyle = '#FFFF00';
+    ctx.strokeStyle = color;
     ctx.lineWidth = 2;
 
     // Draw the "un-hit" part of the beam
@@ -63,7 +65,8 @@ export class HoldNote extends BaseNote {
       ctx.translate(0, this.renderY);
       ctx.scale(this.scale, this.scale);
 
-      ctx.fillStyle = '#FFFF00'; // Yellow
+      this.applyGlow(ctx, color);
+      ctx.fillStyle = color; // Yellow
       ctx.strokeStyle = '#FFFFFF';
       ctx.lineWidth = 3;
 

@@ -56,6 +56,7 @@ export default {
         noteSpeed: 7,
         backgroundBrightness: 40,
         audioOffset: 0,
+        noteSize: 100, // Default size
       },
       // Remove chartCache as GameStage will handle loading internally
     };

@@ -86,6 +86,8 @@ export class JudgementLine {
     ctx.globalAlpha = this.alpha;
     ctx.strokeStyle = '#FFFFFF';
     ctx.lineWidth = 4;
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = '#FFFFFF';
     ctx.beginPath();
     ctx.moveTo(-width, 0); // Draw across the entire potential screen width
     ctx.lineTo(width, 0);

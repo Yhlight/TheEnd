@@ -11,9 +11,10 @@ const TIMING_WINDOWS = {
 };
 
 export class NoteManager {
-  constructor(chart, noteSpeed) {
+  constructor(chart, noteSpeed, noteSize = 100) {
     this.chart = chart;
     this.noteSpeed = noteSpeed;
+    this.noteSize = noteSize; // Percentage
     this.notes = [];
     this.activeHolds = new Set();
 
@@ -46,9 +47,10 @@ export class NoteManager {
    */
   update(gameTime, isDragging) {
     const processedJudgements = [];
+    const noteSizeMultiplier = this.noteSize / 100.0;
     this.notes.forEach(note => {
       // Update note's visual state
-      note.update(gameTime, this.noteSpeed);
+      note.update(gameTime, this.noteSpeed, noteSizeMultiplier);
 
       // Check for misses
       if (!note.isJudged && gameTime > note.time + TIMING_WINDOWS.miss) {
@@ -85,18 +87,17 @@ export class NoteManager {
    * @returns {object|null} The judgement and the note that was hit, or null.
    */
   checkTapHit(gameTime) {
-    // Find the closest, unjudged note within the 'good' window
+    // Find the closest, unjudged tap or hold note within the 'good' window
     let bestCandidate = null;
     let smallestTimeDiff = Infinity;
 
     for (const note of this.notes) {
       if (note.isJudged) continue;
+      // This method now ONLY handles tap and hold
       if (note.type !== 'tap' && note.type !== 'hold') continue;
 
       const timeDiff = Math.abs(gameTime - note.time);
-      // Swipe notes are just taps for now, but this is where the logic would differ
-      if ((note.type === 'tap' || note.type === 'hold' || note.type === 'swipe') &&
-          timeDiff < TIMING_WINDOWS.good && timeDiff < smallestTimeDiff) {
+      if (timeDiff < TIMING_WINDOWS.good && timeDiff < smallestTimeDiff) {
         smallestTimeDiff = timeDiff;
         bestCandidate = note;
       }
@@ -115,6 +116,48 @@ export class NoteManager {
         this.activeHolds.add(bestCandidate);
       }
 
+      return { judgement, note: bestCandidate };
+    }
+
+    return null;
+  }
+
+  /**
+   * Checks for a swipe note hit, requiring a certain velocity.
+   * @param {number} gameTime - The current time in milliseconds.
+   * @param {{x: number, y: number}} velocity - The pointer's velocity vector.
+   * @returns {object|null} The judgement and the note that was hit, or null.
+   */
+  checkSwipeHit(gameTime, velocity) {
+    const SWIPE_VELOCITY_THRESHOLD = 1.5; // pixels per millisecond
+    const totalVelocity = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+
+    if (totalVelocity < SWIPE_VELOCITY_THRESHOLD) {
+      return null;
+    }
+
+    // Find the closest, unjudged swipe note within the 'good' window
+    let bestCandidate = null;
+    let smallestTimeDiff = Infinity;
+
+    for (const note of this.notes) {
+      if (note.isJudged || note.type !== 'swipe') continue;
+
+      const timeDiff = Math.abs(gameTime - note.time);
+      if (timeDiff < TIMING_WINDOWS.good && timeDiff < smallestTimeDiff) {
+        smallestTimeDiff = timeDiff;
+        bestCandidate = note;
+      }
+    }
+
+    if (bestCandidate) {
+      // Swipe judgements are stricter
+      let judgement = 'good';
+      if (smallestTimeDiff <= TIMING_WINDOWS.perfect) {
+        judgement = 'perfect';
+      }
+
+      bestCandidate.judge(judgement, gameTime);
       return { judgement, note: bestCandidate };
     }
 

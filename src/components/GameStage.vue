@@ -78,6 +78,7 @@ let dynamicBackground = null;
 
 let lastFrameTime = 0;
 let gameStartTime = 0;
+let pointerHistory = [];
 
 // --- Lifecycle Hooks ---
 onMounted(() => {
@@ -90,8 +91,10 @@ onUnmounted(() => {
   window.removeEventListener('resize', handleResize);
   containerRef.value.removeEventListener('mousedown', handlePress);
   containerRef.value.removeEventListener('mouseup', handleRelease);
+  containerRef.value.removeEventListener('mousemove', handleMove);
   containerRef.value.removeEventListener('touchstart', handlePress);
   containerRef.value.removeEventListener('touchend', handleRelease);
+  containerRef.value.removeEventListener('touchmove', handleMove);
 });
 
 // --- Game Initialization ---
@@ -109,7 +112,7 @@ async function initializeGame() {
   scoreManager = new ScoreManager(chart.notes.length);
   judgementLine = new JudgementLine(chart.lineEvents || []);
   cameraManager = new CameraManager(chart.cameraEvents || []);
-  noteManager = new NoteManager(chart, props.settings.noteSpeed);
+  noteManager = new NoteManager(chart, props.settings.noteSpeed, props.settings.noteSize);
   dynamicBackground = new DynamicBackground(canvas.width, canvas.height);
 
   handleResize();
@@ -118,8 +121,10 @@ async function initializeGame() {
   // Add input listeners
   containerRef.value.addEventListener('mousedown', handlePress);
   containerRef.value.addEventListener('mouseup', handleRelease);
+  containerRef.value.addEventListener('mousemove', handleMove);
   containerRef.value.addEventListener('touchstart', handlePress, { passive: false });
   containerRef.value.addEventListener('touchend', handleRelease);
+  containerRef.value.addEventListener('touchmove', handleMove, { passive: false });
 
 
   // Load audio
@@ -238,12 +243,46 @@ function draw() {
 }
 
 // --- Input Handlers ---
+function handleMove(event) {
+    event.preventDefault();
+    const pointer = event.touches ? event.touches[0] : event;
+    pointerHistory.push({
+        x: pointer.clientX,
+        y: pointer.clientY,
+        time: performance.now(),
+    });
+    // Keep the history buffer from growing too large
+    if (pointerHistory.length > 10) {
+        pointerHistory.shift();
+    }
+}
+
 function handlePress(event) {
     event.preventDefault();
     if (!isPlaying.value || isPaused.value) return;
     isDragging.value = true;
 
-    const result = noteManager.checkTapHit(gameTime.value);
+    // Calculate velocity for swipe detection
+    const now = performance.now();
+    const lastPoint = pointerHistory[pointerHistory.length - 1];
+    const firstPoint = pointerHistory[0];
+    let velocity = { x: 0, y: 0 };
+    if (lastPoint && firstPoint && (now - lastPoint.time < 50)) { // Only if moving recently
+        const timeDiff = lastPoint.time - firstPoint.time;
+        if (timeDiff > 0) {
+            velocity.x = (lastPoint.x - firstPoint.x) / timeDiff;
+            velocity.y = (lastPoint.y - firstPoint.y) / timeDiff;
+        }
+    }
+
+    // Check for swipe notes first, as they have priority
+    let result = noteManager.checkSwipeHit(gameTime.value, velocity);
+
+    // If no swipe was hit, check for a regular tap
+    if (!result) {
+        result = noteManager.checkTapHit(gameTime.value);
+    }
+
     if (result) {
         scoreManager.addJudgement(result.judgement);
         score.value = Math.round(scoreManager.score);
@@ -318,6 +357,13 @@ watch(() => props.settings.noteSpeed, (newSpeed) => {
         noteManager.noteSpeed = newSpeed;
     }
 });
+
+watch(() => props.settings.noteSize, (newSize) => {
+    if (noteManager) {
+        noteManager.noteSize = newSize;
+    }
+});
+
 watch(() => props.settings.backgroundBrightness, (newBrightness) => {
     if (dynamicBackground) {
         dynamicBackground.setBrightness(newBrightness / 100);

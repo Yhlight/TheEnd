@@ -15,7 +15,10 @@ export class TapNote extends BaseNote {
     ctx.translate(this.renderX, this.renderY);
     ctx.scale(this.scale, this.scale);
 
-    ctx.fillStyle = '#FF007F'; // A bright magenta
+    const color = '#FF007F'; // A bright magenta
+    this.applyGlow(ctx, color);
+
+    ctx.fillStyle = color;
     ctx.strokeStyle = '#FFFFFF';
     ctx.lineWidth = 3;
 

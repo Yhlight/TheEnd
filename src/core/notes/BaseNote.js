@@ -62,8 +62,9 @@ export class BaseNote {
    * Updates the note's rendering properties based on game time.
    * @param {number} gameTime - The current time in milliseconds.
    * @param {number} noteSpeed - The user-defined note speed setting.
+   * @param {number} noteSize - The user-defined note size multiplier (e.g., 1.0 for default).
    */
-  update(gameTime, noteSpeed) {
+  update(gameTime, noteSpeed, noteSize = 1.0) {
     const timeUntilHit = this.time - gameTime;
     const fallDistance = timeUntilHit * noteSpeed;
 
@@ -78,10 +79,10 @@ export class BaseNote {
     if (timeSinceSpawn < spawnTime) {
       const progress = timeSinceSpawn / spawnTime;
       this.alpha = progress;
-      this.scale = 0.5 + progress * 0.5;
+      this.scale = (0.5 + progress * 0.5) * noteSize;
     } else {
       this.alpha = 1.0;
-      this.scale = 1.0;
+      this.scale = noteSize;
     }
 
     if (this.isJudged && this.judgement !== 'miss') {
@@ -97,10 +98,20 @@ export class BaseNote {
   }
 
   /**
+   * A helper to apply a standard glow effect for notes.
+   * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
+   * @param {string} color - The color of the glow.
+   */
+  applyGlow(ctx, color) {
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = color;
+  }
+
+  /**
    * Draws the note on the canvas. This method should be overridden by subclasses.
    * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
    */
   draw(ctx) {
-    // Base implementation does nothing.
+    // Base implementation does nothing, but subclasses should call applyGlow.
   }
 }

@@ -15,7 +15,9 @@ export class SwipeNote extends BaseNote {
     ctx.translate(this.renderX, this.renderY);
     ctx.scale(this.scale, this.scale);
 
-    ctx.fillStyle = '#00FFFF'; // Cyan color for swipe
+    const color = '#00FFFF';
+    this.applyGlow(ctx, color);
+    ctx.fillStyle = color; // Cyan color for swipe
     ctx.strokeStyle = '#FFFFFF';
     ctx.lineWidth = 3;
 

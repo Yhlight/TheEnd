@@ -16,8 +16,10 @@ export class CatchNote extends BaseNote {
     ctx.translate(this.renderX, this.renderY);
     ctx.scale(this.scale, this.scale);
 
+    const color = '#FFA500';
+    this.applyGlow(ctx, color);
     ctx.fillStyle = 'rgba(255, 165, 0, 0.7)'; // Orange
-    ctx.strokeStyle = '#FFA500';
+    ctx.strokeStyle = color;
     ctx.lineWidth = 3;
 
     ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
