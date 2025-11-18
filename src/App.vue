@@ -5,15 +5,13 @@
       @chartSelected="handleChartSelected"
       @chartEditSelected="handleChartEditSelected"
     />
-    <GameScreen
+    <GameStage
       v-if="currentView === 'game'"
-      :chartUrl="selectedChartUrl"
-      :chartData="selectedChartData || chartCache[selectedChartUrl]"
+      :chartData="selectedChartData"
       :settings="settings"
       @exit="handleExit"
       @songFinished="handleSongFinished"
       @settingsChange="updateSettings"
-      @chartLoaded="cacheChart"
     />
     <ResultsScreen
       v-if="currentView === 'results'"
@@ -24,92 +22,96 @@
     <ChartEditor
       v-if="currentView === 'editor'"
       :chartUrl="selectedChartUrl"
-      :chartData="selectedChartData || chartCache[selectedChartUrl]"
+      :chartData="selectedChartData"
       @exit="handleExit"
-      @chartLoaded="cacheChart"
     />
   </div>
 </template>
 
 <script>
-import GameScreen from './components/GameScreen.vue';
+// Keep SongSelection, ResultsScreen, ChartEditor as they are.
 import SongSelection from './views/SongSelection.vue';
 import ResultsScreen from './views/ResultsScreen.vue';
-import ChartEditor from './views/ChartEditor.vue'; // Will create this
+import ChartEditor from './views/ChartEditor.vue';
+
+// Import the new GameStage component
+import GameStage from './components/GameStage.vue';
 
 export default {
   name: 'App',
   components: {
-    GameScreen,
     SongSelection,
     ResultsScreen,
     ChartEditor,
+    GameStage, // Register the new component
   },
   data() {
     return {
       currentView: 'songSelection',
-      selectedChartUrl: '',
-      selectedChartData: null, // To hold data for custom charts
+      selectedChartUrl: '', // This will now primarily be for the editor
+      selectedChartData: null, // This will be the main way to pass data to the game
       gameResults: null,
       settings: {
-        volume: 100,
-        noteSpeed: 5,
-        backgroundBrightness: 100,
+        volume: 80,
+        noteSpeed: 7,
+        backgroundBrightness: 40,
         audioOffset: 0,
-        noteSize: 100,
       },
-      chartCache: {},
+      // Remove chartCache as GameStage will handle loading internally
     };
   },
   methods: {
-    handleChartSelected(chartUrl, chartData = null) {
-      if (chartUrl) {
-        this.selectedChartUrl = chartUrl;
-        this.selectedChartData = null; // Ensure custom data is cleared
-      } else if (chartData) {
-        this.selectedChartUrl = chartData.id; // Use a unique identifier
+    async handleChartSelected(chartUrl) {
+      try {
+        const response = await fetch(chartUrl);
+        const chartData = await response.json();
+        // Add a unique ID to the chart data if it doesn't have one
+        if (!chartData.id) {
+          chartData.id = chartUrl;
+        }
         this.selectedChartData = chartData;
+        this.selectedChartUrl = chartUrl; // Keep for retry logic
+        this.gameResults = null;
+        this.currentView = 'game';
+      } catch (error) {
+        console.error("Failed to load and parse chart:", error);
+        // Handle error, e.g., show a message to the user
       }
-      this.gameResults = null;
-      this.currentView = 'game';
     },
-    handleChartEditSelected(chartUrl, chartData = null) {
-      if (chartUrl) {
+    async handleChartEditSelected(chartUrl) {
+      // Logic for editor remains similar
+      try {
+        const response = await fetch(chartUrl);
+        this.selectedChartData = await response.json();
         this.selectedChartUrl = chartUrl;
-        this.selectedChartData = null;
-      } else if (chartData) {
-        this.selectedChartUrl = chartData.id;
-        this.selectedChartData = chartData;
+        this.currentView = 'editor';
+      } catch (error) {
+        console.error("Failed to load chart for editor:", error);
       }
-      this.currentView = 'editor';
     },
     handleSongFinished(results) {
       this.gameResults = results;
       this.currentView = 'results';
     },
     handleRetry() {
-      // Re-select the same chart to restart the game
-      this.handleChartSelected(this.selectedChartUrl, this.selectedChartData);
+      // Retrying is now simpler, just re-select the same chart url
+      this.handleChartSelected(this.selectedChartUrl);
     },
     handleExit() {
       this.currentView = 'songSelection';
       this.selectedChartUrl = '';
+      this.selectedChartData = null;
       this.gameResults = null;
     },
     updateSettings(newSettings) {
       this.settings = { ...this.settings, ...newSettings };
     },
-    cacheChart({ url, data }) {
-      if (!this.chartCache[url]) {
-        this.chartCache[url] = data;
-      }
-    }
   },
 };
 </script>
 
 <style>
-/* ... styles unchanged ... */
+/* Global styles remain unchanged */
 html, body {
   margin: 0;
   padding: 0;
