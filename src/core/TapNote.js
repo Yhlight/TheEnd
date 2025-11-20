@@ -4,6 +4,7 @@ import { BaseNote } from './BaseNote.js';
 export class TapNote extends BaseNote {
   constructor(canvas, x, judgementLineY, scrollTime, noteData, sizeMultiplier) {
     super(canvas, x, judgementLineY, scrollTime, noteData, sizeMultiplier);
+    this.type = 'tap';
     this.color = '#FF8080'; // A reddish color for tap notes
     this.baseWidth = 120;
     this.baseHeight = 25;
