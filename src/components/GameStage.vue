@@ -1029,13 +1029,14 @@ const handlePress = (event) => {
       if (tapResult) {
           scoreManager.onHit(tapResult.judgement);
           spirit.onHit(tapResult.note.color);
-          effectManager.createHitEffect(tapResult.note.x, judgementLine.y, tapResult.note.color, tapResult.judgement);
-          effectManager.createJudgementText(tapResult.note.x, judgementLine.y - 50, tapResult.judgement, tapResult.note.color);
+          const notePixelX = judgementLine.x + (tapResult.note.x - 0.5) * gameCanvas.value.width;
+          effectManager.createHitEffect(notePixelX, judgementLine.y, tapResult.note.color, tapResult.judgement);
+          effectManager.createJudgementText(notePixelX, judgementLine.y - 50, tapResult.judgement, tapResult.note.color);
           audioManager.playSound(tapResult.note.type);
           judgementLine.flash(currentGameTime, tapResult.note.color);
           dynamicBackground.triggerEffect();
           if (tapResult.judgement === 'Perfect') {
-            effectManager.createShockwave(tapResult.note.x, judgementLine.y, tapResult.note.color);
+            effectManager.createShockwave(notePixelX, judgementLine.y, tapResult.note.color);
             screenShake.value = 10;
             screenFlash.value = 0.5;
           }
@@ -1045,7 +1046,8 @@ const handlePress = (event) => {
       if (holdResult) {
           scoreManager.onHit(holdResult.judgement);
           spirit.onHit(holdResult.note.color);
-          effectManager.createJudgementText(holdResult.note.x, judgementLine.y - 50, holdResult.judgement, holdResult.note.color);
+          const notePixelX = judgementLine.x + (holdResult.note.x - 0.5) * gameCanvas.value.width;
+          effectManager.createJudgementText(notePixelX, judgementLine.y - 50, holdResult.judgement, holdResult.note.color);
           audioManager.playSound(holdResult.note.type);
           return;
       }
@@ -1053,7 +1055,8 @@ const handlePress = (event) => {
       if (dragResult) {
           scoreManager.onHit(dragResult.judgement);
           spirit.onHit(dragResult.note.color);
-          effectManager.createJudgementText(dragResult.note.x, judgementLine.y - 50, dragResult.judgement, dragResult.note.color);
+          const notePixelX = judgementLine.x + (dragResult.note.x - 0.5) * gameCanvas.value.width;
+          effectManager.createJudgementText(notePixelX, judgementLine.y - 50, dragResult.judgement, dragResult.note.color);
           audioManager.playSound(dragResult.note.type);
           return;
       }
@@ -1061,8 +1064,9 @@ const handlePress = (event) => {
       if (catchResult) {
           scoreManager.onHit(catchResult.judgement);
           spirit.onHit(catchResult.note.color);
-          effectManager.createHitEffect(catchResult.note.x, judgementLine.y, catchResult.note.color, catchResult.judgement);
-          effectManager.createJudgementText(catchResult.note.x, judgementLine.y - 50, catchResult.judgement, catchResult.note.color);
+          const notePixelX = judgementLine.x + (catchResult.note.x - 0.5) * gameCanvas.value.width;
+          effectManager.createHitEffect(notePixelX, judgementLine.y, catchResult.note.color, catchResult.judgement);
+          effectManager.createJudgementText(notePixelX, judgementLine.y - 50, catchResult.judgement, catchResult.note.color);
           audioManager.playSound(catchResult.note.type);
           judgementLine.flash(currentGameTime, catchResult.note.color);
           if (catchResult.judgement === 'Perfect') {
@@ -1173,13 +1177,14 @@ const handleRelease = (event) => {
     if (flickResult) {
         scoreManager.onHit(flickResult.judgement);
         spirit.onHit(flickResult.note.color);
-        effectManager.createFlickEffect(flickResult.note.x, judgementLine.y, flickResult.note.color); // Use the new flick effect
-        effectManager.createJudgementText(flickResult.note.x, judgementLine.y - 50, flickResult.judgement, flickResult.note.color);
+        const notePixelX = judgementLine.x + (flickResult.note.x - 0.5) * gameCanvas.value.width;
+        effectManager.createFlickEffect(notePixelX, judgementLine.y, flickResult.note.color); // Use the new flick effect
+        effectManager.createJudgementText(notePixelX, judgementLine.y - 50, flickResult.judgement, flickResult.note.color);
         audioManager.playSound(flickResult.note.type);
         judgementLine.flash(currentGameTime, flickResult.note.color);
         dynamicBackground.triggerEffect();
         if (flickResult.judgement === 'Perfect') {
-            effectManager.createShockwave(flickResult.note.x, judgementLine.y, flickResult.note.color);
+            effectManager.createShockwave(notePixelX, judgementLine.y, flickResult.note.color);
         }
     }
 

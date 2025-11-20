@@ -4,6 +4,7 @@ import { BaseNote } from './BaseNote.js';
 export class HoldNote extends BaseNote {
   constructor(canvas, x, judgementLineY, scrollTime, noteData, sizeMultiplier) {
     super(canvas, x, judgementLineY, scrollTime, noteData, sizeMultiplier);
+    this.type = 'hold';
     this.duration = noteData.duration;
     this.color = '#80FFFF'; // A cyan color for hold notes
   }

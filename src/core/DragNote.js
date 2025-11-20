@@ -5,6 +5,7 @@ import { Easing } from './Easing.js';
 export class DragNote extends BaseNote {
   constructor(canvas, x, judgementLineY, scrollTime, noteData, sizeMultiplier) {
     super(canvas, x, judgementLineY, scrollTime, noteData, sizeMultiplier);
+    this.type = 'drag';
     this.path = noteData.path;
     this.duration = noteData.duration;
     this.color = '#80FFFF'; // A cyan color for drag notes
