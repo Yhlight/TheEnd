@@ -1,6 +1,6 @@
 <template>
   <div class="game-container">
-    <canvas ref="gameCanvas" class="game-canvas" v-show="gameState.current !== 'editor'"></canvas>
+    <canvas ref="gameCanvas" class="game-canvas" v-if="gameState.current !== 'editor'"></canvas>
     <ChartEditor
       v-if="gameState.current === 'editor'"
       :songData="songLibrary[songSelectState.selectedIndex]"
