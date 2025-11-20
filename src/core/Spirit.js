@@ -145,7 +145,7 @@ export class Spirit {
         if (this.hitAnimation.timer > 0) {
             this.hitAnimation.timer -= dt * 2.5;
             this.hitAnimation.scale = 1 + Easing.easeOutCubic(this.hitAnimation.timer) * 0.6;
-            this.colorAlpha = Easing.easeOutQuint(this.hitAnimation.timer);
+            this.colorAlpha = Easing.easeOutCubic(this.hitAnimation.timer);
         } else {
             this.hitAnimation.scale = 1;
             this.colorAlpha = 0;
