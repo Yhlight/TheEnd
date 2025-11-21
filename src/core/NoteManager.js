@@ -114,15 +114,15 @@ export class NoteManager {
   }
 
   static judgementWindows = {
-    Perfect: 40,
-    Good: 80,
-    Bad: 120,
+    Perfect: 50,
+    Good: 100,
+    Bad: 150,
   };
 
   _findClosestNote(gameTime, clickX, clickY, noteType) {
     let closestNote = null;
     let minTimeDiff = Infinity;
-    const adjustedTime = gameTime - this.settings.offset;
+    const adjustedTime = gameTime + this.settings.offset;
 
     // 1. Find the note that is temporally closest within the widest judgement window.
     for (const note of this.notes) {
